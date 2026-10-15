@@ -58,6 +58,17 @@ Your agreement is recorded on the `cla-signatures` branch, with your GitHub logi
 
 **Commit emails.** The check matches commits to GitHub accounts by email. If a commit's email is not linked to your account, add it in your GitHub email settings, or re-author the commit, then comment `recheck cla`.
 
+## Contributing with an AI coding agent
+
+Agent-assisted contributions are welcome, on the same terms as any other. Point your agent at [AGENTS.md](AGENTS.md) first: it has the product rules, the licence boundary, the commands and a definition of done. [docs/agents/](docs/agents/) has ready-made prompts for a policy pack, an assessment template, a connector or importer, and a core change.
+
+You are the contributor, so these stay yours:
+
+- **Review every line.** You answer for the change in review, not the agent.
+- **Sign off yourself** (`git rebase --signoff origin/main`) after reviewing. An agent never adds `Signed-off-by:`: the DCO is a statement only a person can make.
+- **Agree to the CLA yourself** if the check asks. An agent never posts the agreement.
+- **Say an agent helped.** Add an `Assisted-by:` trailer to the commits it wrote (e.g. `Assisted-by: Claude Code (claude-opus-5-5)`), and mention it in the pull request.
+
 ## The delivery process
 
 Every change follows the process in [CLAUDE.md](CLAUDE.md) ("Delivery process"):
@@ -71,7 +82,7 @@ Every change follows the process in [CLAUDE.md](CLAUDE.md) ("Delivery process"):
   - an accessibility pass on touched UI;
   - lockfiles in sync (`npm ci --dry-run`).
 
-As a contributor, run `npm test` and `tsc` in `server/` (and `web/` if you touched it). The maintainer runs the full gate.
+As a contributor, run `npm test` and `npm run typecheck` in `server/` (and `npm run typecheck` in `web/` if you touched it). The maintainer runs the full gate.
 
 Two product rules are not negotiable in review:
 

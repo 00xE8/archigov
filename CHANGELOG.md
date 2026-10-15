@@ -4,6 +4,11 @@ All notable changes to Archigov are documented here. The format follows [Keep a 
 
 ## [Unreleased]
 
+### Added
+
+- **AGENTS.md and task prompts for AI-assisted contributions.** `AGENTS.md` is the brief coding agents read: the product rules review enforces, the licence boundary, the commands, conventions and a definition of done. It states that the DCO sign-off and the CLA agreement are the contributor's own acts, which an agent never performs, and that agent-written commits carry an `Assisted-by:` trailer. `docs/agents/` has prompts for a policy pack, an assessment template, a connector or importer, and a core change. README, CONTRIBUTING and the pull-request template point to them.
+- `npm run typecheck` in `server/` and `web/`.
+
 ## [0.2.0] — 2026-10-15
 
 The decision-centric release. Architecture decisions are argued in three parts and tested before they reach the board, linked to what they rest on, decided by the right board, and kept true over their lifecycle. This release adds:
