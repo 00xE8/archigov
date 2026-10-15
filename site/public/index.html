@@ -71,6 +71,40 @@
   footer{background:var(--gray-100);color:var(--gray-30);font-size:.75rem;padding:32px 0}
   footer .wrap{display:flex;flex-wrap:wrap;gap:24px;justify-content:space-between}
   footer a{color:var(--gray-20)}
+  /* Carbon motion: productive for micro-interactions, expressive for page-level entrances (motion foundation). */
+  :root{
+    --ease-prod-std:cubic-bezier(0.2,0,0.38,0.9); --ease-expr-entrance:cubic-bezier(0,0,0.3,1); --ease-expr-std:cubic-bezier(0.4,0.14,0.3,1);
+    --dur-fast-01:70ms; --dur-fast-02:110ms; --dur-moderate-02:240ms; --dur-slow-01:400ms; --dur-slow-02:700ms;
+  }
+  .btn,nav.top a{transition:background-color var(--dur-fast-01) var(--ease-prod-std),border-color var(--dur-fast-01) var(--ease-prod-std),color var(--dur-fast-01) var(--ease-prod-std)}
+  .card{transition:transform var(--dur-fast-02) var(--ease-prod-std),box-shadow var(--dur-fast-02) var(--ease-prod-std)}
+  .card:hover{transform:translateY(-2px);box-shadow:inset 0 2px 0 0 var(--blue-60)}
+  /* entrance: hero children stagger in; sections reveal on scroll. Hidden only when JS is present, never under reduced motion. */
+  @media (prefers-reduced-motion: no-preference){
+    html.js-motion .hero .wrap>*{opacity:0;transform:translateY(16px);animation:rise var(--dur-slow-01) var(--ease-expr-entrance) forwards}
+    html.js-motion .hero .kicker{animation-delay:0ms}
+    html.js-motion .hero h1{animation-delay:70ms}
+    html.js-motion .hero p.lead{animation-delay:180ms}
+    html.js-motion .hero .cta{animation-delay:290ms}
+    html.js-motion .hero code.run{animation-delay:400ms}
+    html.js-motion .shot .frame{opacity:0;transform:translateY(32px);animation:rise var(--dur-slow-02) var(--ease-expr-entrance) 290ms forwards}
+    html.js-motion .reveal{opacity:0;transform:translateY(16px);transition:opacity var(--dur-slow-01) var(--ease-expr-entrance),transform var(--dur-slow-01) var(--ease-expr-entrance);transition-delay:var(--d,0ms)}
+    html.js-motion .reveal.in{opacity:1;transform:none}
+  }
+  @keyframes rise{to{opacity:1;transform:none}}
+  /* pricing */
+  .tiers{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1px;background:var(--gray-20);border:1px solid var(--gray-20)}
+  .tier{background:var(--white);padding:24px;display:flex;flex-direction:column;gap:8px}
+  .tier.hot{box-shadow:inset 0 3px 0 0 var(--blue-60)}
+  .tier h3{font-size:1rem;font-weight:600}
+  .tier .price{font-size:1.75rem;font-weight:300;margin:8px 0 0}
+  .tier .price b{font-weight:600}
+  .tier .per{font-size:.75rem;color:var(--gray-70)}
+  .tier ul{list-style:none;padding:12px 0 16px;font-size:.875rem;color:var(--gray-70);flex:1}
+  .tier ul li{padding:4px 0 4px 20px;position:relative}
+  .tier ul li::before{content:"–";position:absolute;left:0;color:var(--blue-60)}
+  .tier a{font-size:.875rem}
+  .flatline{margin-top:24px;font-size:.875rem;color:var(--gray-70)}
 </style>
 </head>
 <body>
@@ -81,6 +115,7 @@
       <a href="#how">How It Works</a>
       <a href="#ai">AI</a>
       <a href="#open-source">Open Source</a>
+      <a href="#pricing">Pricing</a>
       <a href="https://github.com/00xE8/archigov">GitHub</a>
     </nav>
   </div>
@@ -109,19 +144,19 @@
       <h2>How It Works</h2>
       <p class="sub">Four ideas, enforced end to end. The product never asserts compliance — it shows evidence and who stands behind it.</p>
       <div class="grid">
-        <div class="card">
+        <div class="card reveal">
           <h3>Derived, Not Drawn</h3>
           <p>Azure Resource Graph, the delivery backlog and your existing repositories populate the as-is model with provenance. Humans spend their effort on decisions, standards and reviews — never on keeping diagrams honest. Deterministic ArchiMate views come free.</p>
         </div>
-        <div class="card">
+        <div class="card reveal" style="--d:70ms">
           <h3>Machine-Checkable Governance</h3>
           <p>Standards, principles, patterns and policies are human statements with control references and, where possible, a checkable rule. Every adopted rule is evaluated continuously; resource-level checks arrive as imported evidence from Defender for Cloud and Azure Policy, never rebuilt.</p>
         </div>
-        <div class="card">
+        <div class="card reveal" style="--d:140ms">
           <h3>Boards Decide, on the Record</h3>
           <p>Typed reviews route to boards with areas of responsibility. Decision makers record their own positions, the chair declares what the positions allow, sessions derive their minutes from the records — and all of it lands in a SHA-256 audit chain.</p>
         </div>
-        <div class="card">
+        <div class="card reveal" style="--d:210ms">
           <h3>Signed Evidence, Continuously</h3>
           <p>Findings persist across runs, exceptions and conditions are tracked to resolution, and the evidence pack is Ed25519-signed against the chain head. OSCAL and DORA exports carry the same discipline — and the same disclaimer.</p>
         </div>
@@ -135,7 +170,7 @@
         <h2>AI Proposes. Humans Decide.</h2>
         <p class="sub">Eight AI features, each enabled separately by your admin with its own provider and model — OpenAI, Claude, Mistral or a local Ollama. Every one keeps a deterministic fallback, every output is marked AI-generated and unverified, and nothing an AI writes ever approves, blocks or becomes the record without a named human's audited act.</p>
       </div>
-      <ul class="plain">
+      <ul class="plain reveal">
         <li><b>Pre-review</b> — cited findings on a design; citations must resolve or they are discarded</li>
         <li><b>Decision review</b> — a critical test of the argument: unsupported claims, unstated risks, contradictions with what you already adopted</li>
         <li><b>Rule drafting</b> — natural language to a checkable rule, validated and dry-run before anyone saves it</li>
@@ -152,8 +187,64 @@
         <a class="btn primary" href="https://github.com/00xE8/archigov">Get the code</a>
       </div>
       <div>
-        <p class="pledge"><b>The commitment, made on day one:</b> this project will never move to a licence more restrictive than AGPL-3.0. No BSL, no SSPL. Connectors, templates and the policy SDK will be published under Apache-2.0 as they split out, so integrating with Archigov never requires touching AGPL code.</p>
+        <p class="pledge reveal"><b>The commitment, made on day one:</b> this project will never move to a licence more restrictive than AGPL-3.0. No BSL, no SSPL. Connectors, templates and the policy SDK will be published under Apache-2.0 as they split out, so integrating with Archigov never requires touching AGPL code.</p>
       </div>
+    </div>
+  </section>
+  <section id="pricing">
+    <div class="wrap">
+      <h2>Pricing</h2>
+      <p class="sub">Flat per instance. Unlimited users — governance only works when everyone can take part, so there is no per-seat pricing, ever.</p>
+      <div class="tiers">
+        <div class="tier reveal">
+          <h3>Self-Host</h3>
+          <p class="price">£0</p>
+          <p class="per">AGPL-3.0, forever</p>
+          <ul>
+            <li>The whole product — nothing held back</li>
+            <li>Unlimited users and boards</li>
+            <li>One container, your infrastructure</li>
+            <li>Community support on GitHub</li>
+          </ul>
+          <a href="https://github.com/00xE8/archigov">Start on GitHub</a>
+        </div>
+        <div class="tier reveal" style="--d:70ms">
+          <h3>Supported Self-Host</h3>
+          <p class="price">from <b>£3,000</b></p>
+          <p class="per">per instance, per year</p>
+          <ul>
+            <li>Everything in Self-Host</li>
+            <li>Vendor support with response times</li>
+            <li>Upgrade and migration assistance</li>
+            <li>Scales with estate size</li>
+          </ul>
+          <a href="https://github.com/00xE8/archigov/issues">Talk to us</a>
+        </div>
+        <div class="tier hot reveal" style="--d:140ms">
+          <h3>Managed UK/EU Instance</h3>
+          <p class="price">from <b>£20,000</b></p>
+          <p class="per">per instance, per year</p>
+          <ul>
+            <li>We run it; you govern</li>
+            <li>Dedicated instance, continuously replicated</li>
+            <li>UK/EU data residency</li>
+            <li>Your Entra ID, your evidence keys</li>
+          </ul>
+          <a href="https://github.com/00xE8/archigov/issues">Talk to us</a>
+        </div>
+        <div class="tier reveal" style="--d:210ms">
+          <h3>Enterprise Self-Hosted</h3>
+          <p class="price">from <b>£15,000</b></p>
+          <p class="per">per instance, per year</p>
+          <ul>
+            <li>Commercial licence where AGPL is barred</li>
+            <li>Everything in Supported Self-Host</li>
+            <li>Procurement-friendly paperwork</li>
+          </ul>
+          <a href="https://github.com/00xE8/archigov/issues">Talk to us</a>
+        </div>
+      </div>
+      <p class="flatline">Prices are per instance and indicative; estates differ — <a href="https://github.com/00xE8/archigov/issues">open an issue</a> and we will quote plainly.</p>
     </div>
   </section>
 </main>
@@ -164,5 +255,15 @@
     <span><a href="https://github.com/00xE8/archigov">GitHub</a> · <a href="https://github.com/00xE8/archigov/blob/main/CONTRIBUTING.md">Contributing</a> · <a href="https://github.com/00xE8/archigov/blob/main/CHANGELOG.md">Changelog</a></span>
   </div>
 </footer>
+<script>
+  // Carbon motion, honestly applied: entrances only, expressive curves, and none of it under reduced motion or without JS.
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.documentElement.classList.add('js-motion');
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, { rootMargin: '0px 0px -10% 0px' });
+    document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
+  }
+</script>
 </body>
 </html>
