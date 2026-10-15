@@ -18,7 +18,7 @@ const owner = (o: string, extra: Record<string, string> = {}) => ({ owner: o, en
 
 export const DEMO_RESOURCES: NormalisedResource[] = [
   // --- PatientFlow (tagged, modern, mostly compliant; ADR says Postgres but a Cosmos account crept in) ---
-  r("rg-patientflow-prod", "Microsoft.Web/sites", "app-patientflow-api", uk, { app: "patientflow", ...owner("clinical-systems") },
+  r("rg-patientflow-prod", "Microsoft.Web/sites", "app-patientflow-api", uk, { app: "patientflow", ...owner("clinical-systems", { criticality: "critical", ibs: "Admit and discharge patients" }) },
     { httpsOnly: true, minTlsVersion: "1.2", publicAccess: false, siteConfig_linuxFxVersion: "DOTNETCORE|8.0" },
     // VNet integration into the hub is a provider reference Resource Graph really returns (virtualNetworkSubnetId)
     [ref("rg-patientflow-prod", "Microsoft.DBforPostgreSQL/flexibleServers", "psql-patientflow"), ref("rg-patientflow-prod", "Microsoft.KeyVault/vaults", "kv-patientflow"), ref("rg-network-hub", "Microsoft.Network/virtualNetworks", "vnet-hub")]),
@@ -38,7 +38,7 @@ export const DEMO_RESOURCES: NormalisedResource[] = [
   r("rg-patientflow-prod", "Microsoft.Insights/components", "appi-patientflow", uk, { app: "patientflow", ...owner("clinical-systems") }),
 
   // --- Referral API (tagged; public storage, TLS 1.0 on SQL) ---
-  r("rg-referrals-prod", "Microsoft.Web/sites", "app-referrals-api", uk, { app: "referral-api", ...owner("integration") },
+  r("rg-referrals-prod", "Microsoft.Web/sites", "app-referrals-api", uk, { app: "referral-api", ...owner("integration", { criticality: "critical", ibs: "Receive and triage referrals" }) },
     { httpsOnly: true, minTlsVersion: "1.2", publicAccess: true, siteConfig_linuxFxVersion: "DOTNETCORE|6.0" },
     [ref("rg-referrals-prod", "Microsoft.Sql/servers", "sql-referrals"), ref("rg-network-hub", "Microsoft.Network/virtualNetworks", "vnet-hub")]),
   r("rg-referrals-prod", "Microsoft.Sql/servers", "sql-referrals", uk, { app: "referral-api", ...owner("integration", { dataClass: "patient" }) },
@@ -51,7 +51,7 @@ export const DEMO_RESOURCES: NormalisedResource[] = [
     { publicAccess: true }),
 
   // --- Finance ERP (resource-group convention, no app tag; in West Europe) ---
-  r("rg-finance-erp-prod", "Microsoft.Compute/virtualMachines", "vm-erp-app-01", "westeurope", { owner: "finance-it", env: "prod" },
+  r("rg-finance-erp-prod", "Microsoft.Compute/virtualMachines", "vm-erp-app-01", "westeurope", { owner: "finance-it", env: "prod", criticality: "important", "business-service": "Pay suppliers" },
     { osSku: "2016-Datacenter", hardwareProfile_vmSize: "Standard_D4s_v3" },
     [ref("rg-finance-erp-prod", "Microsoft.Compute/virtualMachines", "vm-erp-db-01")]),
   r("rg-finance-erp-prod", "Microsoft.Compute/virtualMachines", "vm-erp-db-01", "westeurope", { owner: "finance-it", env: "prod", dataClass: "financial" },
@@ -70,7 +70,7 @@ export const DEMO_RESOURCES: NormalisedResource[] = [
   r("rg-pharmacy-legacy", "Microsoft.Network/publicIPAddresses", "pip-pharm-01", uk, {}, { ipAddress: "20.50.2.9" }),
 
   // --- Data Platform (tagged; AKS public, OpenAI with local auth) ---
-  r("rg-dataplatform-prod", "Microsoft.ContainerService/managedClusters", "aks-dataplatform", uk, { app: "data-platform", ...owner("data-engineering") },
+  r("rg-dataplatform-prod", "Microsoft.ContainerService/managedClusters", "aks-dataplatform", uk, { app: "data-platform", ...owner("data-engineering", { criticality: "important", "business-service": "Clinical reporting" }) },
     { kubernetesVersion: "1.29.4", apiServerAccessProfile_enablePrivateCluster: false },
     [ref("rg-network-hub", "Microsoft.Network/virtualNetworks", "vnet-hub")]),
   r("rg-dataplatform-prod", "Microsoft.Storage/storageAccounts", "stdatalakeprod", uk, { app: "data-platform", ...owner("data-engineering", { dataClass: "patient" }) },
@@ -83,7 +83,7 @@ export const DEMO_RESOURCES: NormalisedResource[] = [
   r("rg-dataplatform-prod", "Microsoft.Synapse/workspaces", "syn-dataplatform", uk, { app: "data-platform", ...owner("data-engineering") }),
 
   // --- Intranet (tagged, fine) ---
-  r("rg-intranet-prod", "Microsoft.Web/sites", "app-intranet", uk, { app: "intranet", ...owner("digital-workplace") },
+  r("rg-intranet-prod", "Microsoft.Web/sites", "app-intranet", uk, { app: "intranet", ...owner("digital-workplace", { criticality: "standard" }) },
     { httpsOnly: true, minTlsVersion: "1.2", publicAccess: false, siteConfig_linuxFxVersion: "NODE|20-lts" }),
   r("rg-intranet-prod", "Microsoft.DBforPostgreSQL/flexibleServers", "psql-intranet", uk, { app: "intranet", ...owner("digital-workplace") },
     { version: "16", highAvailability_mode: "Disabled", backup_geoRedundantBackup: "Disabled", publicAccess: false }),
@@ -91,7 +91,7 @@ export const DEMO_RESOURCES: NormalisedResource[] = [
     { publicAccess: false, minTlsVersion: "1.2", supportsHttpsTrafficOnly: true }),
 
   // --- Appointments (tagged; .NET Framework 4.8 on Windows app service, SQL TLS 1.1) ---
-  r("rg-appointments-prod", "Microsoft.Web/sites", "app-appointments", uk, { app: "appointments", ...owner("clinical-systems") },
+  r("rg-appointments-prod", "Microsoft.Web/sites", "app-appointments", uk, { app: "appointments", ...owner("clinical-systems", { criticality: "important", "business-service": "Book outpatient appointments" }) },
     { httpsOnly: false, minTlsVersion: "1.1", publicAccess: true, siteConfig_netFrameworkVersion: "v4.8" },
     // client secrets come from the identity platform's vault (Key Vault reference) — a cross-application dependency
     [ref("rg-appointments-prod", "Microsoft.Sql/servers", "sql-appointments"), ref("rg-identity-prod", "Microsoft.KeyVault/vaults", "kv-identity")]),
@@ -103,7 +103,7 @@ export const DEMO_RESOURCES: NormalisedResource[] = [
     { minTlsVersion: "1.2", publicAccess: false }),
 
   // --- Identity platform (shared, compliant) ---
-  r("rg-identity-prod", "Microsoft.KeyVault/vaults", "kv-identity", uk, { app: "identity-platform", ...owner("platform") },
+  r("rg-identity-prod", "Microsoft.KeyVault/vaults", "kv-identity", uk, { app: "identity-platform", ...owner("platform", { criticality: "critical", "essential-function": "Staff sign-in to clinical systems" }) },
     { enableSoftDelete: true, enablePurgeProtection: true, publicAccess: false }),
   r("rg-identity-prod", "Microsoft.Web/sites", "app-identity-broker", uk, { app: "identity-platform", ...owner("platform") },
     { httpsOnly: true, minTlsVersion: "1.2", publicAccess: true, siteConfig_linuxFxVersion: "DOTNETCORE|8.0" }),

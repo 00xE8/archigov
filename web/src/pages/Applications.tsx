@@ -1,8 +1,11 @@
 import React from "react";
 import { useLocation } from "react-router-dom";
-import { DataTable, Table, TableHead, TableRow, TableHeader, TableBody, TableCell, TableContainer, TableToolbar, TableToolbarContent, TableToolbarSearch, DataTableSkeleton } from "@carbon/react";
-import { get, UK_REGIONS } from "../api";
-import { PageIntro, useLoad, VerificationTag, CountTag, LoadError, RLink, StatusTag, EmptyState, useDocTitle } from "../components";
+import { DataTable, Table, TableHead, TableRow, TableHeader, TableBody, TableCell, TableContainer, TableToolbar, TableToolbarContent, TableToolbarSearch, DataTableSkeleton, Dropdown } from "@carbon/react";
+import { get, UK_REGIONS, labelFor } from "../api";
+import { PageIntro, useLoad, VerificationTag, CountTag, LoadError, RLink, StatusTag, EmptyState, useDocTitle, CriticalityTag } from "../components";
+
+const CRIT_FILTERS = ["all", "critical", "important", "standard", "unclassified"];
+const critOf = (a: any): string => a.classification?.criticality || "unclassified";
 
 export default function Applications() {
   const [apps, reload, err] = useLoad<any[]>(() => get("/applications"));
@@ -14,17 +17,20 @@ export default function Applications() {
   const homeRegions: string[] | null = Array.isArray(settings?.home_regions) ? settings.home_regions : settingsErr ? UK_REGIONS : settings ? UK_REGIONS : null;
   const foreign = (l: string) => !!homeRegions && homeRegions.length > 0 && !homeRegions.includes(l);
   const loc = useLocation();
+  // ?criticality=critical deep-links a filtered list (the Business Services page links unclassified applications here)
+  const [crit, setCrit] = React.useState(() => new URLSearchParams(loc.search).get("criticality") || "all");
   useDocTitle("Applications");
   React.useEffect(() => { if (loc.hash === "#shared" && shared) document.getElementById("shared")?.scrollIntoView({ block: "start" }); }, [loc.hash, shared]);
   if (err) return <LoadError what="applications" err={err} onRetry={reload} />;
   const hasEvidence = !!apps?.some((a) => typeof a.evidence_fail_count === "number");
   const headers = [
-    { key: "name", header: "Application" }, { key: "owners", header: "Owner" }, { key: "resource_count", header: "Resources" }, { key: "locations", header: "Regions" }, { key: "decision_count", header: "Decisions" }, { key: "open_findings", header: "Open Findings" },
+    { key: "name", header: "Application" }, { key: "criticality", header: "Criticality" }, { key: "owners", header: "Owner" }, { key: "resource_count", header: "Resources" }, { key: "locations", header: "Regions" }, { key: "decision_count", header: "Decisions" }, { key: "open_findings", header: "Open Findings" },
     ...(hasEvidence ? [{ key: "evidence_fail_count", header: "Imported Evidence" }] : []),
     { key: "how", header: "How It Was Derived" }, { key: "verification", header: "Verification" },
   ];
   if (!apps) return <DataTableSkeleton headers={headers} rowCount={6} showHeader={false} showToolbar />;
-  const rows = apps.map((a) => ({ id: a.id, name: a.name, owners: a.owners.join(", ") || "—", resource_count: a.resource_count, locations: a.locations.join(", "), decision_count: a.decision_count, open_findings: a.open_findings, evidence_fail_count: a.evidence_fail_count ?? "", how: (a.provenance.methods || []).join(", "), verification: a.verification }));
+  const shown = apps.filter((a) => crit === "all" || critOf(a) === crit);
+  const rows = shown.map((a) => ({ id: a.id, name: a.name, criticality: ["critical", "important", "standard", "unclassified"].indexOf(critOf(a)), owners: a.owners.join(", ") || "—", resource_count: a.resource_count, locations: a.locations.join(", "), decision_count: a.decision_count, open_findings: a.open_findings, evidence_fail_count: a.evidence_fail_count ?? "", how: (a.provenance.methods || []).join(", "), verification: a.verification }));
   return (
     <>
       <PageIntro title="Applications" lead="Inferred from the connected estate, never typed in, with the method and confidence recorded."
@@ -37,12 +43,19 @@ export default function Applications() {
       <DataTable rows={rows} headers={headers} isSortable>
         {({ rows, headers, getHeaderProps, getRowProps, getTableProps, onInputChange }: any) => (
           <TableContainer>
-            <TableToolbar><TableToolbarContent><TableToolbarSearch onChange={onInputChange} placeholder="e.g. Referral API" persistent /></TableToolbarContent></TableToolbar>
+            <TableToolbar><TableToolbarContent>
+              <TableToolbarSearch onChange={onInputChange} placeholder="e.g. Referral API" persistent />
+              {/* a classification filter; counts come from the whole list so the options never hide what is there */}
+              <Dropdown id="app-crit" titleText="Criticality" hideLabel label="Criticality" type="inline" size="lg" items={CRIT_FILTERS} selectedItem={crit}
+                itemToString={(x: any) => (x === "all" ? `All criticalities (${apps.length})` : `${x === "unclassified" ? "Unclassified" : labelFor("criticality", x)} (${apps.filter((a) => critOf(a) === x).length})`)}
+                onChange={({ selectedItem }: any) => setCrit(selectedItem || "all")} />
+            </TableToolbarContent></TableToolbar>
             <Table {...getTableProps()} size="md">
               <TableHead><TableRow>{headers.map((h: any) => <TableHeader {...getHeaderProps({ header: h })} key={h.key}>{h.header}</TableHeader>)}</TableRow></TableHead>
               <TableBody>{rows.map((r: any) => { const a = apps.find((x) => x.id === r.id)!; return (
                 <TableRow {...getRowProps({ row: r })} key={r.id}>
                   <TableCell><RLink to={`/applications/${a.id}`}>{a.name}</RLink></TableCell>
+                  <TableCell><CriticalityTag value={a.classification?.criticality} />{(a.classification?.services || []).length > 0 && <div className="ag-muted ag-label ag-nowrap" title={a.classification.services.map((x: any) => x.name).join(", ")}>{a.classification.services.length} service{a.classification.services.length === 1 ? "" : "s"}</div>}</TableCell>
                   <TableCell>{a.owners.join(", ") || <span className="ag-muted">None</span>}</TableCell>
                   <TableCell>{a.resource_count}</TableCell>
                   <TableCell><div className="ag-row tight">{a.locations.map((l: string) => (foreign(l) ? <StatusTag key={l} kind="attention" value="region" label={`${l} · outside home regions`} /> : <span key={l} className="ag-mono">{l}</span>))}</div></TableCell>

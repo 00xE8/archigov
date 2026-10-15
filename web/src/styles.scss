@@ -539,3 +539,9 @@ $ag-ease-prod: cubic-bezier(0.2, 0, 0.38, 0.9);
   .ag-queue { animation: ag-rise 400ms $ag-ease-entrance both; }
 }
 @keyframes ag-fill { from { inline-size: 0; } }
+
+// Criticality classification: the service editor rows in the Classify dialog (name grows, kind fixed, remove icon).
+.ag-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.ag-service-row { align-items: flex-end; flex-wrap: nowrap; }
+.ag-service-row > .ag-grow { flex: 1 1 auto; min-width: 0; }
+.ag-service-row > .ag-service-kind { flex: 0 0 15rem; }

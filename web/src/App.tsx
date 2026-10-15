@@ -1,9 +1,10 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Header, HeaderName, HeaderGlobalBar, HeaderGlobalAction, HeaderPanel, SideNav, SideNavItems, SideNavLink, SideNavMenu, SideNavMenuItem, SideNavDivider, Content, Theme, HeaderMenuButton, SkipToContent, Search, Form, ContainedList, ContainedListItem, Tag } from "@carbon/react";
-import { Dashboard, Application, Rule, Document, Task, Compare, ListChecked, Settings, UserAvatar, Help, Search as SearchIcon, Catalog, Receipt, DataBase, Group, Calendar, Notification } from "@carbon/icons-react";
+import { Dashboard, Application, Rule, Document, Task, Compare, ListChecked, Settings, UserAvatar, Help, Search as SearchIcon, Catalog, Receipt, DataBase, Group, Calendar, Notification, BusinessProcesses } from "@carbon/icons-react";
 import Overview from "./pages/Overview";
 import Applications from "./pages/Applications";
+import BusinessServices from "./pages/BusinessServices";
 import ApplicationDetail from "./pages/ApplicationDetail";
 import Catalogue from "./pages/Catalogue";
 import Boards, { BoardDetail } from "./pages/Boards";
@@ -31,6 +32,7 @@ const OVERVIEW: Item = { to: "/", label: "Overview", icon: Dashboard, end: true 
 const GROUPS: { title: string; icon: React.ComponentType; items: Item[] }[] = [
   { title: "Model", icon: DataBase, items: [
     { to: "/applications", label: "Applications", icon: Application },
+    { to: "/services", label: "Business Services", icon: BusinessProcesses },
     { to: "/backlog", label: "Planned Changes", icon: ListChecked },
   ] },
   { title: "Governance", icon: Rule, items: [
@@ -145,6 +147,7 @@ function Shell() {
             <Route path="/" element={<Overview />} />
             <Route path="/applications" element={<Applications />} />
             <Route path="/applications/:id" element={<ApplicationDetail />} />
+            <Route path="/services" element={<BusinessServices />} />
             <Route path="/governance" element={<Catalogue />} />
             {/* The catalogue used to be /standards; deep links (?open=, ?q=) keep working. */}
             <Route path="/standards" element={<Navigate to={`/governance${loc.search}`} replace />} />
@@ -176,7 +179,7 @@ function HelpPanel() {
       <p className="ag-body">The architecture model is derived from your cloud estate and backlog, not drawn by hand. Standards, decisions and reviews are the human layer on top of it. Nothing here asserts compliance: it shows evidence and who stands behind it.</p>
       <h3>Finding Your Way</h3>
       <dl className="ag-kv stacked">
-        <dt>Model</dt><dd>What was collected and inferred: applications, their resources, and the planned changes fed from the delivery backlog.</dd>
+        <dt>Model</dt><dd>What was collected and inferred: applications, their resources and criticality, the business services that depend on them, and the planned changes fed from the delivery backlog.</dd>
         <dt>Overview</dt><dd>Your work first: positions, declarations and sessions waiting on you, then the governance pipeline and the state of the estate.</dd>
         <dt>Governance</dt><dd>What people decided: the catalogue of standards, principles, patterns and policies, architecture decisions, reviews of all of them, the boards that approve them and the sessions they sit in.</dd>
         <dt>Board Sessions</dt><dd>A board sits in sessions: decision makers record a position for each area of responsibility they own, or delegate their seat for the sitting, and the chair declares the outcome those positions allow.</dd>

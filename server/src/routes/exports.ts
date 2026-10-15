@@ -5,6 +5,7 @@ import { listElements, resourcesOf } from "../model.js";
 import { evidenceFor } from "../evidence.js";
 import { std, fnd } from "../http.js";
 import { buildArchimate, archimateXml } from "../exporters/archimate.js";
+import { allClassifications, REGULATED_KINDS } from "../classification.js";
 
 /**
  * Machine-readable exports for the people who have to take evidence away:
@@ -128,13 +129,21 @@ export const DORA_COLUMNS = [
   "B_07.01_substitutability",
   "archigov_application_id", "archigov_service_family", "archigov_region", "archigov_resource_count", "archigov_origin", "archigov_verification",
 ];
+// B_06.01.0050 from the classification: "Critical or important" when the application supports a regulated service or
+// is classified critical, "Not critical or important" when it is classified lower, blank when nobody has classified it.
+const CRIT_CELL: Record<string, string> = { critical: "Critical or important", important: "Not critical or important", standard: "Not critical or important" };
 exportsRoutes.get("/exports/dora-roi.csv", (c) => {
   const apps = listElements("application");
+  const cls = allClassifications();
   const lines = [
-    `# Simplified register of information derived from the Archigov model on ${nowIso()} for tenant ${getSetting("tenant.name", "Local tenant")}. Columns approximate ESAs ITS templates B_06.01 (functions), B_05.01 (ICT third-party service providers), B_02.02 (contractual arrangements, specific) and B_07.01 (assessments); the template.column code is in each header. This is NOT the official ITS/DPM layout (Commission Implementing Regulation (EU) 2024/2956). Function identifiers are generated; provider identification codes, contract references, Annex III service-type codes, sensitiveness, reliance and substitutability are left blank for the entity to complete, never inferred. Evidence, not assurance.`,
+    `# Simplified register of information derived from the Archigov model on ${nowIso()} for tenant ${getSetting("tenant.name", "Local tenant")}. Columns approximate ESAs ITS templates B_06.01 (functions), B_05.01 (ICT third-party service providers), B_02.02 (contractual arrangements, specific) and B_07.01 (assessments); the template.column code is in each header. This is NOT the official ITS/DPM layout (Commission Implementing Regulation (EU) 2024/2956). Function names and B_06.01.0050 criticality come from each application's classification in Archigov (blank where nobody has classified it). Function identifiers are generated; provider identification codes, contract references, Annex III service-type codes, sensitiveness, reliance and substitutability are left blank for the entity to complete, never inferred. Evidence, not assurance.`,
     DORA_COLUMNS.join(","),
   ];
   apps.forEach((a, i) => {
+    const k = cls.get(a.id);
+    // the function is what the application supports: its critical or important functions where named, else the application itself
+    const functions = (k?.services || []).filter((s) => REGULATED_KINDS.includes(s.kind)).map((s) => s.name);
+    const functionName = functions.length ? functions.join("; ") : a.name;
     const groups = new Map<string, { family: string; location: string; n: number; criticality: string; storesData: boolean }>();
     for (const r of resourcesOf(a.id)) {
       const family = serviceFamily(r.subtype), location = String(r.props.location || "").toLowerCase();
@@ -142,14 +151,13 @@ exportsRoutes.get("/exports/dora-roi.csv", (c) => {
       const g = groups.get(key) || { family, location, n: 0, criticality: "", storesData: false };
       g.n++;
       if (STORES_DATA.test(r.subtype || "")) g.storesData = true;
-      const crit = r.tags.criticality || r.tags.Criticality || r.tags.tier || r.tags.Tier;
-      if (crit && !g.criticality) g.criticality = String(crit);
+      g.criticality = k?.criticality ? CRIT_CELL[k.criticality] : "";
       groups.set(key, g);
     }
     for (const g of groups.values()) {
       const country = g.location in COUNTRY ? COUNTRY[g.location] : "";
       lines.push([
-        `F${i + 1}`, a.name, g.criticality,
+        `F${i + 1}`, functionName, g.criticality,
         "Microsoft", "", "", "",
         "", "", country, g.storesData ? "Yes" : "", g.storesData ? country : "", country, "", "",
         "",

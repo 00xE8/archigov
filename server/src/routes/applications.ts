@@ -5,17 +5,22 @@ import { evidenceFor, evidenceFailCount } from "../evidence.js";
 import { actorOf, fnd, dec, wi, ownerOf, DECISIONS_FOR_APP } from "../http.js";
 import { applicationViews } from "../exporters/archimate.js";
 import { userName } from "../reviews.js";
+import { suggestClassification } from "../ai.js";
+import { allClassifications, classificationOf, setClassification, resetClassification, verifyClassification, businessServices, CRITICALITIES, SERVICE_KINDS } from "../classification.js";
 
 export const applications = new Hono();
 
 applications.get("/applications", (c) => {
+  const cls = allClassifications();
   const apps = listElements("application").map((a) => {
     const rs = resourcesOf(a.id);
     const open = (db.prepare("SELECT count(*) c FROM findings WHERE application_id=? AND status='open'").get(a.id) as any).c;
     const decisions = (db.prepare(`SELECT count(*) c FROM decisions WHERE ${DECISIONS_FOR_APP}`).get(`%${a.id}%`) as any).c;
     const owners = Array.from(new Set(rs.map(ownerOf).filter(Boolean)));
+    const k = cls.get(a.id);
     return { ...a, resource_count: rs.length, open_findings: open, decision_count: decisions, owners, locations: Array.from(new Set(rs.map((r) => r.props.location).filter(Boolean))),
-      evidence_fail_count: evidenceFailCount(a.id) };
+      evidence_fail_count: evidenceFailCount(a.id),
+      classification: k ? { criticality: k.criticality, services: k.services, regulated: k.regulated, origin: k.origin, verification: k.verification } : null };
   });
   return c.json(apps);
 });
@@ -34,8 +39,32 @@ applications.get("/applications/:id", (c) => {
   const dependsOn = db.prepare(`SELECT DISTINCT t.* FROM relations rel JOIN elements f ON f.id=rel.from_id JOIN elements t ON t.id=rel.to_id
      JOIN relations b ON b.from_id=f.id AND b.type='belongs_to' AND b.to_id=? AND b.deleted_at IS NULL
      WHERE rel.type='depends_on' AND rel.deleted_at IS NULL`).all(a.id).map(rowToElement);
-  return c.json({ ...a, resources, findings, decisions, reviews, workItems, exceptions, dependsOn });
+  return c.json({ ...a, resources, findings, decisions, reviews, workItems, exceptions, dependsOn, classification: a.type === "application" ? classificationOf(a.id) : null });
 });
+
+/**
+ * Criticality classification: derived from resource tags (see classification.ts), set by a person with a reason
+ * (capability `verify` — authors; never the platform admin or an auditor), handed back to derivation, or verified.
+ */
+const failWith = (c: any, e: any) => { const status = typeof e?.status === "number" ? e.status : 500; if (status >= 500) throw e; return c.json({ error: e.message }, status); };
+applications.put("/applications/:id/classification", async (c) => {
+  const b = await c.req.json().catch(() => ({}));
+  try { return c.json(setClassification(c.req.param("id"), { criticality: b.criticality ?? null, services: Array.isArray(b.services) ? b.services : [], reason: b.reason }, actorOf(c))); } catch (e) { return failWith(c, e); }
+});
+applications.post("/applications/:id/classification/reset", (c) => {
+  try { return c.json(resetClassification(c.req.param("id"), actorOf(c))); } catch (e) { return failWith(c, e); }
+});
+applications.post("/applications/:id/classification/verify", async (c) => {
+  const b = await c.req.json().catch(() => ({}));
+  try { return c.json(verifyClassification(c.req.param("id"), b.verified !== false, actorOf(c))); } catch (e) { return failWith(c, e); }
+});
+// AI suggestion for the Classify form — nothing stored; 409 when the feature is off.
+applications.post("/applications/:id/classification/suggest", async (c) => {
+  try { return c.json(await suggestClassification(c.req.param("id"))); }
+  catch (e: any) { return e?.status === 404 ? c.json({ error: "not found" }, 404) : c.json({ error: String(e.message || e).slice(0, 300) }, /not enabled/i.test(String(e.message)) ? 409 : e.status || 502); }
+});
+/** Business services → the applications behind them → their resources, regions and shared services (operational-resilience mapping). */
+applications.get("/business-services", (c) => c.json({ ...businessServices(), criticalities: CRITICALITIES, service_kinds: SERVICE_KINDS }));
 
 /** Generated ArchiMate viewpoints for one application (the Design tab): deterministic, derived, never authored. */
 applications.get("/applications/:id/views", (c) => {
