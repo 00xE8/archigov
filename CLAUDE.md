@@ -1,6 +1,6 @@
 # Archigov — project context for Claude Code
 
-Open-source, product-led architecture governance tool. Solo-founder project. Read `README.md` for the user-facing description; this file is the working context. The research/decision documents behind the thesis, the business constraints (pricing, licensing strategy, free-tier economics) and the managed-service infrastructure live in the private repo `00xE8/archigov-internal`; in a working copy, `CLAUDE.local.md` (gitignored) mirrors the business constraints and machine-specific notes. Consult them before changing scope, pricing, positioning or the compliance approach.
+Open-source, product-led architecture governance tool. Solo-founder project. **Contributing from outside (not the maintainer)? Start from `AGENTS.md`**: the conventions below apply to you, but the delivery-process, release, deployment and private-repository parts of this file are the maintainer's. Read `README.md` for the user-facing description; this file is the working context. The research/decision documents behind the thesis, the business constraints (pricing, licensing strategy, free-tier economics) and the managed-service infrastructure live in the private repo `00xE8/archigov-internal`; in a working copy, `CLAUDE.local.md` (gitignored) mirrors the business constraints and machine-specific notes. Consult them before changing scope, pricing, positioning or the compliance approach.
 
 ## The thesis (do not drift from it)
 
@@ -213,6 +213,9 @@ infra/                         README (self-host deployment + env matrix), lites
                                docker-compose.prod.yml at the root. The managed-service front door (Cloudflare Worker + Durable Object +
                                Containers), the archigov.com landing page and the research documents live in the private repo 00xE8/archigov-internal
 Dockerfile, docker/entrypoint.sh, docker-compose.yml
+AGENTS.md, docs/agents/         the brief for AI coding agents of outside contributors (product rules, licence boundary, commands, definition
+                               of done; never sign off or post the CLA for a person; Assisted-by trailer) + task prompts (pack, template,
+                               connector, core change). Keep them in step when a rule, a command or the licence boundary changes
 .github/                       licensing.json (the Apache-2.0 folders — the CLA check reads it from main; test/licensing.test.ts checks the
                                SPDX headers against it), workflows/dco.yml (Signed-off-by per commit), workflows/cla.yml (the CLA, only for
                                authors of commits touching AGPL files; agreement by PR comment, recorded on the cla-signatures branch; the
