@@ -1,0 +1,25 @@
+# Litestream 0.5 configuration for the archigov SQLite file.
+# Mount at /etc/litestream.yml (or point LITESTREAM_CONFIG at it); docker/entrypoint.sh then restores on an
+# empty volume and runs the app under `litestream replicate -exec`.
+# Litestream expands ${VAR} from the environment before reading this file.
+# Reference: https://litestream.io/reference/config/
+#
+# Cloudflare R2:  AWS_ENDPOINT=https://<ACCOUNT_ID>.r2.cloudflarestorage.com   AWS_REGION=auto
+# MinIO:          AWS_ENDPOINT=http://minio:9000                              AWS_REGION=us-east-1 (required, ignored)
+# AWS S3:         leave AWS_ENDPOINT unset and set AWS_REGION to the bucket's region
+# Credentials:    LITESTREAM_ACCESS_KEY_ID / LITESTREAM_SECRET_ACCESS_KEY are read automatically; leave the
+#                 access-key fields below unset so the environment wins.
+
+dbs:
+  - path: /data/app.db
+    replica:
+      type: s3
+      bucket: ${LITESTREAM_BUCKET}
+      path: ${LITESTREAM_PATH}          # e.g. prod/app.db or tenants/acme/app.db
+      endpoint: ${AWS_ENDPOINT}         # empty for AWS S3; setting it switches to path-style addressing
+      region: ${AWS_REGION}
+      sync-interval: 1s                 # how often WAL frames are pushed
+
+snapshot:
+  interval: 24h                         # full snapshot cadence
+  retention: 168h                       # keep a week of snapshots for point-in-time restores

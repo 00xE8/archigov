@@ -1,0 +1,531 @@
+import React from "react";
+import { Link as RouterLink, useSearchParams } from "react-router-dom";
+import { Tag, Button, InlineLoading, InlineNotification, ActionableNotification, Tile, DefinitionTooltip, Tooltip, Link as CarbonLink, Breadcrumb, BreadcrumbItem, DatePicker, DatePickerInput, SkeletonText, MenuButton, MenuItem, Accordion, AccordionItem } from "@carbon/react";
+import { Checkmark, Renew, CheckmarkFilled, CheckmarkOutline, ErrorFilled, WarningFilled, WarningAlt, WarningAltFilled, Information, Pending, InProgress, Time, CloseFilled, CloseOutline, Undefined, Unknown, User, MachineLearningModel, Rule, Cloud, Idea, Template, Upload, Calendar, Send } from "@carbon/icons-react";
+import { marked } from "marked";
+import { get, post, labelFor, fmtDateTime, shortType, sentence, download, slug, areaLabel } from "./api";
+import { Gated, useCan } from "./auth";
+
+type TagType = "red" | "magenta" | "purple" | "blue" | "cyan" | "teal" | "green" | "gray" | "cool-gray" | "warm-gray" | "high-contrast" | "outline";
+type Meta = { type: TagType; icon: React.ElementType };
+
+/**
+ * Status = colour + icon + word, always. Colour is reserved for state: green good, red problem,
+ * blue in progress, teal conditional, purple AI, gray neutral/closed. Classification (topic, radar,
+ * checkable) is deliberately NOT here; it renders as plain text or a gray tag.
+ */
+const STATUS: Record<string, Record<string, Meta>> = {
+  severity: { critical: { type: "red", icon: ErrorFilled }, high: { type: "magenta", icon: WarningFilled }, medium: { type: "gray", icon: WarningAlt }, low: { type: "gray", icon: Information }, info: { type: "gray", icon: Information } },
+  stage: { submitted: { type: "blue", icon: Pending }, pre_review: { type: "cyan", icon: Rule }, in_review: { type: "blue", icon: InProgress }, approved: { type: "green", icon: CheckmarkFilled }, approved_with_conditions: { type: "teal", icon: CheckmarkOutline }, rejected: { type: "red", icon: CloseFilled }, withdrawn: { type: "gray", icon: Undefined } },
+  decision: { proposed: { type: "blue", icon: Pending }, accepted: { type: "green", icon: CheckmarkFilled }, rejected: { type: "red", icon: CloseFilled }, superseded: { type: "gray", icon: Undefined }, deprecated: { type: "gray", icon: Undefined } },
+  finding: { open: { type: "red", icon: ErrorFilled }, excepted: { type: "teal", icon: CheckmarkOutline }, resolved: { type: "green", icon: CheckmarkFilled } },
+  condition: { open: { type: "blue", icon: Time }, met: { type: "green", icon: CheckmarkFilled }, overdue: { type: "red", icon: WarningFilled }, waived: { type: "gray", icon: Undefined } },
+  exception: { active: { type: "teal", icon: CheckmarkOutline }, expired: { type: "red", icon: WarningFilled }, revoked: { type: "gray", icon: Undefined } },
+  risk: { high: { type: "red", icon: WarningFilled }, medium: { type: "gray", icon: WarningAlt }, low: { type: "gray", icon: Information } },
+  work: { Active: { type: "blue", icon: InProgress }, Closed: { type: "gray", icon: CheckmarkOutline }, New: { type: "gray", icon: Pending }, Proposed: { type: "gray", icon: Pending }, Resolved: { type: "green", icon: CheckmarkFilled }, Removed: { type: "gray", icon: Undefined } },
+  source: { ok: { type: "green", icon: CheckmarkFilled }, error: { type: "red", icon: ErrorFilled }, never: { type: "gray", icon: Pending } },
+  evidence: { pass: { type: "green", icon: CheckmarkFilled }, fail: { type: "red", icon: ErrorFilled }, unknown: { type: "gray", icon: Unknown } },
+  llm: { configured: { type: "green", icon: CheckmarkFilled }, missing: { type: "gray", icon: Information } },
+  origin: { derived: { type: "cool-gray", icon: Cloud }, inferred: { type: "cyan", icon: Idea }, human: { type: "green", icon: User }, ai: { type: "purple", icon: MachineLearningModel }, rules: { type: "teal", icon: Rule }, template: { type: "gray", icon: Template } },
+  attention: { open: { type: "red", icon: ErrorFilled }, overdue: { type: "red", icon: WarningFilled }, expired: { type: "red", icon: WarningFilled }, decision: { type: "magenta", icon: WarningAltFilled }, changed: { type: "magenta", icon: WarningAltFilled }, region: { type: "red", icon: WarningFilled } },
+  run: { done: { type: "green", icon: CheckmarkFilled }, error: { type: "red", icon: ErrorFilled }, running: { type: "blue", icon: InProgress } },
+  configured: { configured: { type: "green", icon: CheckmarkFilled }, missing: { type: "gray", icon: Information }, fixtures: { type: "blue", icon: Information } },
+  check: { ok: { type: "green", icon: CheckmarkFilled }, failed: { type: "red", icon: ErrorFilled }, unknown: { type: "gray", icon: Unknown } },
+  // governance round: artefact lifecycle, board approvals, the pre-review preview's checks
+  lifecycle: { draft: { type: "gray", icon: Pending }, in_review: { type: "blue", icon: InProgress }, adopted: { type: "green", icon: CheckmarkFilled }, retired: { type: "gray", icon: Undefined } },
+  approval: { approve: { type: "green", icon: CheckmarkFilled }, request_changes: { type: "magenta", icon: WarningAltFilled } },
+  precheck: { pass: { type: "green", icon: CheckmarkFilled }, warn: { type: "gray", icon: WarningAlt }, fail: { type: "red", icon: ErrorFilled } },
+};
+// changes_requested joins the review stages (it is a state, so it carries colour + icon + word like the rest)
+STATUS.stage.changes_requested = { type: "magenta", icon: WarningAltFilled };
+// Two approvals that are not yet effective: pending dependent decisions, or circulation to absent areas.
+STATUS.stage.approved_pending_dependencies = { type: "teal", icon: Time };
+STATUS.stage.approved_subject_to_circulation = { type: "teal", icon: Send };
+// Board sessions. A position: yes green, no red, conditional teal with a warning (Carbon tags have no yellow; teal is this
+// app's "approved with a caveat" colour), not my area gray; the derived area states: resolved green with the outline check
+// (a conditional the chair closed), missing on the gray outline tag (nothing recorded yet).
+STATUS.position = { yes: { type: "green", icon: CheckmarkFilled }, no: { type: "red", icon: CloseFilled }, conditional: { type: "teal", icon: WarningAltFilled }, not_my_area: { type: "gray", icon: Undefined }, resolved: { type: "green", icon: CheckmarkOutline }, missing: { type: "outline", icon: Pending } };
+STATUS.session_status = { planned: { type: "cyan", icon: Calendar }, open: { type: "blue", icon: InProgress }, closed: { type: "gray", icon: CheckmarkOutline } };
+STATUS.item_state = { awaiting_positions: { type: "blue", icon: Pending }, open: { type: "teal", icon: WarningAltFilled }, blocked: { type: "red", icon: CloseFilled }, ready: { type: "green", icon: CheckmarkOutline }, declared: { type: "green", icon: CheckmarkFilled }, deferred: { type: "gray", icon: Time }, withdrawn: { type: "gray", icon: Undefined }, listed: { type: "gray", icon: Pending }, called: { type: "blue", icon: InProgress } };
+STATUS.attendance = { present: { type: "green", icon: CheckmarkFilled }, apologies: { type: "gray", icon: CloseOutline }, absent: { type: "gray", icon: Unknown } };
+STATUS.quorum = { covered: { type: "green", icon: CheckmarkFilled }, uncovered: { type: "red", icon: WarningFilled } };
+STATUS.outcome = { approved: { type: "green", icon: CheckmarkFilled }, approved_with_conditions: { type: "teal", icon: CheckmarkOutline }, approved_subject_to_circulation: { type: "teal", icon: Send }, approved_pending_dependencies: { type: "teal", icon: Time }, changes_requested: { type: "magenta", icon: WarningAltFilled }, deferred: { type: "gray", icon: Time }, referred: { type: "gray", icon: Send }, rejected: { type: "red", icon: CloseFilled }, withdrawn: { type: "gray", icon: Undefined } };
+// An area that waits for *this* person: the filled blue "in progress" tag, so it stands out from the outline "missing" of other people's areas.
+STATUS.position.mine = { type: "blue", icon: Pending };
+// The automatic pre-review's recommendation, shown as a verdict on a review's header line.
+STATUS.recommendation = { proceed: { type: "green", icon: CheckmarkOutline }, approve: { type: "green", icon: CheckmarkOutline }, request_changes: { type: "magenta", icon: WarningAltFilled }, reject: { type: "red", icon: CloseFilled }, review: { type: "gray", icon: WarningAlt } };
+// Assessments: an open request blocks approving outcomes (blue, like awaiting); a result carries its own verdict colours.
+STATUS.assessment_status = { requested: { type: "blue", icon: Pending }, completed: { type: "green", icon: CheckmarkFilled }, waived: { type: "gray", icon: Undefined } };
+STATUS.assessment_result = { satisfactory: { type: "green", icon: CheckmarkFilled }, satisfactory_with_remarks: { type: "teal", icon: CheckmarkOutline }, unsatisfactory: { type: "red", icon: CloseFilled }, not_applicable: { type: "gray", icon: Undefined } };
+const FALLBACK: Meta = { type: "gray", icon: Unknown };
+
+/**
+ * What a tag means, on hover (the title attribute): every tag explains itself in plain language so no state
+ * is left to interpretation. A per-value sentence where the value carries governance meaning, a per-kind
+ * sentence otherwise.
+ */
+const EXPLAIN_KIND: Record<string, string> = {
+  decision_issue: "A weakness the AI reviewer found in this decision's argument — advisory; the author decides what to change.",
+  severity: "How serious a failure against this catalogue item is, as set on the item.",
+  stage: "Where this review is in its workflow.",
+  decision: "Lifecycle status of this architecture decision.",
+  finding: "State of this finding from continuous conformance.",
+  condition: "State of a condition attached to an approval.",
+  exception: "State of this exception to a catalogue item.",
+  risk: "Risk tier the submitter chose for this review.",
+  work: "State of this work item as reported by the delivery backlog source.",
+  source: "Result of this source's last sync.",
+  evidence: "Assessment state imported from the source; Archigov never re-tests configuration itself.",
+  llm: "Whether an AI model gateway is configured.",
+  origin: "Where this item came from.",
+  attention: "Something that needs a person's attention.",
+  run: "State of this sync or evaluation run.",
+  configured: "Whether this integration is configured.",
+  check: "Result of the cryptographic verification.",
+  lifecycle: "Where this catalogue item is in its lifecycle; only adopted items are enforced.",
+  approval: "A recorded position on this review.",
+  precheck: "A result of the automatic pre-review; advisory, never a decision.",
+  position: "A decision maker's own recorded position; nobody records on another's behalf.",
+  session_status: "State of this board session.",
+  item_state: "Where this agenda item stands in the session.",
+  attendance: "Attendance as recorded by the secretary.",
+  quorum: "Whether every area of responsibility has an owner present or delegated.",
+  outcome: "The outcome the chair declared; the chair declares what the positions allow and has no vote.",
+  recommendation: "The automatic pre-review's recommendation; advisory, the board decides.",
+  assessment_status: "State of this assessment request.",
+  assessment_result: "The assessor's own conclusion; an unsatisfactory result informs the board, it never blocks by itself.",
+  review_type: "The type of review; each type has its own pre-review and is routed to a board by its rules.",
+  user_type: "System role: an author submits and authors, an auditor reads and exports, a service account is read-only.",
+  board_role: "The seat this person holds on the board; governance rights come from seats, not system roles.",
+  topic: "The decision's topic; a rule can require an accepted decision on a topic.",
+  enforcement: "Whether this policy is mandatory or recommended.",
+  resolution: "How the chair resolved a conditional position, with a recorded explanation.",
+  citation: "What the pre-review cited; citations must resolve to a real item or they are discarded.",
+};
+const EXPLAIN: Record<string, Record<string, string>> = {
+  origin: {
+    derived: "Collected from a connected source and recorded exactly as reported.",
+    inferred: "Derived by deterministic rules with a confidence score; a person should verify it.",
+    human: "Entered or confirmed by a person.",
+    ai: "Produced by the AI gateway; AI never approves anything and stays unverified until a person verifies it.",
+    rules: "Produced by the deterministic rules engine.",
+    template: "Created from a template.",
+  },
+  lifecycle: {
+    draft: "Being authored; not evaluated and not enforced.",
+    in_review: "Submitted to a board; adoption only happens through an approved review.",
+    adopted: "Adopted through a board-approved review; if it carries a rule it is evaluated continuously.",
+    retired: "No longer in force; kept for the record.",
+  },
+  finding: {
+    open: "The rule still fails against the model; open until re-evaluation passes or a person resolves it.",
+    excepted: "An approved exception covers this finding while it remains active.",
+    resolved: "Resolved by a person with a reason; re-evaluation reopens it if the condition persists.",
+  },
+  evidence: {
+    pass: "The source assessed this control as passing.",
+    fail: "The source assessed this control as failing.",
+    unknown: "No assessment has been imported for this control; missing evidence is never a pass.",
+  },
+  position: {
+    yes: "The decision maker supports this item for the areas they own.",
+    no: "The decision maker does not support this item.",
+    conditional: "Support with a condition; the item stays open until the chair resolves it with an explanation.",
+    not_my_area: "The decision maker holds the seat but does not own this area.",
+    resolved: "A conditional position the chair resolved with a recorded explanation.",
+    missing: "No position recorded yet from an owner of this area.",
+    mine: "This area is waiting for your position.",
+  },
+  stage: {
+    approved_pending_dependencies: "Approved, but effective only once the decision it depends on lands.",
+    approved_subject_to_circulation: "Approved once the absent area owners confirm by circulation.",
+    changes_requested: "Sent back to the submitter; a resubmission runs pre-review again.",
+  },
+  outcome: {
+    approved_pending_dependencies: "Approved, but effective only once the decision it depends on lands.",
+    approved_subject_to_circulation: "Approved once the absent area owners confirm by circulation.",
+    referred: "Sent to another board whose remit fits better.",
+  },
+  assessment_status: {
+    requested: "Requested by a board seat; blocks approving outcomes until the assessor records a result or the chair waives it.",
+    completed: "The named assessor recorded the result themselves.",
+    waived: "Waived by the chair with a recorded reason.",
+  },
+  attention: {
+    decision: "An open epic with no linked architecture decision.",
+    changed: "The backlog item changed materially after its review was approved.",
+    region: "Deployed outside the home regions set under Settings · General; advisory — findings come only from adopted rules.",
+  },
+  kind: {
+    standard: "A standard: a human statement with control references and, optionally, a machine-checkable rule.",
+    principle: "A principle: a direction designs and decisions are tested against.",
+    pattern: "A pattern: context, solution and applicability; findings cite it exactly as they cite a standard.",
+    policy: "A policy, mandatory or recommended; checked by the same rule engine as standards.",
+  },
+};
+export const explainTag = (kind: string, value?: string | null) => (value && EXPLAIN[kind]?.[value]) || EXPLAIN_KIND[kind];
+
+// Carbon's small Tag does not render icons, and status must carry its icon, so status tags are md.
+export function StatusTag({ kind, value, label, size = "md", explain }: { kind: string; value?: string | null; label?: React.ReactNode; size?: "sm" | "md"; explain?: string }) {
+  const m = (value && STATUS[kind]?.[value]) || FALLBACK;
+  return <Tag size={size} type={m.type} renderIcon={m.icon}><span title={explain ?? explainTag(kind, value)}>{label ?? labelFor(kind, value)}</span></Tag>;
+}
+
+/**
+ * One finding's evidence, rendered for humans. Imported evidence (Defender / Azure Policy) is shown as
+ * status + the source's own assessment sentence + when it was observed — never as raw JSON. The other
+ * shapes come from rules.ts checkResource / application asserts.
+ */
+export function FindingEvidence({ e }: { e: any }) {
+  if (!e || typeof e !== "object") return <span className="ag-muted">—</span>;
+  if (e.control) {
+    const missing = !e.state || e.state === "unknown";
+    const src = e.source ? labelFor("evidence_source", e.source) : "Imported";
+    return (
+      <div className="ag-evidence">
+        <StatusTag kind="evidence" value={missing ? "unknown" : e.state} label={`${src} · ${e.control} · ${missing ? "No evidence" : labelFor("evidence", e.state)}`} />
+        {missing
+          ? <div className="ag-muted ag-label">No assessment has been imported for this resource yet.</div>
+          : <>
+              {e.detail?.assessment ? <div className="ag-label">{e.detail.assessment}</div> : null}
+              {e.observed_at ? <div className="ag-muted ag-label">observed {fmtDateTime(e.observed_at)}{e.imported_severity ? ` · ${labelFor("severity", e.imported_severity).toLowerCase()} at source` : ""}</div> : null}
+            </>}
+      </div>
+    );
+  }
+  if (e.path) return <span className="ag-mono">{e.path} = {JSON.stringify(e.actual ?? null)}</span>;
+  if (e.decision) return <span>contradicts <span className="ag-mono ag-nowrap">{e.decision}</span>{e.actualType ? <> · actual {shortType(e.actualType)}</> : null}{Array.isArray(e.allowedTypes) && e.allowedTypes.length ? <> · allows {e.allowedTypes.map(shortType).join(", ")}</> : null}</span>;
+  if (e.topic) return <span>no decision on {sentence(e.topic)}</span>;
+  if (typeof e.count === "number") return <span>{e.count} found</span>;
+  if (typeof e.resources === "number") return <span>across {e.resources} resources</span>;
+  return <span className="ag-mono">{JSON.stringify(e)}</span>;
+}
+
+/**
+ * "About this page" behind an info icon at the header's top right. The content is always plain text, so a
+ * Carbon tooltip (hover and keyboard focus; `description` → aria-describedby, the button keeps its own name)
+ * is safe — anything interactive would need a toggletip instead.
+ */
+function AboutTip({ about }: { about: React.ReactNode }) {
+  return (
+    <Tooltip align="bottom-left" autoAlign description={about} className="ag-about-tip">
+      <button type="button" className="ag-info-btn" aria-label="About this page"><Information size={20} /></button>
+    </Tooltip>
+  );
+}
+
+export function PageHeader({ title, subtitle, kicker, breadcrumb, actions, about }: { title: React.ReactNode; subtitle?: React.ReactNode; kicker?: React.ReactNode; breadcrumb?: React.ReactNode; actions?: React.ReactNode; about?: React.ReactNode }) {
+  return (
+    <div className="ag-page-header ag-row between">
+      <div>
+        {breadcrumb}
+        {kicker && <div className="ag-muted ag-label">{kicker}</div>}
+        {/* the info icon sits beside the title (after the h1, not inside it, so the heading's accessible name stays clean) */}
+        <div className="ag-title-row"><h1>{title}</h1>{about && <AboutTip about={about} />}</div>
+        {subtitle && <div className="ag-subtitle">{subtitle}</div>}
+      </div>
+      {actions && <div className="ag-row">{actions}</div>}
+    </div>
+  );
+}
+
+/** A longer explanation folded into an accordion — for tab-level context with rich content (links, snippets), which must not live in a tooltip. */
+export function About({ title = "About this page", children }: { title?: string; children: React.ReactNode }) {
+  return (
+    <Accordion size="sm" align="start" className="ag-about">
+      <AccordionItem title={title}>{typeof children === "string" ? <p className="ag-body">{children}</p> : children}</AccordionItem>
+    </Accordion>
+  );
+}
+
+/**
+ * A page header whose H1 is the nav label, with ONE sentence under it; the longer explanation sits behind the
+ * info icon at the top right (hover or focus). Every list page starts this way.
+ */
+export function PageIntro({ title, lead, about, kicker, breadcrumb, actions }: { title: React.ReactNode; lead?: React.ReactNode; about?: React.ReactNode; kicker?: React.ReactNode; breadcrumb?: React.ReactNode; actions?: React.ReactNode }) {
+  return <PageHeader title={title} subtitle={lead} kicker={kicker} breadcrumb={breadcrumb} actions={actions} about={about} />;
+}
+
+/** Router-aware Carbon link: Carbon styling and focus, client-side navigation. */
+export function RLink({ to, children, ...rest }: { to: string; children: React.ReactNode; [k: string]: any }) {
+  return <CarbonLink as={RouterLink as any} to={to} {...rest}>{children}</CarbonLink>;
+}
+
+export function Crumbs({ items }: { items: { to?: string; label: React.ReactNode }[] }) {
+  return (
+    <Breadcrumb noTrailingSlash className="ag-crumbs">
+      {items.map((c, i) => (c.to ? <BreadcrumbItem key={i}><RLink to={c.to}>{c.label}</RLink></BreadcrumbItem> : <BreadcrumbItem key={i} isCurrentPage>{c.label}</BreadcrumbItem>))}
+    </Breadcrumb>
+  );
+}
+
+/** The product's core state: who stands behind this item. */
+export function VerificationTag({ state, origin, by, at, size = "md" }: { state: string; origin?: string; by?: string | null; at?: string | null; size?: "sm" | "md" }) {
+  if (state === "verified") {
+    const who = by ? `Verified by ${by}${at ? ` · ${fmtDateTime(at)}` : ""}` : null;
+    const explain = "A person has stood behind this item; verification drops back to unverified automatically if the content changes.";
+    return <Tag size={size} type="green" renderIcon={CheckmarkFilled}><span title={explain}>{who ? <DefinitionTooltip definition={who} openOnHover align="bottom">Human verified</DefinitionTooltip> : "Human verified"}</span></Tag>;
+  }
+  if (origin === "ai") return <Tag size={size} type="purple" renderIcon={MachineLearningModel}><span title="Produced by the AI gateway; AI never approves anything, and no person has stood behind this item yet.">AI generated · not human verified</span></Tag>;
+  if (origin === "inferred") return <Tag size={size} type="gray" renderIcon={Pending}><span title="Derived by deterministic rules with a confidence score; no person has stood behind it yet.">Inferred · not human verified</span></Tag>;
+  return <Tag size={size} type="gray" renderIcon={Pending}><span title="No person has stood behind this item yet.">Not human verified</span></Tag>;
+}
+
+export function OriginTag({ origin }: { origin: string }) { return <StatusTag kind="origin" value={origin} />; }
+
+/** Classification, not status: artefact kinds, review types and board roles are gray tags, never coloured. */
+export function KindTag({ kind, value, size = "sm" }: { kind: string; value?: string | null; size?: "sm" | "md" }) {
+  return value ? <Tag size={size} type="gray"><span title={explainTag(kind, value)}>{labelFor(kind, value)}</span></Tag> : null;
+}
+
+/** An area of responsibility is a classification: a gray tag with the board's label for it. */
+export function AreaTag({ id, label, boardAreas, size = "sm" }: { id: string; label?: string | null; boardAreas?: { id: string; label?: string }[] | null; size?: "sm" | "md" }) {
+  return <Tag size={size} type="gray"><span title="Area of responsibility: every area a review touches needs a position from a decision maker who owns it.">{label || areaLabel(id, boardAreas)}</span></Tag>;
+}
+
+/**
+ * An area with the state of its position: "Security · Conditional" as a position status tag (colour + icon + word).
+ * `mine` marks an area still waiting for the current person: it fills the tag and says "Awaiting you".
+ */
+export function AreaPositionTag({ area, state, label, boardAreas, size = "md", mine }: { area: string; state?: string | null; label?: string | null; boardAreas?: { id: string; label?: string }[] | null; size?: "sm" | "md"; mine?: boolean }) {
+  const s = state || "missing";
+  const name = label || areaLabel(area, boardAreas);
+  if (mine && s === "missing") return <StatusTag kind="position" value="mine" size={size} label={`${name} · Awaiting you`} />;
+  return <StatusTag kind="position" value={s} size={size} label={`${name} · ${labelFor("position", s)}`} />;
+}
+
+/** A resource id shown as its last two path segments, the whole id on hover; the copy button carries the full value. */
+export function ShortId({ id }: { id?: string | null }) {
+  if (!id) return <span className="ag-muted">—</span>;
+  const parts = String(id).split("/").filter(Boolean);
+  const short = parts.length > 2 ? parts.slice(-2).join("/") : String(id);
+  return <span className="ag-mono ag-nowrap" title={String(id)}>{short}</span>;
+}
+
+/** Where an item of the catalogue lives in the UI. */
+export const artefactLink = (id: string) => `/governance?open=${id}`;
+/** The page a review's target lives on, by its kind. */
+export const targetLink = (t: { kind?: string; id?: string } | null | undefined) => {
+  if (!t || !t.id) return null;
+  if (t.kind === "application") return `/applications/${t.id}`;
+  if (t.kind === "decision") return `/decisions/${t.id}`;
+  if (t.kind === "finding") return "/conformance";
+  return artefactLink(t.id);
+};
+
+export function SeverityTag({ s, count }: { s: string; count?: number }) {
+  return <StatusTag kind="severity" value={s} label={count === undefined ? undefined : `${labelFor("severity", s)} · ${count}`} />;
+}
+
+/** A count of open problems. Zero is the quiet default everywhere (a muted "0 open"), so the rows with problems stand out. */
+const COUNT_EXPLAIN: Record<string, string> = {
+  open: "Open findings from continuous conformance against adopted, checkable catalogue items.",
+  failing: "Imported assessments (Defender for Cloud / Azure Policy) currently failing.",
+};
+export function CountTag({ n, noun = "open" }: { n: number; noun?: string }) {
+  return n
+    ? <StatusTag kind="finding" value="open" label={`${n} ${noun}`} explain={COUNT_EXPLAIN[noun]} />
+    : <span className="ag-muted" title={COUNT_EXPLAIN[noun]}>0 {noun}</span>;
+}
+
+export function VerifyButton({ path, state, onDone, size = "sm" }: { path: string; state: string; onDone: () => void; size?: "sm" | "md" }) {
+  const [busy, setBusy] = React.useState(false);
+  const verified = state === "verified";
+  if (busy) return <InlineLoading description={verified ? "Reopening" : "Verifying"} />;
+  return (
+    <Gated cap="verify">
+      <Button size={size} kind={verified ? "ghost" : "tertiary"} renderIcon={verified ? Renew : Checkmark} onClick={async () => { setBusy(true); try { await post(path, { verified: !verified }); onDone(); } finally { setBusy(false); } }}>
+        {verified ? "Mark unverified" : "Verify"}
+      </Button>
+    </Gated>
+  );
+}
+
+export function Markdown({ md }: { md?: string | null }) {
+  const html = React.useMemo(() => (md ? (marked.parse(md, { async: false }) as string) : ""), [md]);
+  return <div className="ag-md" dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
+/**
+ * Human-verification coverage as a static meter. Not Carbon's ProgressBar: that is a task indicator whose
+ * "finished" status always renders a full bar with a success check, which would show 0% coverage as complete.
+ */
+export function Coverage({ label, value, total }: { label: string; value: number; total: number }) {
+  const pct = total ? Math.round((value / total) * 100) : 0;
+  const text = `${value} of ${total} human verified · ${pct}%`;
+  return (
+    <div className="ag-meter" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-valuetext={text} aria-label={label}>
+      <div className="ag-row between tight"><span className="ag-label">{label}</span><span className="ag-label ag-muted">{text}</span></div>
+      <div className="ag-meter-track"><div className="ag-meter-fill" style={{ inlineSize: `${pct}%` }} /></div>
+    </div>
+  );
+}
+
+export function Empty({ children }: { children: React.ReactNode }) { return <Tile className="ag-empty">{children}</Tile>; }
+
+/** A guiding empty state: what this list is for, and the next thing to do. Used when a list has nothing in it. */
+export function EmptyState({ title, children, actions }: { title: string; children?: React.ReactNode; actions?: React.ReactNode }) {
+  return <Tile className="ag-empty-state"><h3 className="ag-empty-title">{title}</h3>{children && <p className="ag-body ag-muted">{children}</p>}{actions && <div className="ag-row snug ag-mt-05">{actions}</div>}</Tile>;
+}
+
+/** Printed beside the verification tag on headers, so who stands behind an item is visible without a tooltip. */
+export function VerifiedBy({ by, at }: { by?: string | null; at?: string | null }) {
+  return by ? <span className="ag-muted ag-label">Verified by {by}{at ? ` on ${fmtDateTime(at)}` : ""}</span> : null;
+}
+
+/** The browser-tab title for this page: "REV-0007 · Archigov". Detail pages pass their code or name once loaded. */
+export function useDocTitle(title?: string | null) {
+  React.useEffect(() => { document.title = title ? `${title} · Archigov` : "Archigov"; }, [title]);
+}
+
+/**
+ * "1 of 2 approvals · chair decision outstanding" from a review's progress object. In areas mode:
+ * "2 of 3 areas · Security conditional" — the areas that still hold the item up, by name.
+ */
+export function progressText(p: any): string {
+  if (!p) return "";
+  const parts: string[] = [];
+  if (p.mode === "areas" && Array.isArray(p.areas)) {
+    const areas: any[] = p.areas;
+    const required = typeof p.required === "number" ? p.required : areas.filter((a) => a.state !== "not_my_area").length;
+    const received = typeof p.received === "number" ? p.received : areas.filter((a) => a.state === "yes" || a.state === "resolved").length;
+    parts.push(`${received} of ${required} area${required === 1 ? "" : "s"}`);
+    for (const a of areas) if (a.state === "no" || a.state === "conditional") parts.push(`${a.label || areaLabel(a.area)} ${labelFor("position", a.state).toLowerCase()}`);
+    const missing = areas.filter((a) => a.state === "missing" || !a.state).map((a) => a.label || areaLabel(a.area));
+    if (missing.length && received < required) parts.push(`awaiting ${missing.join(", ")}`);
+    return parts.join(" · ");
+  }
+  if (typeof p.required === "number") parts.push(`${p.received ?? 0} of ${p.required} approval${p.required === 1 ? "" : "s"}`);
+  for (const o of p.outstanding || []) parts.push(`${o.step || "step"}${o.missing ? `: ${o.missing}` : ""} outstanding`);
+  return parts.join(" · ") || "Nothing outstanding";
+}
+
+/** The short form for a list cell: "2/3 areas" or "1/2 approvals"; the long form (progressText) goes in the title. */
+export function progressShort(p: any): string {
+  if (!p) return "";
+  if (p.mode === "areas" && Array.isArray(p.areas)) {
+    const areas: any[] = p.areas;
+    const required = typeof p.required === "number" ? p.required : areas.filter((a) => a.state !== "not_my_area").length;
+    const received = typeof p.received === "number" ? p.received : areas.filter((a) => a.state === "yes" || a.state === "resolved").length;
+    return `${received}/${required} area${required === 1 ? "" : "s"}`;
+  }
+  if (typeof p.required === "number") return `${p.received ?? 0}/${p.required} approval${p.required === 1 ? "" : "s"}`;
+  return "";
+}
+
+/** Matches a media query reactively (the shell switches between the expanded nav and the rail on it). */
+export function useMedia(query: string) {
+  const [m, setM] = React.useState(() => typeof window !== "undefined" && window.matchMedia(query).matches);
+  React.useEffect(() => { const mq = window.matchMedia(query); const on = () => setM(mq.matches); on(); mq.addEventListener("change", on); return () => mq.removeEventListener("change", on); }, [query]);
+  return m;
+}
+
+/** Tab index ↔ ?tab=, so a tab survives Back and can be shared (the same pattern as ?open= on Standards). */
+export function useTabParam(keys: string[]): [number, (s: { selectedIndex: number }) => void] {
+  const [params, setParams] = useSearchParams();
+  const i = Math.max(0, keys.indexOf(params.get("tab") || keys[0]));
+  const onChange = ({ selectedIndex }: { selectedIndex: number }) => { const next = new URLSearchParams(params); if (selectedIndex === 0) next.delete("tab"); else next.set("tab", keys[selectedIndex]); setParams(next); };
+  return [i, onChange];
+}
+
+/** A pre-review citation as a link to what it cites; a plain tag when it cannot be resolved to a page. */
+export function CitationLink({ c }: { c: any }) {
+  const kind = labelFor("citation", c.kind);
+  const text = c.label ?? (c.kind === "resource" ? String(c.ref || "").split("/").pop() : c.ref);
+  const to = ["standard", "principle", "pattern", "policy"].includes(c.kind) && c.id ? artefactLink(c.id) : c.kind === "decision" && c.id ? `/decisions/${c.id}` : c.kind === "resource" && c.application_id ? `/applications/${c.application_id}` : null;
+  return to ? <span className="ag-cite"><span className="ag-muted">{kind}:</span> <RLink to={to}>{text}</RLink></span> : <Tag size="sm" type="gray"><span title={explainTag("citation")}>{kind}: {text}</span></Tag>;
+}
+
+/**
+ * Export menu: the signed evidence pack (fetched as the current user, saved, hash shown, verifiable in place),
+ * OSCAL assessment results, the DORA register of information and the ArchiMate model with its generated
+ * viewpoints. "Verifiable" is visible, not implied.
+ */
+export function ExportMenu({ application, name }: { application?: string; name?: string }) {
+  const canExport = useCan("export_evidence");
+  const [busy, setBusy] = React.useState<string | null>(null);
+  const [pack, setPack] = React.useState<any>(null);
+  const [check, setCheck] = React.useState<any>(null);
+  const [err, setErr] = React.useState<string | null>(null);
+  const q = application ? `?application=${application}` : "";
+  const scope = slug(name || "tenant");
+  const run = async (key: string, fn: () => Promise<unknown>) => { setBusy(key); setErr(null); try { await fn(); } catch (e: any) { setErr(String(e.message || e)); } finally { setBusy(null); } };
+  const packRun = () => run("pack", async () => {
+    const p: any = await get(`/evidence-pack${q}`);
+    const blob = new Blob([JSON.stringify(p, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `evidence-pack-${scope}-${String(p.hash || "").slice(0, 12)}.json`; a.click(); URL.revokeObjectURL(url);
+    setPack(p); setCheck(null);
+  });
+  const verifyRun = () => run("verify", async () => setCheck(await get(`/evidence-pack/verify?hash=${encodeURIComponent(pack.hash)}`)));
+  const label = busy === "pack" ? "Generating evidence pack" : busy === "verify" ? "Verifying" : "Preparing export";
+  return (<>
+    {busy ? <InlineLoading description={label} /> : (
+      <MenuButton label="Export" kind="tertiary" size="md" disabled={!canExport} menuAlignment="bottom-end">
+        <MenuItem label="Evidence Pack (Signed JSON)" onClick={packRun} />
+        <MenuItem label="OSCAL Assessment Results (JSON)" onClick={() => run("oscal", () => download(`/exports/oscal${q}`, `oscal-assessment-results-${scope}.json`))} />
+        <MenuItem label="DORA Register of Information (CSV)" onClick={() => run("dora", () => download(`/exports/dora-roi.csv${q}`, `dora-register-of-information-${scope}.csv`))} />
+        <MenuItem label="ArchiMate Model (Open Exchange XML)" onClick={() => run("archimate", () => download(`/exports/archimate${q}`, `archigov-archimate-${scope}.xml`))} />
+      </MenuButton>)}
+    {pack && <ActionableNotification kind="success" lowContrast inline title={pack.signature ? "Evidence pack generated and signed" : "Evidence pack generated"} subtitle={`SHA-256 ${pack.hash || "—"} · ${fmtDateTime(pack.generated_at)}${pack.chain_rows ? ` · audit chain ${pack.chain_rows} rows` : ""}`} actionButtonLabel={pack.signature ? "Verify" : "Copy hash"} onActionButtonClick={() => { if (pack.signature) verifyRun(); else if (pack.hash) navigator.clipboard.writeText(pack.hash); }} onCloseButtonClick={() => { setPack(null); setCheck(null); }} className="ag-notice" />}
+    {check && <div className="ag-row snug ag-notice">
+      <StatusTag kind="check" value={check.found === false ? "unknown" : check.hash_ok ? "ok" : "failed"} label={check.found === false ? "Pack not on record" : `Hash ${check.hash_ok ? "matches" : "mismatch"}`} />
+      {check.found !== false && <StatusTag kind="check" value={check.signature_ok ? "ok" : "failed"} label={`Signature ${check.signature_ok ? "valid" : "invalid"}`} />}
+      {check.found !== false && <StatusTag kind="check" value={check.chain_ok ? "ok" : "failed"} label={`Audit chain ${check.chain_ok ? "intact" : "broken"}`} />}
+    </div>}
+    {err && <InlineNotification kind="error" lowContrast title="Export did not complete" subtitle={err} onCloseButtonClick={() => setErr(null)} className="ag-notice" />}
+  </>);
+}
+
+/** Lists the importable packs; used on first run and from the catalogue. Items may be standards, principles, patterns or policies. */
+export function PackImporter({ onImported }: { onImported?: () => void }) {
+  const [packs, , err] = useLoad<any[]>(() => get("/standards/packs"));
+  const [busy, setBusy] = React.useState<string | null>(null);
+  const [result, setResult] = React.useState<{ kind: "success" | "error"; text: string } | null>(null);
+  if (err) return <p className="ag-muted ag-label">Packs are not available on this instance: {err}</p>;
+  if (!packs) return <SkeletonText paragraph lineCount={2} />;
+  if (packs.length === 0) return <p className="ag-muted ag-body">No packs are available on this instance.</p>;
+  // "5 standards · 2 patterns" when items carry a kind; plain "N items" otherwise
+  const summary = (p: any) => {
+    const items: any[] = p.standards || p.items || [];
+    const counts = new Map<string, number>();
+    for (const it of items) counts.set(it.kind || "standard", (counts.get(it.kind || "standard") || 0) + 1);
+    return Array.from(counts.entries()).map(([k, n]) => `${n} ${labelFor("kind", k).toLowerCase()}${n === 1 ? "" : "s"}`).join(" · ") || "no items";
+  };
+  return (
+    <div className="ag-stack">
+      {result && <InlineNotification kind={result.kind} lowContrast title={result.text} onCloseButtonClick={() => setResult(null)} className="ag-notice" />}
+      {packs.map((p) => (
+        <div key={p.id} className="ag-row between">
+          <div><div className="ag-body ag-strong">{p.name} <span className="ag-muted">· v{p.version} · {summary(p)}</span></div><div className="ag-muted ag-label">{p.description}{p.lifecycle_on_import ? ` · imported as ${labelFor("lifecycle", p.lifecycle_on_import).toLowerCase()}` : ""}</div></div>
+          {busy === p.id ? <InlineLoading description="Importing" /> : <Gated cap="import_artefacts"><Button size="sm" kind="tertiary" renderIcon={Upload} onClick={async () => { setBusy(p.id); try { const r: any = await post(`/standards/packs/${p.id}/import`); setResult({ kind: "success", text: `Imported ${r.imported} item${r.imported === 1 ? "" : "s"}${r.skipped ? ` · ${r.skipped} already present` : ""}` }); onImported?.(); } catch (e: any) { setResult({ kind: "error", text: String(e.message || e) }); } finally { setBusy(null); } }}>Import</Button></Gated>}
+        </div>))}
+    </div>
+  );
+}
+
+export function LoadError({ what, err, onRetry }: { what: string; err: string; onRetry: () => void }) {
+  return <ActionableNotification kind="error" lowContrast inline hideCloseButton title={`Could not load ${what}`} subtitle={err} actionButtonLabel="Retry" onActionButtonClick={onRetry} className="ag-notice" />;
+}
+
+/** Single date, kept as YYYY-MM-DD for the API. */
+export function DateField({ id, labelText, value, onChange, helperText }: { id: string; labelText: string; value: string; onChange: (ymd: string) => void; helperText?: string }) {
+  return (
+    <DatePicker datePickerType="single" dateFormat="Y-m-d" value={value || ""} allowInput onChange={(_dates: any, str: string) => onChange(str || "")}>
+      <DatePickerInput id={id} labelText={labelText} placeholder="e.g. 2026-12-31" helperText={helperText} />
+    </DatePicker>
+  );
+}
+
+export function useLoad<T>(fn: () => Promise<T>, deps: any[] = []): [T | null, () => void, string | null] {
+  const [data, setData] = React.useState<T | null>(null);
+  const [err, setErr] = React.useState<string | null>(null);
+  const [tick, setTick] = React.useState(0);
+  React.useEffect(() => { let on = true; setErr(null); fn().then((d) => on && setData(d)).catch((e) => on && setErr(String(e.message || e))); return () => { on = false; }; }, [...deps, tick]);
+  return [data, () => setTick((t) => t + 1), err];
+}
+
+/** Which AI features this instance has switched on (readable by every role). Pages hide their Draft buttons when a feature is off. */
+export function useAiFeatures(): Record<string, boolean> {
+  const [f] = useLoad<Record<string, boolean>>(() => get<Record<string, boolean>>("/ai/features").catch(() => ({})));
+  return f || {};
+}
