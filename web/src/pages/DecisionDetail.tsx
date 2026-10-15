@@ -1,9 +1,10 @@
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button, Tag, SkeletonText, Table, TableHead, TableRow, TableHeader, TableBody, TableCell, Modal, StructuredListWrapper, StructuredListHead, StructuredListBody, StructuredListRow, StructuredListCell, ActionableNotification, Select, SelectItem, TextInput, TextArea, RadioButtonGroup, RadioButton } from "@carbon/react";
-import { Edit, CheckmarkOutline, CloseOutline, Send, Add, Checkmark, ChevronDown, ChevronUp } from "@carbon/icons-react";
+import { Edit, CheckmarkOutline, CloseOutline, Send, Add, Checkmark, ChevronDown, ChevronUp, MachineLearningModel } from "@carbon/icons-react";
 import { get, post, put, fmtDate, shortType, labelFor, ASSESSMENT_RESULTS } from "../api";
-import { PageHeader, useLoad, VerificationTag, VerifyButton, Markdown, SeverityTag, Empty, LoadError, RLink, Crumbs, StatusTag, VerifiedBy, DateField, artefactLink, useDocTitle } from "../components";
+import { PageHeader, useLoad, VerificationTag, VerifyButton, Markdown, SeverityTag, Empty, LoadError, RLink, Crumbs, StatusTag, VerifiedBy, DateField, artefactLink, useDocTitle, useAiFeatures, OriginTag } from "../components";
+import { LogRiskModal } from "../components/RiskModal";
 import { DecisionForm, parseOptions } from "./Decisions";
 import { Gated, useAuth } from "../auth";
 
@@ -81,6 +82,7 @@ export default function DecisionDetail() {
           <section className="ag-section"><h2>Recommended Option</h2><Markdown md={d.decision_md} /></section>
           {d.justification_md ? <section className="ag-section"><h2>Justification</h2><Markdown md={d.justification_md} /></section> : null}
           <section className="ag-section"><h2>Consequences</h2><p className="ag-muted ag-label ag-mb-03">What accepting this decision means, and which risks were accepted with it.</p><Markdown md={d.consequences_md} /></section>
+          <DecisionRisks d={d} />
         </div>
         <div>
           <section className="ag-section"><h2>Applies To</h2><div className="ag-row snug">{d.applications.map((a: any, i: number) => <React.Fragment key={a.id}>{i > 0 && <span className="ag-muted">·</span>}<RLink to={`/applications/${a.id}`}>{a.name}</RLink></React.Fragment>)}{d.applications.length === 0 && <span className="ag-muted">All applications</span>}</div></section>
@@ -218,3 +220,40 @@ function DecisionAssessments({ d, onChanged }: { d: any; onChanged: () => void }
     </section>
   );
 }
+
+/**
+ * The risks this decision accepts, on the risk register: each with an owner, a severity and a review date, its
+ * standing following the decision. An author adds one, or asks AI to read the decision's text for candidates and
+ * logs the ones that hold (recorded as AI-assisted); nothing is stored by the suggestion.
+ */
+function DecisionRisks({ d }: { d: any }) {
+  const [data, reload] = useLoad<any>(() => get(`/risks?decision=${d.id}`), [d.id]);
+  const aiOn = useAiFeatures();
+  const [adding, setAdding] = React.useState<any>(null);
+  const [suggested, setSuggested] = React.useState<any[] | null>(null);
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState<string | null>(null);
+  const suggest = async () => { setBusy(true); setErr(null); try { const r: any = await post(`/decisions/${d.id}/suggest-risks`); setSuggested(r.risks); } catch (e: any) { setErr(String(e.message || e)); } finally { setBusy(false); } };
+  const risks: any[] = data?.risks || [];
+  return (
+    <section className="ag-section">
+      <div className="ag-row between"><h2>Accepted Risks ({risks.length})</h2>
+        <span className="ag-row tight">
+          <Gated cap="create_decision" allowed={aiOn.suggest_risks === true} reason="AI Risk Extraction is not enabled for this instance — a platform admin can switch it on under Settings · AI"><Button size="sm" kind="ghost" renderIcon={MachineLearningModel} disabled={busy} onClick={suggest}>{busy ? "Reading…" : "Suggest from Consequences"}</Button></Gated>
+          <Gated cap="create_decision"><Button size="sm" kind="tertiary" renderIcon={Add} onClick={() => setAdding({})}>Add Risk</Button></Gated>
+        </span></div>
+      <p className="ag-muted ag-label ag-mb-03">On the risk register; proposed while this decision is proposed, accepted once it is, withdrawn if it is rejected or superseded.</p>
+      {err && <p className="ag-muted ag-label">{err}</p>}
+      {suggested && <div className="ag-ai-review ag-mb-03">
+        <div className="ag-row snug"><span className="ag-colhead">AI Suggestions</span><span className="ag-muted ag-label">advisory, not saved</span></div>
+        {suggested.length === 0 ? <p className="ag-body">No further risk stands out in the decision's text.</p> : <ul className="ag-suggest">{suggested.map((r, k) => <li key={k}><span className="ag-body"><SeverityTag s={r.severity} /> <span className="ag-strong">{r.title}</span>{r.description ? ` — ${r.description}` : ""}</span><Button size="sm" kind="ghost" renderIcon={Add} onClick={() => setAdding({ ...r, origin: "ai_assisted" })}>Log</Button></li>)}</ul>}
+      </div>}
+      {risks.length === 0 ? <Empty>No risk recorded against this decision.</Empty> : (
+        <Table size="sm" aria-label="Risks this decision accepts"><TableHead><TableRow><TableHeader>Risk</TableHeader><TableHeader>Severity</TableHeader><TableHeader>Owner</TableHeader><TableHeader>Status</TableHeader></TableRow></TableHead>
+          <TableBody>{risks.map((r) => <TableRow key={r.id}><TableCell className="ag-wrap"><RLink to="/risks">{r.code}</RLink> {r.title}{r.origin === "ai_assisted" && <> <OriginTag origin="ai" /></>}</TableCell><TableCell><SeverityTag s={r.severity} /></TableCell><TableCell>{r.owner_name || r.owner}</TableCell><TableCell><StatusTag kind="risk_status" value={r.status} /></TableCell></TableRow>)}</TableBody></Table>)}
+      {adding && <LogRiskModal decision={{ id: d.id, code: d.code }} initial={adding.title ? { title: adding.title, description: adding.description, severity: adding.severity, origin: adding.origin } : undefined}
+        onClose={() => setAdding(null)} onDone={() => { setAdding(null); if (suggested && adding.title) setSuggested(suggested.filter((s) => s.title !== adding.title)); reload(); }} />}
+    </section>
+  );
+}
+

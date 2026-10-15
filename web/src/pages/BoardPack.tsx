@@ -73,7 +73,7 @@ export default function BoardPack() {
         </section>
       </div>
 
-      <section className="ag-section"><h2>Decisions Accepted in the Period ({p.decisions_in_period.length})</h2>
+      <section className="ag-section"><h2>Decisions in the Period ({p.decisions_in_period.length})</h2>
         {p.decisions_in_period.length === 0 ? <Empty>None.</Empty> : <Table size="sm" aria-label="Decisions in the period"><TableHead><TableRow><TableHeader>Decision</TableHeader><TableHeader>Status</TableHeader><TableHeader>Decided</TableHeader></TableRow></TableHead>
           <TableBody>{p.decisions_in_period.map((x: any) => <TableRow key={x.code}><TableCell><span className="ag-mono">{x.code}</span> {x.title}</TableCell><TableCell>{labelFor("decision", x.status)}</TableCell><TableCell>{fmtDate(x.decided_at)}</TableCell></TableRow>)}</TableBody></Table>}
       </section>
@@ -87,6 +87,11 @@ export default function BoardPack() {
         {p.roadmap.now.length === 0 ? <Empty>Nothing in progress or due.</Empty> : <Table size="sm" aria-label="Roadmap now"><TableHead><TableRow><TableHeader>Item</TableHeader><TableHeader>Kind</TableHeader><TableHeader>Status</TableHeader><TableHeader>Due</TableHeader></TableRow></TableHead>
           <TableBody>{p.roadmap.now.map((x: any, i: number) => <TableRow key={i}><TableCell>{x.title}{x.applications.length > 0 && <div className="ag-muted ag-label">{x.applications.join(", ")}</div>}</TableCell><TableCell>{labelFor("roadmap_kind", x.kind)}</TableCell><TableCell>{labelFor("roadmap_status", x.status)}</TableCell><TableCell>{x.due ? fmtDate(x.due) : "—"}</TableCell></TableRow>)}</TableBody></Table>}
       </section>
+      {p.registers.risks && <section className="ag-section"><h2>Risks Needing Attention ({p.registers.risks.attention.length})</h2>
+        <p className="ag-muted ag-label ag-mb-03">{p.registers.risks.counts.open} open · {p.registers.risks.counts.accepted} accepted · {p.registers.risks.counts.review_overdue} with the review overdue. Listed: live high and critical risks, and any whose review date has passed.</p>
+        {p.registers.risks.attention.length === 0 ? <Empty>None.</Empty> : <Table size="sm" aria-label="Risks needing attention"><TableHead><TableRow><TableHeader>Risk</TableHeader><TableHeader>Severity</TableHeader><TableHeader>Status</TableHeader><TableHeader>Owner</TableHeader><TableHeader>Review By</TableHeader></TableRow></TableHead>
+          <TableBody>{p.registers.risks.attention.map((x: any, i: number) => <TableRow key={i}><TableCell>{x.code && <span className="ag-mono">{x.code} </span>}{x.title}{x.decision && <div className="ag-muted ag-label">accepted by {x.decision}</div>}</TableCell><TableCell>{labelFor("severity", x.severity)}</TableCell><TableCell>{labelFor("risk_status", x.status)}</TableCell><TableCell>{x.owner || "—"}</TableCell><TableCell>{x.review_by ? fmtDate(x.review_by) : "—"}{x.review_overdue ? " (overdue)" : ""}</TableCell></TableRow>)}</TableBody></Table>}
+      </section>}
       <section className="ag-section"><h2>Register Gaps</h2>
         <div className="ag-grid-2">
           <div><p className="ag-colhead">Legacy Assessments Due ({p.registers.legacy_due.length})</p>

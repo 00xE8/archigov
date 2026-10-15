@@ -164,6 +164,10 @@ export const ROUTE_RULES: RouteRule[] = [
   { method: "POST", pattern: /^\/board-packs(\/draft-narrative)?$/, capability: ["manage_board", "decide_review"] },
   // a periodic sign-off is the owning board's chair's statement (the handler checks the chair of that board)
   { method: "POST", pattern: /^\/sign-offs$/, capability: "decide_review" },
+  // risks: an author logs one (or asks AI for a decision's); the owner or whoever logged it changes it (checked in risks.ts)
+  { method: "POST", pattern: /^\/risks$/, capability: "create_decision" },
+  { method: "PUT", pattern: /^\/risks\/[^/]+$/, capability: ["create_decision", "approve_review", "decide_review", "comment"] },
+  { method: "POST", pattern: /^\/decisions\/[^/]+\/suggest-risks$/, capability: "create_decision" },
   { method: "GET", pattern: /.*/, capability: "read" },
   { method: "POST", pattern: /^\/users$/, capability: "manage_platform" },
   { method: "PUT", pattern: /^\/users\/[^/]+$/, capability: "manage_platform" },

@@ -1,7 +1,7 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Header, HeaderName, HeaderGlobalBar, HeaderGlobalAction, HeaderPanel, SideNav, SideNavItems, SideNavLink, SideNavMenu, SideNavMenuItem, SideNavDivider, Content, Theme, HeaderMenuButton, SkipToContent, Search, Form, ContainedList, ContainedListItem, Tag } from "@carbon/react";
-import { Dashboard, Application, Rule, Document, Task, Compare, ListChecked, Settings, UserAvatar, Help, Search as SearchIcon, Catalog, Receipt, DataBase, Group, Calendar, Notification, BusinessProcesses, Hourglass, WarningSquare, Partnership, Timeline, ChartLineData, Stamp } from "@carbon/icons-react";
+import { Dashboard, Application, Rule, Document, Task, Compare, ListChecked, Settings, UserAvatar, Help, Search as SearchIcon, Catalog, Receipt, DataBase, Group, Calendar, Notification, BusinessProcesses, Hourglass, WarningSquare, Partnership, Timeline, ChartLineData, Stamp, Debug } from "@carbon/icons-react";
 import Overview from "./pages/Overview";
 import Applications from "./pages/Applications";
 import BusinessServices from "./pages/BusinessServices";
@@ -11,6 +11,7 @@ import RoadmapPage from "./pages/Roadmap";
 import Metrics from "./pages/Metrics";
 import BoardPack from "./pages/BoardPack";
 import SignOffs from "./pages/SignOffs";
+import RiskRegister from "./pages/RiskRegister";
 import ApplicationDetail from "./pages/ApplicationDetail";
 import Catalogue from "./pages/Catalogue";
 import Boards, { BoardDetail } from "./pages/Boards";
@@ -60,6 +61,7 @@ const GROUPS: { title: string; icon: React.ComponentType; items: Item[] }[] = [
   { title: "Risk", icon: WarningSquare, items: [
     { to: "/legacy", label: "Legacy Register", icon: Hourglass },
     { to: "/third-parties", label: "Third Parties", icon: Partnership },
+    { to: "/risks", label: "Risk Register", icon: Debug },
   ] },
 ];
 const SETTINGS: Item = { to: "/settings", label: "Settings", icon: Settings };
@@ -168,6 +170,7 @@ function Shell() {
             <Route path="/metrics" element={<Metrics />} />
             <Route path="/board-packs/:hash" element={<BoardPack />} />
             <Route path="/sign-offs" element={<SignOffs />} />
+            <Route path="/risks" element={<RiskRegister />} />
             <Route path="/governance" element={<Catalogue />} />
             {/* The catalogue used to be /standards; deep links (?open=, ?q=) keep working. */}
             <Route path="/standards" element={<Navigate to={`/governance${loc.search}`} replace />} />
@@ -205,7 +208,7 @@ function HelpPanel() {
         <dt>Sign-offs</dt><dd>Every adopted catalogue item and accepted decision has a next review date; the chair of the board that owns it reaffirms it or asks for a revision.</dd>
         <dt>Board Sessions</dt><dd>A board sits in sessions: decision makers record a position for each area of responsibility they own, or delegate their seat for the sitting, and the chair declares the outcome those positions allow.</dd>
         <dt>Evidence</dt><dd>Where the two meet: conformance findings and drift, governance metrics and the signed board packs prepared from them, imported assessments from Defender for Cloud and Azure Policy, and the audit log.</dd>
-        <dt>Risk</dt><dd>Registers derived from the model: the legacy register of components past or near their vendor's end of support and the yearly legacy assessments that cover them, and the third parties the estate relies on — concentration on designated critical third parties and the exit plan for each critical reliance.</dd>
+        <dt>Risk</dt><dd>Registers derived from the model: the legacy register of components past or near their vendor's end of support and the yearly legacy assessments that cover them, and the third parties the estate relies on — concentration on designated critical third parties and the exit plan for each critical reliance — and the risk register with the architecture debt derived from the records.</dd>
       </dl>
       <div className="ag-row snug"><RLink to="/?start=1">Get started</RLink>{useCan("manage_platform") && <RLink to="/settings">Settings</RLink>}</div>
     </div>

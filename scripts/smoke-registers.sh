@@ -4,7 +4,8 @@
 # the legacy register (lifecycle states, a person's version correction, the yearly legacy assessment); third parties
 # (providers, concentration on a designated critical third party, exit plans into the DORA register); the roadmap
 # built from records (decision realisation, lanes, per-application view); governance metrics and a signed board
-# pack (prepared by a secretary, verified like the evidence pack); review dates and periodic sign-offs, end to end
+# pack (prepared by a secretary, verified like the evidence pack); review dates and periodic sign-offs; the risk
+# register and the derived architecture debt, end to end
 # through the API of a LOCAL-mode seeded instance.
 #
 #   scripts/smoke-registers.sh [base_url]   default http://localhost:8080
@@ -12,7 +13,7 @@
 # Run after smoke-work.sh on the same instance (before smoke-catalogue.sh). The default x-user ("smoke-registers") is
 # a platform admin ONLY and must be refused every classification change; authors act as the seeded cast. MUTATES the
 # tenant (a classification set and reset, a verification, a draft standard, a version set and reset, a legacy
-# assessment, an exit plan, a board pack, a sign-off); reset with
+# assessment, an exit plan, a board pack, a sign-off, a risk); reset with
 # `docker compose down -v && docker compose up -d`.
 set -u
 BASE="${1:-http://localhost:8080}"
@@ -223,6 +224,23 @@ def l_():
     s, au = get(f"/audit?entity=standards&entity_id={by['STD-005']['subject']['id']}&action=signoff:reaffirmed"); assert au["rows"], au
     return f"{sum(1 for x in so['items'] if x['status'] != 'current')} due or overdue; STD-005 reaffirmed by the DA chair (403 platform admin, decision maker, PCB chair), off the queue, audited"
 step("l  review dates and sign-offs: the owning chair's act", l_)
+
+# ---------- m. the risk register and architecture debt ----------
+def m_():
+    body = {"title": "Single-region writes for admissions", "severity": "high", "owner": "m.hughes", "review_by": "2027-01-31", "application_ids": [apps()["PatientFlow"]["id"]]}
+    for u in (ADMIN, "a.uditor"):
+        s, r = post("/risks", body, user=u); assert s == 403, f"{u}: {s} {r}"
+    s, r = post("/risks", body, user="s.patel"); assert s == 200 and r["code"].startswith("RSK-") and r["status"] == "open", f"{s} {r}"
+    mutations.append(f"risk {r['code']}")
+    s, x = put(f"/risks/{r['id']}", {"status": "mitigated", "note": "Zone-redundant writes deployed."}, user="t.nguyen"); assert s == 403, f"neither owner nor logger: {s} {x}"
+    s, x = put(f"/risks/{r['id']}", {"status": "closed", "note": "short"}, user="m.hughes"); assert s == 400, f"closing needs a note: {s} {x}"
+    s, x = put(f"/risks/{r['id']}", {"status": "mitigated", "note": "Zone-redundant writes deployed."}, user="m.hughes"); assert s == 200 and x["status"] == "mitigated", f"{s} {x}"
+    s, reg = get("/risks", user="a.uditor"); assert any(x_["source"] == "exception" and x_["status"] == "accepted" for x_ in reg["risks"]), "active exceptions are accepted risks"
+    s, d = get("/debt", user="a.uditor"); assert s == 200 and d["counts"]["end_of_life"] >= 1 and d["total"] == len(d["items"]), d["counts"]
+    adr = next(x_ for x_ in get("/decisions", user="a.uditor")[1] if x_["code"] == "ADR-0002")
+    s, x = post(f"/decisions/{adr['id']}/suggest-risks", user="s.patel"); assert s == 409, f"AI off: {s} {x}"
+    return f"{r['code']} logged by an author, mitigated by its owner (403 for anyone else, a note to close); {reg['counts']['from_exceptions']} exception risk(s); {d['total']} debt item(s) derived"
+step("m  the risk register and architecture debt", m_)
 
 passed = sum(1 for _, ok in results if ok); failed = len(results) - passed
 print(f"\n{passed} passed, {failed} failed  ({BASE})")

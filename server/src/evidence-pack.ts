@@ -8,6 +8,7 @@ import { std, dec, fnd, DECISIONS_FOR_APP } from "./http.js";
 import { classificationOf } from "./classification.js";
 import { legacyOf } from "./lifecycle.js";
 import { reliancesOf } from "./suppliers.js";
+import { riskRegister } from "./risks.js";
 
 /**
  * The evidence pack: what the derived model, the imported compliance evidence, the decision log and the review
@@ -122,6 +123,8 @@ export function buildEvidencePack(appId: string | null): Record<string, any> | n
   const sessions = sessionsFor(appId);
   pack.sessions = sessions.map(({ id, ...s }) => s);
   scopeIds.push(...sessions.map((s) => s.id));
+  // the risk register in scope: the tenant's, or the risks naming this application
+  pack.risks = riskRegister({ application: appId }).risks.map((r: any) => ({ code: r.code, title: r.title, severity: r.severity, status: r.status, source: r.source, owner: r.owner, review_by: r.review_by, decision: r.decision?.code ?? null, origin: r.origin, closed_by: r.closed_by, closure_note: r.closure_note }));
   pack.audit_trail = appId ? auditRowsFor(Array.from(new Set(scopeIds))) : db.prepare("SELECT at, actor, role, action, entity, entity_id, hash FROM audit_log ORDER BY at DESC").all();
   return pack;
 }
