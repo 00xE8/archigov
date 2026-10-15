@@ -5,6 +5,7 @@ import { legacyRegister } from "./lifecycle.js";
 import { thirdParties } from "./suppliers.js";
 import { signAndPersist } from "./evidence-pack.js";
 import { userName } from "./reviews.js";
+import { riskRegister } from "./risks.js";
 
 /**
  * The board pack: what a chair or secretary takes to a board — the governance metrics for a period, the decisions
@@ -40,6 +41,9 @@ export function buildBoardPack(b: BoardPackInput, actor: string) {
         components: a.legacy.map((k: string) => { const g = legacy.components.find((c: any) => c.key === k); return g ? `${g.product_label} ${g.label}` : k; }) })),
       exit_plans_due: tp.exit_plans.filter((e: any) => e.status === "due").map((e: any) => ({ application: e.application.name, provider: e.provider.name })),
       concentration: tp.concentration.map((c: any) => ({ provider: c.name, designated_entity: c.ctp?.entity ?? null, critical: c.critical, of: c.of })),
+      // live high and critical risks, and every risk whose review date has passed
+      risks: (() => { const r = riskRegister(); return { counts: r.counts, attention: r.risks.filter((x: any) => (["open", "accepted"].includes(x.status) && (x.severity === "high" || x.severity === "critical")) || x.review_overdue)
+        .map((x: any) => ({ code: x.code, title: x.title, severity: x.severity, status: x.status, source: x.source, owner: x.owner_name || x.owner, review_by: x.review_by, review_overdue: x.review_overdue, decision: x.decision?.code ?? null })) }; })(),
     },
     disclaimer: BOARD_PACK_DISCLAIMER,
   };

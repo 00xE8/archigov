@@ -38,7 +38,7 @@ const asJson = (o: any) => ({ choices: [{ message: { content: JSON.stringify(o) 
 test("every draft endpoint answers 409 when its feature is off, and /ai/features is readable by the auditor", async () => {
   const flags = await call("GET", "/ai/features", "a.uditor");
   assert.equal(flags.status, 200);
-  assert.deepEqual(Object.values(flags.body), Array(10).fill(false));
+  assert.deepEqual(Object.values(flags.body), Array(11).fill(false));
   assert.equal((await call("POST", "/decisions/review-draft", "s.patel", { title: "t", decision_md: "d" })).status, 409);
   assert.equal((await call("POST", "/artefacts/draft-rule", "s.patel", { title: "t", statement: "s" })).status, 409);
   assert.equal((await call("POST", "/artefacts/suggest-references", "s.patel", { title: "t", statement: "s" })).status, 409);

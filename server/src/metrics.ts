@@ -5,6 +5,7 @@ import { legacyRegister } from "./lifecycle.js";
 import { thirdParties } from "./suppliers.js";
 import { roadmap } from "./roadmap.js";
 import { signOffCoverage } from "./signoffs.js";
+import { riskRegister, architectureDebt } from "./risks.js";
 
 /**
  * Governance metrics, computed from the records on read — the numbers a head of architecture reports to a board:
@@ -96,6 +97,7 @@ export function governanceMetrics(opts: { days?: number } = {}) {
     sign_offs: signOffCoverage() };
 
   return { generated_at: nowS, period_days: period, from, reviews, decisions, conditions, exceptions, conformance, coverage,
+    risks: riskRegister().counts, debt: architectureDebt().counts,
     registers: { legacy_counts: legacy.counts, concentration: tp.concentration.map((c: any) => ({ provider: c.name, designated: !!c.ctp, critical: c.critical, of: c.of })) },
     roadmap: rm.counts };
 }

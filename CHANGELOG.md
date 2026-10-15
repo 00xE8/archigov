@@ -6,6 +6,8 @@ All notable changes to Archigov are documented here. The format follows [Keep a 
 
 ### Added
 
+- **Risk register and architecture debt** ([docs](docs/features/risk-register.md)): a **Risk Register** in the Risk group holds the risks decisions accept (their standing follows the decision), every active exception as an accepted risk, and risks authors log — each with an owner, a severity and a review date; only the owner or whoever logged it changes it, and closing needs a note. **Architecture Debt** is derived from the records, never logged: findings open over 90 days, drift from decisions, overdue conditions, end-of-life components, expired exceptions still failing, assessments and exit plans due. The decision page gains **Accepted Risks**; an eleventh AI feature, **Risk Extraction** (off by default), suggests a decision's risks from its text for the author to log. Risks reach the evidence pack, the board pack and Governance Metrics (migration m021).
+
 - **Review dates and periodic sign-offs** ([docs](docs/features/sign-offs.md)): every adopted catalogue item and accepted decision has a next review date (adoption plus 12 months for artefacts, 24 for decisions, both settings), and the chair of the board that owns it reaffirms it or marks it for revision with a note (back in three months). Due and overdue sign-offs are in the chair's work queue and notifications; a **Sign-offs** page lists them all; every sign-off is audited and none is deleted; Governance Metrics counts what is in date (migration m020).
 
 - **Governance metrics and the signed board pack** ([docs](docs/features/governance-metrics.md)): a **Governance Metrics** page reports, from the records over a stated period, review lead time (median and 90th percentile), recycling, fast-lane approvals, position latency, decisions accepted and realised, conditions met on time, exception ageing, the conformance trend and time to fix, and how much a named person stands behind — figures, never verdicts. A board's chair or secretary prepares a **board pack**: a snapshot of those figures with the period's decisions and reviews, the roadmap's Now lane and the register gaps, signed and chained like the evidence pack and verifiable the same way, with a print view. A tenth AI feature, **Board Pack Narrative** (off by default), drafts the narrative from the figures only; the preparer submits it as their own and the pack records it as AI-assisted (migration m019).
@@ -48,6 +50,7 @@ All notable changes to Archigov are documented here. The format follows [Keep a 
 
 ### Fixed
 
+- The board pack's decision list is every decision decided in the period, so its heading no longer says "accepted".
 - The roadmap no longer lists a component whose version is not in the lifecycle data as an upgrade with an unlabelled "unknown" status; only dated deadlines belong on it.
 - Status tags in the fast lane, legacy register and third-parties screens were rendered small, which drops their icon; they now carry colour, icon and word like every other status.
 - Azure collection now keeps MySQL flexible servers' version, network access, backup and HA properties (they were dropped), so the legacy register can match their engine version and the public-network rules can read them.
