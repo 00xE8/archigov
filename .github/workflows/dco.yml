@@ -1,0 +1,40 @@
+# Developer Certificate of Origin: every commit in a pull request carries a "Signed-off-by:" trailer from its author
+# (git commit -s). The maintainer's own commits and bots are exempt — the maintainer is the licensor. Reads the commits
+# through the API only; no pull-request code is checked out or run.
+name: DCO
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  dco:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const commits = await github.paginate(github.rest.pulls.listCommits, { owner, repo, pull_number: context.payload.pull_request.number, per_page: 100 });
+            const missing = [];
+            for (const c of commits) {
+              if ((c.parents || []).length > 1) continue;
+              const login = c.author?.login || "";
+              if (login === owner || c.author?.type === "Bot" || login.endsWith("[bot]")) continue;
+              const email = (c.commit.author?.email || "").toLowerCase();
+              const signed = [...c.commit.message.matchAll(/^Signed-off-by:.*<([^>]+)>\s*$/gim)].some((m) => m[1].toLowerCase() === email);
+              if (!signed) missing.push(`${c.sha.slice(0, 7)} "${c.commit.message.split("\n")[0].slice(0, 72)}" by ${c.commit.author?.name} <${email}>`);
+            }
+            if (missing.length === 0) { core.info(`All ${commits.length} commit(s) are signed off (or exempt).`); return; }
+            core.setFailed([
+              `${missing.length} commit(s) lack a Signed-off-by trailer matching the commit author:`,
+              ...missing.map((m) => `  - ${m}`),
+              "",
+              "Sign off to certify the Developer Certificate of Origin (DCO file in the repository root):",
+              "  git rebase --signoff origin/main && git push --force-with-lease",
+              "and use `git commit -s` from now on. See CONTRIBUTING.md.",
+            ].join("\n"));

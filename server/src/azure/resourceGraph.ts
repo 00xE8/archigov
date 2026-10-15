@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: The Archigov Authors
 import type { NormalisedResource } from "../model.js";
 import { ARM, armFetch, armToken, respectQuota, fixturesEnabled, configuredSubscriptions } from "./client.js";
 import { FIXTURES } from "./fixtures.js";

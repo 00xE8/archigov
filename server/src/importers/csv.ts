@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: The Archigov Authors
 import { db, uid, nowIso, audit } from "../db.js";
 import { ingestResources, relationHash, type NormalisedResource } from "../model.js";
 import { createArtefact, isKind } from "../artefacts.js";

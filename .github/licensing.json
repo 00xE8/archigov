@@ -1,0 +1,10 @@
+{
+  "about": "Paths licensed Apache-2.0: contributions need a DCO sign-off and no CLA. Everything else in the repository is AGPL-3.0-only: a DCO sign-off and the CLA (docs/CLA.md). Read from the default branch by .github/workflows/cla.yml; server/test/licensing.test.ts checks the SPDX headers against it; README · Licensing lists the same paths.",
+  "apache_2_0": [
+    "server/src/packs/",
+    "server/src/templates/",
+    "server/src/azure/",
+    "server/src/ado/",
+    "server/src/importers/"
+  ]
+}

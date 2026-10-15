@@ -1,0 +1,90 @@
+# Contributor licence agreement, only where dual licensing needs it: a contributor whose commits change files outside
+# the Apache-2.0 folders (.github/licensing.json, read from the default branch so a pull request cannot widen it) agrees
+# to docs/CLA.md once, by commenting the agreement sentence on the pull request. The agreement is recorded with the
+# comment's link on the cla-signatures branch. The maintainer and bots are exempt. The result is the "Archigov CLA"
+# commit status on the pull request's head. Uses the API only; no pull-request code is checked out or run, which is
+# what makes pull_request_target (needed to write the status and the record for pull requests from forks) safe here.
+name: CLA
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  statuses: write
+
+concurrency:
+  group: cla-${{ github.event.pull_request.number || github.event.issue.number }}
+
+jobs:
+  cla:
+    if: github.event_name == 'pull_request_target' || (github.event.issue.pull_request && (contains(github.event.comment.body, 'Archigov CLA') || contains(github.event.comment.body, 'recheck cla')))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const AGREEMENT = "I have read the Archigov CLA and I agree to it for this and all my future contributions.";
+            const CLA_VERSION = "1.1", BRANCH = "cla-signatures", FILE = "signatures.json", MARK = "<!-- archigov-cla -->";
+            const { owner, repo } = context.repo;
+            const number = context.payload.pull_request?.number ?? context.payload.issue.number;
+            const pr = (await github.rest.pulls.get({ owner, repo, pull_number: number })).data;
+            const base = context.payload.repository.default_branch;
+            const read = async (path, ref) => {
+              try { const r = await github.rest.repos.getContent({ owner, repo, path, ref }); return { text: Buffer.from(r.data.content, "base64").toString("utf8"), sha: r.data.sha }; }
+              catch (e) { if (e.status === 404) return null; throw e; }
+            };
+            const apache = JSON.parse((await read(".github/licensing.json", base)).text).apache_2_0;
+            const inApache = (f) => !!f && apache.some((p) => f.startsWith(p));
+            const exempt = (u) => !!u && (u.login === owner || u.type === "Bot" || u.login.endsWith("[bot]"));
+
+            // who has to agree: authors of commits that change anything outside the Apache-2.0 folders
+            const commits = await github.paginate(github.rest.pulls.listCommits, { owner, repo, pull_number: number, per_page: 100 });
+            const needed = new Map(), unlinked = [];
+            for (const c of commits) {
+              if ((c.parents || []).length > 1 || exempt(c.author)) continue;
+              const files = (await github.rest.repos.getCommit({ owner, repo, ref: c.sha })).data.files || [];
+              if (files.every((f) => inApache(f.filename) && (!f.previous_filename || inApache(f.previous_filename)))) continue;
+              if (!c.author) { unlinked.push(`${c.sha.slice(0, 7)} (${(c.commit.author?.email || "unknown").replace(/[`<>]/g, "")})`); continue; }
+              needed.set(c.author.id, c.author.login);
+            }
+
+            // the record: a comment with the agreement sentence, by someone whose agreement this pull request needs
+            const store = await read(FILE, BRANCH);
+            if (!store) throw new Error(`The ${BRANCH} branch with ${FILE} is missing; see CONTRIBUTING.md (maintainers).`);
+            const signatures = JSON.parse(store.text);
+            const signed = new Set(signatures.map((s) => s.id));
+            const comment = context.payload.comment;
+            const norm = (t) => t.replace(/^[\s>`*_"]+|[\s`*_".]+$/g, "").replace(/\s+/g, " ").toLowerCase();
+            if (comment && norm(comment.body) === norm(AGREEMENT) && needed.has(comment.user.id) && !signed.has(comment.user.id)) {
+              signatures.push({ login: comment.user.login, id: comment.user.id, cla_version: CLA_VERSION, signed_at: comment.created_at, comment_url: comment.html_url, pull_request: number });
+              await github.rest.repos.createOrUpdateFileContents({ owner, repo, branch: BRANCH, path: FILE, sha: store.sha,
+                message: `cla: ${comment.user.login} agrees to CLA v${CLA_VERSION} (#${number})`,
+                content: Buffer.from(JSON.stringify(signatures, null, 2) + "\n").toString("base64") });
+              signed.add(comment.user.id);
+            }
+
+            const missing = [...needed].filter(([id]) => !signed.has(id)).map(([, login]) => login);
+            const ok = missing.length === 0 && unlinked.length === 0;
+            const description = needed.size === 0 && unlinked.length === 0 ? "Not needed: DCO only (Apache-2.0 folders, or the maintainer)"
+              : ok ? "Every contributor to AGPL files has agreed to the CLA"
+              : `CLA needed from ${[...missing, ...(unlinked.length ? ["unlinked commits"] : [])].join(", ")}`.slice(0, 139);
+            await github.rest.repos.createCommitStatus({ owner, repo, sha: pr.head.sha, context: "Archigov CLA", state: ok ? "success" : "failure", description,
+              target_url: `https://github.com/${owner}/${repo}/blob/${base}/docs/CLA.md` });
+
+            // one explanatory comment, kept current
+            const mine = (await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number: number, per_page: 100 }))
+              .find((c) => c.user?.type === "Bot" && c.body?.includes(MARK));
+            let body = null;
+            if (!ok) body = [MARK, "**Contributor licence agreement needed.** This pull request changes files in the AGPL-3.0 core, so each contributor to those files agrees to the [Archigov CLA](" + `https://github.com/${owner}/${repo}/blob/${base}/docs/CLA.md` + ") once — a licence grant: you keep your copyright. Contributions to the Apache-2.0 folders (packs, templates, connectors, importers) need only the DCO sign-off.",
+              "", ...missing.map((l) => `- @${l}: please comment exactly:\n  > ${AGREEMENT}`),
+              ...(unlinked.length ? ["", "These commits use an email that is not linked to a GitHub account, so their author cannot be matched to an agreement: " + unlinked.join(", ") + ". Link the email in your GitHub settings, or re-author the commits, then comment `recheck cla`."] : []),
+              "", "Questions about why: see [CONTRIBUTING.md](" + `https://github.com/${owner}/${repo}/blob/${base}/CONTRIBUTING.md` + ")."].join("\n");
+            else if (mine) body = `${MARK}\nEvery contributor to AGPL files in this pull request has agreed to the [Archigov CLA](https://github.com/${owner}/${repo}/blob/${base}/docs/CLA.md). Thank you.`;
+            if (body && mine) await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body });
+            else if (body) await github.rest.issues.createComment({ owner, repo, issue_number: number, body });
+            core.info(description);
