@@ -6,7 +6,8 @@ import { BOARD_ROLES } from "../auth/roles.js";
 import { currentPrincipal } from "../auth/context.js";
 import { forbidden } from "../auth/middleware.js";
 import { getUser, setMembership, setMemberAreas, removeMembership } from "../auth/users.js";
-import { REVIEW_TYPES, isReviewType, boardById, policiesOf, policyFor, routeBoard, normalisePolicy, approvalProgress, memberRole, type ReviewType } from "../boards/workflow.js";
+import { REVIEW_TYPES, isReviewType, boardById, policiesOf, policyFor, routeBoard, normalisePolicy, approvalProgress, memberRole, canDecide, OPEN_STAGES, type ReviewType } from "../boards/workflow.js";
+import { declareOutcome } from "../boards/declare.js";
 import { parseBoardAreas, normaliseAreasInput, boardAreas } from "../boards/areas.js";
 import { sessionSummary } from "../boards/sessions.js";
 
@@ -143,9 +144,37 @@ boards.put("/boards/:id/policies/:reviewType", async (c) => {
   if (!manages(b.id, "policies")) return forbidden(c, "manage_board", currentPrincipal(), `only a platform admin or the chair of ${b.code} changes its approval policies`);
   const type = c.req.param("reviewType"); if (!isReviewType(type)) return c.json({ error: `review type must be one of ${REVIEW_TYPES.join(", ")}` }, 400);
   let policy; try { policy = normalisePolicy((await c.req.json()).policy); } catch (e: any) { return c.json({ error: e.message }, 400); }
+  if (policy.fast_lane?.enabled && type !== "design") return c.json({ error: "the fast lane applies to design reviews only" }, 400);
   db.prepare("INSERT INTO approval_policies(board_id,review_type,policy_json) VALUES (?,?,?) ON CONFLICT(board_id,review_type) DO UPDATE SET policy_json=excluded.policy_json").run(b.id, type, JSON.stringify(policy));
-  audit(actorOf(c), "policy:set", "boards", b.id, { review_type: type, steps: policy.steps.map((s) => s.kind), mode: policy.steps.find((s) => s.kind === "approvals")?.mode ?? null });
+  audit(actorOf(c), "policy:set", "boards", b.id, { review_type: type, steps: policy.steps.map((s) => s.kind), mode: policy.steps.find((s) => s.kind === "approvals")?.mode ?? null, fast_lane: policy.fast_lane ?? null });
   return c.json({ ok: true, board: b.code, review_type: type, policy });
+});
+/**
+ * The fast lane, board-wide: every open review the lane currently satisfies, and the chair declaring them approved
+ * together (each one re-checked; an item that left the lane, or that this caller may not decide, is skipped with why).
+ */
+const fastLaneItems = (boardId: string) => (db.prepare("SELECT * FROM reviews WHERE board_id=? AND type='design' AND stage IN ('submitted','pre_review','in_review') ORDER BY created_at").all(boardId) as any[])
+  .map((r) => ({ r, progress: approvalProgress(r) })).filter((x) => x.progress.via_fast_lane);
+boards.get("/boards/:id/fast-lane", (c) => {
+  const b = boardById(c.req.param("id")); if (!b) return c.json({ error: "not found" }, 404);
+  const p = currentPrincipal();
+  return c.json(fastLaneItems(b.id).map(({ r, progress }) => ({ id: r.id, code: r.code, title: r.title, application_id: r.application_id, submitted_by: r.submitted_by, created_at: r.created_at, fast_lane: progress.fast_lane, can_declare: canDecide(p, r, "approved").ok })));
+});
+boards.post("/boards/:id/fast-lane/declare", async (c) => {
+  const b = boardById(c.req.param("id")); if (!b) return c.json({ error: "not found" }, 404);
+  const body = z.object({ review_ids: z.array(z.string()).optional(), rationale: z.string().max(4000).optional() }).parse(await c.req.json().catch(() => ({})));
+  const p = currentPrincipal(); const actor = actorOf(c);
+  const items = fastLaneItems(b.id).filter((x) => !body.review_ids || body.review_ids.includes(x.r.id));
+  const declared: { id: string; code: string; stage: string }[] = [], skipped: { id: string; code: string | null; reason: string }[] = [];
+  for (const id of body.review_ids || []) if (!items.some((x) => x.r.id === id)) { const r = db.prepare("SELECT code, board_id, stage FROM reviews WHERE id=?").get(id) as any; skipped.push({ id, code: r?.code ?? null, reason: !r ? "not found" : r.board_id !== b.id ? `not on ${b.code}` : !OPEN_STAGES.includes(r.stage) ? `review is ${r.stage}` : "not in the fast lane" }); }
+  for (const { r } of items) {
+    const chk = canDecide(p, r, "approved");
+    if (!chk.ok) { skipped.push({ id: r.id, code: r.code, reason: chk.reason || "may not decide" }); continue; }
+    const out = declareOutcome(r, { outcome: "approved", rationale: body.rationale || "Approved in the fast lane: low risk, follows adopted patterns, every check passed." }, chk, actor);
+    declared.push({ id: r.id, code: r.code, stage: out.stage });
+  }
+  if (!declared.length && skipped.length && skipped.every((s) => /seat|member|sign in/.test(s.reason))) return forbidden(c, "decide_review", p, skipped[0].reason);
+  return c.json({ declared, skipped });
 });
 boards.put("/boards/:id/routing", async (c) => {
   const b = boardById(c.req.param("id")); if (!b) return c.json({ error: "not found" }, 404);

@@ -33,7 +33,8 @@ export function workQueueFor(p: Principal | null) {
     if (r.submitted_by === p.id) continue; // the author proposes; the author never acts on their own item
     const live = livePositions(r.id); const prog = approvalProgress(r); const session = listedSessionOf(r.id); const sref = sessionRef(session);
     const role = memberRole(p, r.board_id);
-    if (prog.mode === "areas") {
+    if (prog.via_fast_lane) { /* the chair declares a fast-lane item; no position is awaited */ }
+    else if (prog.mode === "areas") {
       const areas = prog.areas.filter((a) => canRecordPosition(p, r, a.area).ok && !live.some((x) => x.area === a.area && x.user_id === p.id)).map((a) => a.area);
       if (areas.length) lists.positions.push({ review: reviewRef(r), areas, session: sref });
     } else if (canApprove(p, r).ok && !live.some((x) => x.user_id === p.id && x.position === "yes")) lists.positions.push({ review: reviewRef(r), areas: [], session: sref });

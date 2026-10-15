@@ -102,22 +102,35 @@ export function refreshAreas(reviewId: string, opts: { reset?: boolean } = {}): 
 }
 
 // ---------- creation ----------
+/** Resolve claimed patterns (ids or codes) to adopted pattern artefacts; throws 400 naming what is not one. */
+export function resolvePatterns(refs: string[] | undefined): string[] {
+  const out: string[] = [];
+  for (const ref of [...new Set(refs || [])]) {
+    const a = db.prepare("SELECT id, code, kind, lifecycle FROM standards WHERE id=? OR code=?").get(ref, ref) as any;
+    if (!a || a.kind !== "pattern") throw Object.assign(new Error(`not a pattern: ${ref}`), { status: 400 });
+    if (a.lifecycle !== "adopted") throw Object.assign(new Error(`${a.code} is not adopted (${a.lifecycle}); a design can only claim adopted patterns`), { status: 400 });
+    if (!out.includes(a.id)) out.push(a.id);
+  }
+  return out;
+}
 export interface NewReview {
   type: ReviewType; title: string; target_kind: string; target_id: string; board: BoardRow; submitted_by: string;
   application_id?: string | null; decision_id?: string | null; work_item_id?: string | null; risk_tier?: string; impact?: string | null; summary?: string; design_md?: string;
+  /** adopted pattern ids a design review claims to follow (the fast lane's claim) */
+  patterns?: string[];
   /** extra data stored on the `submitted` event (an exception's request) */
   submitted_data?: Record<string, unknown>;
 }
 /** Insert a review already validated and routed: row, `submitted` event, work-item link, artefact lifecycle, audit, pre-review, areas. Returns the row. */
 export async function createReview(input: NewReview, actor: string) {
   const id = uid(); const now = nowIso(); const code = nextCode("reviews", "REV");
-  db.prepare(`INSERT INTO reviews(id,code,title,application_id,decision_id,work_item_id,risk_tier,stage,summary,design_md,submitted_by,created_at,updated_at,type,target_kind,target_id,board_id,impact) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
-    .run(id, code, input.title, input.application_id || null, input.decision_id || null, input.work_item_id || null, input.risk_tier || "medium", "submitted", input.summary || "", stripTemplateHints(input.design_md || ""), input.submitted_by, now, now, input.type, input.target_kind, input.target_id, input.board.id, input.impact || null);
+  db.prepare(`INSERT INTO reviews(id,code,title,application_id,decision_id,work_item_id,risk_tier,stage,summary,design_md,submitted_by,created_at,updated_at,type,target_kind,target_id,board_id,impact,patterns_json) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, code, input.title, input.application_id || null, input.decision_id || null, input.work_item_id || null, input.risk_tier || "medium", "submitted", input.summary || "", stripTemplateHints(input.design_md || ""), input.submitted_by, now, now, input.type, input.target_kind, input.target_id, input.board.id, input.impact || null, JSON.stringify(input.patterns || []));
   db.prepare(`INSERT INTO review_events(id,review_id,kind,actor,body_md,data_json,origin,verification,created_at) VALUES (?,?,?,?,?,?,?,?,?)`)
     .run(uid(), id, "submitted", input.submitted_by, "Submitted for review.", JSON.stringify({ ...(input.submitted_data || {}), ...(actor !== input.submitted_by ? { created_by: actor } : {}) }), "human", "verified", now);
   if (input.work_item_id) { const w = db.prepare("SELECT * FROM work_items WHERE id=?").get(input.work_item_id) as any; if (w) db.prepare("UPDATE work_items SET review_id=?, approved_hash=?, material_change=0 WHERE id=?").run(id, w.content_hash, w.id); }
   if (ARTEFACT_TYPES.includes(input.type)) setArtefactLifecycle(input.target_id, "in_review", actor, { reviewId: id });
-  audit(actor, "create", "reviews", id, { code, type: input.type, target_kind: input.target_kind, target_id: input.target_id, board: input.board.code, ...(actor !== input.submitted_by ? { submitted_by: input.submitted_by } : {}) });
+  audit(actor, "create", "reviews", id, { code, type: input.type, target_kind: input.target_kind, target_id: input.target_id, board: input.board.code, ...(input.patterns?.length ? { patterns: input.patterns } : {}), ...(actor !== input.submitted_by ? { submitted_by: input.submitted_by } : {}) });
   await preReviewByType(reviewRow(id), "system");
   refreshAreas(id);
   return reviewRow(id);

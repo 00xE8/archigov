@@ -32,7 +32,7 @@ Provided assessments never count toward `progress.open_assessments`, `canDecide`
 
 ## UI
 
-ReviewDetail's Assessments table shows provided rows with a "Provided by Submitter" tag (self-explaining on hover), the result template renders as markdown in the expanded sub-row, and the submitter sees a "Provide Assessment" action where a board seat sees "Request Assessment"; the reason a submitter cannot request is surfaced in place from the server's `why`. Demo: REV-0010 carries a provided Scope assessment.
+ReviewDetail's Assessments table shows provided rows with a "Provided by Submitter" tag (self-explaining on hover), the result template renders as markdown in the expanded sub-row, and the submitter sees a "Provide Assessment" action where a board seat sees "Request Assessment"; the reason a submitter cannot request is surfaced in place from the server's `why`.
 
 ## Verification
 

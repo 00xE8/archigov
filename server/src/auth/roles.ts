@@ -166,6 +166,7 @@ export const ROUTE_RULES: RouteRule[] = [
   { method: "POST", pattern: /^\/boards$/, capability: "manage_platform" },
   { method: "PUT", pattern: /^\/boards\/[^/]+$/, capability: ["manage_platform", "manage_board"] },
   { method: "*", pattern: /^\/boards\/[^/]+\/(members|routing|policies)(\/|$)/, capability: ["manage_board", "manage_platform"] },
+  { method: "POST", pattern: /^\/boards\/[^/]+\/fast-lane\/declare$/, capability: "decide_review" },
   // sessions are the board's own business: seats only — the platform admin never passes here (operations, not governance);
   // `comment` lets any seat record its own attendance, the handlers check the seat on the session's board
   { method: "*", pattern: /^\/boards\/[^/]+\/sessions(\/|$)/, capability: ["manage_board", "approve_review", "decide_review", "comment"] },
@@ -192,6 +193,7 @@ export const ROUTE_RULES: RouteRule[] = [
   { method: "POST", pattern: /^\/assessments\/[^/]+\/waive$/, capability: "decide_review" },
   // withdrawing is the submitter's own act; the handler lets nobody else through on submit_review
   { method: "POST", pattern: /^\/reviews\/[^/]+\/decide$/, capability: ["decide_review", "submit_review"] },
+  { method: "PUT", pattern: /^\/reviews\/[^/]+\/patterns$/, capability: "submit_review" },
   { method: "POST", pattern: /^\/review-events\/[^/]+\/verify$/, capability: "verify" },
   { method: "POST", pattern: /^\/conditions\/[^/]+\/close$/, capability: "close_condition" },
   // AI review of a decision draft: the same right as authoring the decision it reviews
