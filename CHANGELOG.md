@@ -6,6 +6,8 @@ All notable changes to Archigov are documented here. The format follows [Keep a 
 
 ### Added
 
+- Public landing page at [archigov.com](https://archigov.com) (`site/`): a static page in the product's own design language (Carbon palette, IBM Plex, g100 hero over g10 content) with a live product shot, served as Cloudflare Worker static assets on the apex and www.
+
 - AI providers, chosen per feature ([docs](docs/features/ai-providers.md)): the platform admin configures OpenAI, Claude (Anthropic), Mistral and Ollama under Settings · AI and enables each AI feature separately with its own provider and model, with a one-click connection test. Everything is off by default, every feature keeps its deterministic fallback, and the legacy `LLM_*` environment gateway still works.
 - Seven AI features, each "AI proposes, a named human promotes": pre-review, decision drafting, **rule drafting** (NL → the JSON rule DSL, validated and dry-run against the live model before anyone saves), **control-reference suggestions** on catalogue drafts, **assessment summary drafting** under the type's template headings, **session notes drafting** for the secretary from the session's own records, and **evidence-mapping suggestions** for unmapped Defender/Policy keys pinned through the control-map editor.
 - Secrets management for provider keys: AES-256-GCM encryption at rest (`ARCHIGOV_SECRET_KEY` or a generated keyfile outside every backup and replica; legacy plaintext re-encrypts on first read), `AI_<PROVIDER>_API_KEY` / `…_FILE` environment injection that beats the database, and the existing guarantees — keys never returned, never audited, never exported.
