@@ -281,7 +281,7 @@ export function CountUp({ value, duration = 700 }: { value: number; duration?: n
  * Every page opens on a g100 hero band (the landing page's language: glow, a seeded constellation, a gradient
  * title). It is its own Carbon theme zone, so breadcrumbs, buttons and tags inside render in g100 correctly.
  */
-export function PageHeader({ title, subtitle, kicker, breadcrumb, actions, about }: { title: React.ReactNode; subtitle?: React.ReactNode; kicker?: React.ReactNode; breadcrumb?: React.ReactNode; actions?: React.ReactNode; about?: React.ReactNode }) {
+export function PageHeader({ title, subtitle, kicker, breadcrumb, actions, about, extra }: { title: React.ReactNode; subtitle?: React.ReactNode; kicker?: React.ReactNode; breadcrumb?: React.ReactNode; actions?: React.ReactNode; about?: React.ReactNode; extra?: React.ReactNode }) {
   const seed = typeof title === "string" ? title : String((title as any)?.props?.children ?? "page");
   const ctx = heroContextFor(useLocation().pathname);
   const Icon = ctx.icon;
@@ -300,6 +300,7 @@ export function PageHeader({ title, subtitle, kicker, breadcrumb, actions, about
             <h1>{title}</h1>{about && <AboutTip about={about} />}
           </div>
           {subtitle && <div className="ag-subtitle">{subtitle}</div>}
+          {extra}
         </div>
         {actions && <div className="ag-row">{actions}</div>}
       </div>
@@ -320,8 +321,8 @@ export function About({ title = "About this page", children }: { title?: string;
  * A page header whose H1 is the nav label, with ONE sentence under it; the longer explanation sits behind the
  * info icon at the top right (hover or focus). Every list page starts this way.
  */
-export function PageIntro({ title, lead, about, kicker, breadcrumb, actions }: { title: React.ReactNode; lead?: React.ReactNode; about?: React.ReactNode; kicker?: React.ReactNode; breadcrumb?: React.ReactNode; actions?: React.ReactNode }) {
-  return <PageHeader title={title} subtitle={lead} kicker={kicker} breadcrumb={breadcrumb} actions={actions} about={about} />;
+export function PageIntro({ title, lead, about, kicker, breadcrumb, actions, extra }: { title: React.ReactNode; lead?: React.ReactNode; about?: React.ReactNode; kicker?: React.ReactNode; breadcrumb?: React.ReactNode; actions?: React.ReactNode; extra?: React.ReactNode }) {
+  return <PageHeader title={title} subtitle={lead} kicker={kicker} breadcrumb={breadcrumb} actions={actions} about={about} extra={extra} />;
 }
 
 /** Router-aware Carbon link: Carbon styling and focus, client-side navigation. */

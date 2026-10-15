@@ -486,3 +486,56 @@ $ag-ease-prod: cubic-bezier(0.2, 0, 0.38, 0.9);
 @keyframes ag-ico-spin { from { opacity: 0; transform: rotate(-120deg) scale(0.6); } to { opacity: 1; transform: none; } }
 @keyframes ag-ico-swing { 0% { opacity: 0; transform: rotate(-20deg); } 40% { opacity: 1; transform: rotate(12deg); } 70% { transform: rotate(-5deg); } 100% { transform: none; } }
 @keyframes ag-ico-ring { 0% { opacity: 0.8; transform: scale(1); } 100% { opacity: 0; transform: scale(1.6); } }
+
+// ——— Overview, vivid (founder request, Oct 2026) ———
+// glass metric chips inside the hero band
+.ag-hero-stats { display: flex; flex-wrap: wrap; gap: sp.$spacing-04; margin-top: sp.$spacing-06; }
+.ag-glass { position: relative; display: grid; gap: 2px; min-inline-size: 9.5rem; padding: sp.$spacing-04 sp.$spacing-05;
+  background: rgba(colors.$white, 0.06); border: 1px solid rgba(colors.$white, 0.14); backdrop-filter: blur(6px);
+  border-top: 3px solid var(--g); 
+  .n { @include type.type-style("heading-05"); color: colors.$white; line-height: 1; }
+  .l { @include type.type-style("label-01"); color: colors.$gray-30; } }
+.ag-glass-teal { --g: #{colors.$teal-40}; } .ag-glass-cyan { --g: #{colors.$cyan-40}; } .ag-glass-blue { --g: #{colors.$blue-40}; }
+.ag-glass-red { --g: #{colors.$red-50}; } .ag-glass-green { --g: #{colors.$green-40}; }
+
+// KPI tiles: a tone, a permanent accent, a tinted wash and an icon square; "alert" when the number needs attention
+.ag-ktile { --kt: #{colors.$blue-60}; --kt-wash: #{rgba(colors.$blue-60, 0.06)};
+  background: linear-gradient(160deg, var(--kt-wash), transparent 55%), var(--cds-layer-01);
+  &::before { transform: scaleX(1); background: var(--kt); }
+  &:hover::before { background: linear-gradient(90deg, var(--kt), colors.$purple-60); } }
+.ag-kt-icon { display: inline-flex; padding: 6px; color: colors.$white; background: var(--kt); }
+.ag-kt-teal { --kt: #{colors.$teal-60}; --kt-wash: #{rgba(colors.$teal-50, 0.08)}; }
+.ag-kt-cyan { --kt: #{colors.$cyan-60}; --kt-wash: #{rgba(colors.$cyan-50, 0.08)}; }
+.ag-kt-blue { --kt: #{colors.$blue-60}; --kt-wash: #{rgba(colors.$blue-60, 0.07)}; }
+.ag-kt-purple { --kt: #{colors.$purple-60}; --kt-wash: #{rgba(colors.$purple-60, 0.07)}; }
+.ag-kt-green { --kt: #{colors.$green-60}; --kt-wash: #{rgba(colors.$green-50, 0.07)}; }
+.ag-kt-alert { --kt: #{colors.$red-60}; --kt-wash: #{rgba(colors.$red-50, 0.08)}; }
+
+// My Work queues: each kind of work gets its own edge colour
+.ag-queue { border-inline-start: 3px solid var(--q, #{colors.$blue-60}); padding-inline-start: sp.$spacing-03; background: var(--cds-layer-01); }
+.ag-q-positions, .ag-q-declare, .ag-q-resolve { --q: #{colors.$cyan-50}; }
+.ag-q-assessments { --q: #{colors.$teal-50}; }
+.ag-q-sessions { --q: #{colors.$magenta-50}; }
+.ag-q-conditions, .ag-q-circulations { --q: #{colors.$orange-40}; }
+.ag-q-resubmit { --q: #{colors.$red-50}; }
+.ag-q-changed, .ag-q-no_decision { --q: #{colors.$purple-50}; }
+
+// review stages sit on a connected rail
+.ag-stage-rail { position: relative; padding-block: sp.$spacing-02;
+  &::before { content: ""; position: absolute; inset-inline: 0; top: 50%; height: 2px; z-index: 0;
+    background: linear-gradient(90deg, colors.$blue-60, colors.$teal-50, colors.$purple-60); opacity: 0.35; }
+  > * { position: relative; z-index: 1; } }
+
+// verification meters: thick, gradient, filling in
+.ag-meter-track { block-size: 8px; }
+.ag-meter-fill { block-size: 100%; background: linear-gradient(90deg, colors.$blue-60, colors.$purple-60 60%, colors.$teal-50); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .ag-glass { animation: ag-rise 400ms $ag-ease-entrance both; }
+  @for $i from 1 through 4 { .ag-hero-stats > :nth-child(#{$i}) { animation-delay: #{200 + $i * 80}ms; } }
+  .ag-stage-rail > * { animation: ag-ico-pop 400ms $ag-ease-entrance both; }
+  @for $i from 1 through 10 { .ag-stage-rail > :nth-child(#{$i}) { animation-delay: #{300 + $i * 90}ms; } }
+  .ag-meter-fill { animation: ag-fill 1100ms $ag-ease-entrance 300ms both; }
+  .ag-queue { animation: ag-rise 400ms $ag-ease-entrance both; }
+}
+@keyframes ag-fill { from { inline-size: 0; } }
