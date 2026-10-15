@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button, SkeletonText, Table, TableHead, TableRow, TableHeader, TableBody, TableCell, ClickableTile, InlineLoading, InlineNotification, Tile, Tag, ContainedList, ContainedListItem } from "@carbon/react";
 import { Renew, Play, Settings as SettingsIcon } from "@carbon/icons-react";
 import { get, post, fmtDate, fmtDateTime, labelFor } from "../api";
-import { PageIntro, PageHeader, Coverage, useLoad, LoadError, RLink, StatusTag, PackImporter, AreaTag, AreaPositionTag, KindTag, useDocTitle } from "../components";
+import { PageIntro, PageHeader, Coverage, CountUp, useLoad, LoadError, RLink, StatusTag, PackImporter, AreaTag, AreaPositionTag, KindTag, useDocTitle } from "../components";
 import { Gated, useCan } from "../auth";
 
 // Carbon Charts is a separate chunk; the dashboard shows skeletons for the chart row until it arrives.
@@ -33,7 +33,7 @@ export default function Overview() {
   const tile = (label: string, value: number, to: string, flag?: React.ReactNode) => (
     <ClickableTile key={label} className="ag-tile" href={to} onClick={(e: React.SyntheticEvent) => { e.preventDefault(); nav(to); }}>
       <div className="label">{label}</div>
-      <div className="ag-row snug"><span className="value">{value}</span>{flag}</div>
+      <div className="ag-row snug"><span className="value"><CountUp value={value} /></span>{flag}</div>
     </ClickableTile>
   );
   // The tile label already says what changed, so the tag says only the state.
