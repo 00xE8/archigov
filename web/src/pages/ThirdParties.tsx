@@ -66,7 +66,7 @@ export default function ThirdParties() {
               <TableRow key={`${e.application.id}|${e.provider.id}`}>
                 <TableCell><RLink to={`/applications/${e.application.id}`}>{e.application.name}</RLink><div><CriticalityTag value={e.application.criticality} /></div></TableCell>
                 <TableCell>{e.provider.name}{e.provider.ctp && <div className="ag-muted ag-label">designated CTP</div>}</TableCell>
-                <TableCell><StatusTag kind="exit_status" value={e.status} size="sm" /></TableCell>
+                <TableCell><StatusTag kind="exit_status" value={e.status} /></TableCell>
                 <TableCell>{e.last?.details?.substitutability ? labelFor("substitutability", e.last.details.substitutability) : <span className="ag-muted">—</span>}</TableCell>
                 <TableCell>{e.last?.details?.tested_at ? fmtDate(e.last.details.tested_at) : <span className="ag-muted">{e.last ? "Not tested" : "—"}</span>}</TableCell>
                 <TableCell>{e.last ? <><div>{fmtDate(e.last.assessed_at)} · {e.last.assessed_by}</div><div className="ag-muted ag-label">valid until {fmtDate(e.last.valid_until)}</div></> : <span className="ag-muted">Never</span>}</TableCell>

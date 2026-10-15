@@ -2,7 +2,7 @@ import React from "react";
 import { useLocation } from "react-router-dom";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import { Tag, Button, InlineLoading, InlineNotification, ActionableNotification, Tile, DefinitionTooltip, Tooltip, Link as CarbonLink, Breadcrumb, BreadcrumbItem, DatePicker, DatePickerInput, SkeletonText, MenuButton, MenuItem, Accordion, AccordionItem, Theme } from "@carbon/react";
-import { Checkmark, Renew, CheckmarkFilled, CheckmarkOutline, ErrorFilled, WarningFilled, WarningAlt, WarningAltFilled, Information, Pending, InProgress, Time, CloseFilled, CloseOutline, Undefined, Unknown, User, MachineLearningModel, Rule, Cloud, Idea, Template, Upload, Calendar, Send, Dashboard, Application, Roadmap, Catalog, DecisionTree, TaskApproved, UserMultiple, EventSchedule, Security, CertificateCheck, Report, Settings, BusinessProcesses, Flash, Hourglass, Partnership } from "@carbon/icons-react";
+import { Checkmark, Renew, CheckmarkFilled, CheckmarkOutline, ErrorFilled, WarningFilled, WarningAlt, WarningAltFilled, Information, Pending, InProgress, Time, CloseFilled, CloseOutline, Undefined, Unknown, User, MachineLearningModel, Rule, Cloud, Idea, Template, Upload, Calendar, Send, Dashboard, Application, Roadmap, Catalog, DecisionTree, TaskApproved, UserMultiple, EventSchedule, Security, CertificateCheck, Report, Settings, BusinessProcesses, Flash, Hourglass, Partnership, Timeline } from "@carbon/icons-react";
 import { marked } from "marked";
 import { get, post, labelFor, fmtDateTime, shortType, sentence, download, slug, areaLabel } from "./api";
 import { Gated, useCan } from "./auth";
@@ -111,6 +111,10 @@ STATUS.fast_lane = { eligible: { type: "teal", icon: Flash }, full: { type: "gra
 // Lifecycle of a component against its vendor's support dates, worst last; unknown is the outline tag (nothing to go on).
 STATUS.lifecycle_state = { supported: { type: "green", icon: CheckmarkFilled }, ending: { type: "teal", icon: Time }, extended: { type: "magenta", icon: WarningAltFilled }, end_of_life: { type: "red", icon: ErrorFilled }, unknown: { type: "outline", icon: Unknown } };
 // A legacy assessment's standing for an application (DORA Art. 8(7)).
+// Where a roadmap item stands: a decision's realisation, a change's state, a condition, a lifecycle deadline, an exception.
+STATUS.roadmap_status = { realised: { type: "green", icon: CheckmarkFilled }, in_progress: { type: "blue", icon: InProgress }, not_started: { type: "gray", icon: Pending }, not_checkable: { type: "outline", icon: Unknown },
+  proposed: { type: "cyan", icon: Pending }, active: { type: "blue", icon: InProgress }, new: { type: "gray", icon: Pending }, closed: { type: "green", icon: CheckmarkOutline }, open: { type: "blue", icon: Time },
+  overdue: { type: "red", icon: WarningFilled }, met: { type: "green", icon: CheckmarkFilled }, end_of_life: { type: "red", icon: ErrorFilled }, extended: { type: "magenta", icon: WarningAltFilled }, ending: { type: "teal", icon: Time }, excepted: { type: "teal", icon: CheckmarkOutline } };
 STATUS.exit_status = { current: { type: "green", icon: CheckmarkFilled }, due: { type: "red", icon: WarningFilled }, not_needed: { type: "gray", icon: Undefined } };
 STATUS.legacy_status = { current: { type: "green", icon: CheckmarkFilled }, stale: { type: "magenta", icon: WarningAltFilled }, due: { type: "red", icon: WarningFilled }, not_needed: { type: "gray", icon: Undefined } };
 const EXPLAIN: Record<string, Record<string, string>> = {
@@ -120,6 +124,25 @@ const EXPLAIN: Record<string, Record<string, string>> = {
     extended: "Past the vendor's standard support, inside a paid extended-support window: legacy, assessed yearly.",
     end_of_life: "The vendor no longer issues security fixes for this version: legacy, and nothing patches it.",
     unknown: "No version fact was collected, or the version is not in the lifecycle data; a person can set it.",
+  },
+  roadmap_kind: {
+    decision: "An accepted or proposed architecture decision; its realisation is measured from its checkable constraint.",
+    change: "A planned change from the delivery backlog (or logged by hand), on its own or under the decision it carries out.",
+    condition: "A condition attached to an approval, due by its date.",
+    lifecycle: "A component approaching or past its vendor's end of support, from the legacy register.",
+    exception: "An approved exception: the finding it covers must be remediated before it expires.",
+  },
+  roadmap_status: {
+    realised: "Every resource the decision's constraint covers is of an allowed type, and nothing drifts from it.",
+    in_progress: "Some resources already conform to the decision; others still drift from it.",
+    not_started: "Nothing of the decision's allowed types is deployed yet.",
+    not_checkable: "The decision has no checkable constraint, so its realisation is evidenced through reviews rather than measured.",
+    proposed: "The decision is proposed and under review; realisation starts once it is accepted.",
+    overdue: "Past its due date and still open.",
+    end_of_life: "The vendor no longer issues security fixes for this version.",
+    extended: "Past standard support, inside a paid extended-support window that ends on the date shown.",
+    ending: "The vendor's support ends on the date shown.",
+    excepted: "An approved exception covers this finding until it expires; the remediation is due by then.",
   },
   exit_status: {
     current: "An exit plan less than a year old covers this application's reliance on this provider.",
@@ -279,6 +302,7 @@ const HERO_CONTEXT: { match: RegExp; tone: HeroTone; icon: React.ComponentType<a
   { match: /^\/services/, tone: "teal", icon: BusinessProcesses, motion: "rise" },
   { match: /^\/(governance|standards)/, tone: "purple", icon: Catalog, motion: "rise" },
   { match: /^\/decisions/, tone: "purple", icon: DecisionTree, motion: "swing" },
+  { match: /^\/roadmap/, tone: "purple", icon: Timeline, motion: "rise" },
   { match: /^\/reviews/, tone: "cyan", icon: TaskApproved, motion: "pop" },
   { match: /^\/boards/, tone: "magenta", icon: UserMultiple, motion: "pulse" },
   { match: /^\/sessions/, tone: "magenta", icon: EventSchedule, motion: "swing" },

@@ -548,7 +548,7 @@ function EventBody({ e, boardAreas, nameOf }: { e: any; boardAreas: { id: string
     case "assessment_waived": line = <div className="ag-row tight"><KindTag kind="assessment_type" value={d.type} />{d.title && <span className="ag-body">{d.title}</span>}<StatusTag kind="assessment_status" value="waived" size="sm" /></div>; break;
     case "consent_declared": line = d.outcome ? <StatusTag kind="outcome" value={d.outcome} size="sm" /> : null; break;
     case "patterns_changed": { const to: string[] = d.to || []; line = to.length ? <div className="ag-row tight">{to.map((c) => <Tag key={c} size="sm" type="purple"><span title="An adopted pattern the design claims to follow">{c}</span></Tag>)}</div> : null; break; }
-    default: { if (d.outcome) line = <div className="ag-row tight"><StatusTag kind="outcome" value={d.outcome} size="sm" />{d.fast_lane ? <StatusTag kind="fast_lane" value="eligible" size="sm" label="Via the Fast Lane" /> : null}{d.circulation_due ? <span className="ag-muted ag-label">positions due {fmtDate(d.circulation_due)}</span> : null}</div>; }
+    default: { if (d.outcome) line = <div className="ag-row tight"><StatusTag kind="outcome" value={d.outcome} size="sm" />{d.fast_lane ? <StatusTag kind="fast_lane" value="eligible" label="Via the Fast Lane" /> : null}{d.circulation_due ? <span className="ag-muted ag-label">positions due {fmtDate(d.circulation_due)}</span> : null}</div>; }
   }
   // The dependency event's body repeats the link line; everything else keeps its body (the position text, the rationale, a comment).
   return <>{line}{e.body_md && e.kind !== "dependency_created" ? <Markdown md={e.body_md} /> : null}</>;
@@ -575,7 +575,7 @@ function FastLaneSection({ fl, via, canEdit, onEdit }: { fl: any; via: boolean; 
       <Table size="sm" aria-label="Fast lane checks"><TableHead><TableRow><TableHeader>Check</TableHeader><TableHeader>Result</TableHeader><TableHeader>Why</TableHeader></TableRow></TableHead>
         <TableBody>{shown.map((c: any) => <TableRow key={c.id}>
           <TableCell className="ag-nowrap">{c.name}</TableCell>
-          <TableCell><StatusTag kind="check" value={c.ok ? "ok" : "failed"} label={c.ok ? "Passes" : "Fails"} size="sm" /></TableCell>
+          <TableCell><StatusTag kind="check" value={c.ok ? "ok" : "failed"} label={c.ok ? "Passes" : "Fails"} /></TableCell>
           <TableCell className="ag-wrap"><span className="ag-label">{c.detail}</span></TableCell>
         </TableRow>)}</TableBody></Table>
       {!fl.eligible && failed.length < (fl.checks || []).length && <Button size="sm" kind="ghost" renderIcon={all ? ChevronUp : ChevronDown} onClick={() => setAll(!all)}>{all ? "Show Failing Checks Only" : `Show All ${(fl.checks || []).length} Checks`}</Button>}

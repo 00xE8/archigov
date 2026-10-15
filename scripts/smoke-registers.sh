@@ -2,7 +2,8 @@
 # Archigov registers smoke test — criticality classification (derived from tags, set by a person with a reason, reset,
 # verified, read by rules as app.*), the business-service dependency map and the DORA register's criticality column;
 # the legacy register (lifecycle states, a person's version correction, the yearly legacy assessment); third parties
-# (providers, concentration on a designated critical third party, exit plans into the DORA register), end to end
+# (providers, concentration on a designated critical third party, exit plans into the DORA register); the roadmap
+# built from records (decision realisation, lanes, per-application view), end to end
 # through the API of a LOCAL-mode seeded instance.
 #
 #   scripts/smoke-registers.sh [base_url]   default http://localhost:8080
@@ -174,6 +175,22 @@ def i_():
     s, r = put("/third-parties/ctp", {"instrument": "x", "entries": []}, user="s.patel"); assert s == 403, f"an author does not edit the designations: {s} {r}"
     return f"{tp['counts']['critical_on_ctp']} critical application(s) on a designated CTP; Ledgerline exit plan recorded and in the DORA register; designations are the platform admin's"
 step("i  third parties: concentration, exit plans, the DORA register", i_)
+
+# ---------- j. the roadmap ----------
+def j_():
+    s, rm = get("/roadmap", user="a.uditor"); assert s == 200, f"{s} {rm}"
+    items = [dict(i, lane=l) for l, xs in rm["lanes"].items() for i in xs]
+    assert rm["counts"]["total"] == len(items) and all(rm["counts"][l] == len(rm["lanes"][l]) for l in ("now", "next", "later", "done")), rm["counts"]
+    adr = {i["code"]: i for i in items if i["kind"] == "decision"}
+    assert adr["ADR-0002"]["status"] in ("in_progress", "realised") and adr["ADR-0002"]["progress"]["total"] >= 1, adr["ADR-0002"]
+    assert adr["ADR-0005"]["lane"] == "done" and adr["ADR-0001"]["status"] == "not_checkable", (adr["ADR-0005"], adr["ADR-0001"]["status"])
+    assert any(i["kind"] == "lifecycle" and i["lane"] == "now" for i in items), "end-of-life upgrades are due now"
+    pid = apps()["Pharmacy"]["id"]
+    s, one = get(f"/roadmap?application={pid}", user="a.uditor"); assert s == 200 and one["application"]["name"] == "Pharmacy", one.get("application")
+    assert all(any(a_["id"] == pid for a_ in i["applications"]) or (i["kind"] == "decision" and not i["applications"]) for l in one["lanes"].values() for i in l)
+    s, x = get("/roadmap?application=nope", user="a.uditor"); assert s == 404, s
+    return f"{rm['counts']['now']} now · {rm['counts']['next']} next · {rm['counts']['later']} later · {rm['counts']['done']} done; ADR-0002 {adr['ADR-0002']['status']} ({adr['ADR-0002']['progress']['done']}/{adr['ADR-0002']['progress']['total']}); Pharmacy's own roadmap"
+step("j  the roadmap: built from records, by lane, per application", j_)
 
 passed = sum(1 for _, ok in results if ok); failed = len(results) - passed
 print(f"\n{passed} passed, {failed} failed  ({BASE})")
