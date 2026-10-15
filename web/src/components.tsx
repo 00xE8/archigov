@@ -1,7 +1,8 @@
 import React from "react";
+import { useLocation } from "react-router-dom";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import { Tag, Button, InlineLoading, InlineNotification, ActionableNotification, Tile, DefinitionTooltip, Tooltip, Link as CarbonLink, Breadcrumb, BreadcrumbItem, DatePicker, DatePickerInput, SkeletonText, MenuButton, MenuItem, Accordion, AccordionItem, Theme } from "@carbon/react";
-import { Checkmark, Renew, CheckmarkFilled, CheckmarkOutline, ErrorFilled, WarningFilled, WarningAlt, WarningAltFilled, Information, Pending, InProgress, Time, CloseFilled, CloseOutline, Undefined, Unknown, User, MachineLearningModel, Rule, Cloud, Idea, Template, Upload, Calendar, Send } from "@carbon/icons-react";
+import { Checkmark, Renew, CheckmarkFilled, CheckmarkOutline, ErrorFilled, WarningFilled, WarningAlt, WarningAltFilled, Information, Pending, InProgress, Time, CloseFilled, CloseOutline, Undefined, Unknown, User, MachineLearningModel, Rule, Cloud, Idea, Template, Upload, Calendar, Send, Dashboard, Application, Roadmap, Catalog, DecisionTree, TaskApproved, UserMultiple, EventSchedule, Security, CertificateCheck, Report, Settings } from "@carbon/icons-react";
 import { marked } from "marked";
 import { get, post, labelFor, fmtDateTime, shortType, sentence, download, slug, areaLabel } from "./api";
 import { Gated, useCan } from "./auth";
@@ -216,10 +217,36 @@ export function AboutTip({ about, label = "About this page" }: { about: React.Re
 
 /** A small deterministic PRNG so each page's constellation is stable across renders and visits. */
 const seeded = (seed: string) => { let h = 2166136261; for (const c of seed) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return () => ((h = Math.imul(h ^ (h >>> 15), 2246822507), h = Math.imul(h ^ (h >>> 13), 3266489909), (h ^= h >>> 16) >>> 0) / 4294967296); };
-const NET_FILLS = ["#78a9ff", "#33b1ff", "#be95ff", "#3ddbd9"];
+/**
+ * Each part of the product has its own banner tone and a Carbon icon that animates once as the page lands (and again
+ * on hover) — the brand book's motion-icon rules: no loop, nothing under reduced motion. Tones are Carbon palette
+ * steps; the constellation draws in the tone's own colours. The title itself stays one colour on every page.
+ */
+type HeroTone = "blue" | "teal" | "purple" | "cyan" | "magenta" | "red" | "green" | "gray";
+const TONE_FILLS: Record<HeroTone, string[]> = {
+  blue: ["#78a9ff", "#4589ff", "#a6c8ff", "#be95ff"], teal: ["#3ddbd9", "#08bdba", "#9ef0f0", "#33b1ff"],
+  purple: ["#be95ff", "#a56eff", "#d4bbff", "#ff7eb6"], cyan: ["#33b1ff", "#1192e8", "#82cfff", "#78a9ff"],
+  magenta: ["#ff7eb6", "#ee5396", "#ffafd2", "#be95ff"], red: ["#ff8389", "#fa4d56", "#ffb3b8", "#ff7eb6"],
+  green: ["#42be65", "#6fdc8c", "#a7f0ba", "#3ddbd9"], gray: ["#a8a8a8", "#8d8d8d", "#c6c6c6", "#78a9ff"],
+};
+const HERO_CONTEXT: { match: RegExp; tone: HeroTone; icon: React.ComponentType<any>; motion: "pop" | "spin" | "swing" | "pulse" | "rise" }[] = [
+  { match: /^\/$/, tone: "blue", icon: Dashboard, motion: "pop" },
+  { match: /^\/applications/, tone: "teal", icon: Application, motion: "rise" },
+  { match: /^\/backlog/, tone: "teal", icon: Roadmap, motion: "swing" },
+  { match: /^\/(governance|standards)/, tone: "purple", icon: Catalog, motion: "rise" },
+  { match: /^\/decisions/, tone: "purple", icon: DecisionTree, motion: "swing" },
+  { match: /^\/reviews/, tone: "cyan", icon: TaskApproved, motion: "pop" },
+  { match: /^\/boards/, tone: "magenta", icon: UserMultiple, motion: "pulse" },
+  { match: /^\/sessions/, tone: "magenta", icon: EventSchedule, motion: "swing" },
+  { match: /^\/conformance/, tone: "red", icon: Security, motion: "pulse" },
+  { match: /^\/evidence/, tone: "green", icon: CertificateCheck, motion: "pop" },
+  { match: /^\/audit/, tone: "green", icon: Report, motion: "rise" },
+  { match: /^\/settings/, tone: "gray", icon: Settings, motion: "spin" },
+];
+const heroContextFor = (path: string) => HERO_CONTEXT.find((c) => c.match.test(path)) || HERO_CONTEXT[0];
 
 /** The landing page's "derived model" network, as a decorative backdrop for every page header (seeded by the page). */
-export function HeroNetwork({ seed }: { seed: string }) {
+export function HeroNetwork({ seed, tone = "blue" }: { seed: string; tone?: HeroTone }) {
   const { nodes, edges } = React.useMemo(() => {
     const r = seeded(seed || "archigov");
     const ns = Array.from({ length: 22 }, () => ({ x: 520 + r() * 900, y: 12 + r() * 196 }));
@@ -231,7 +258,7 @@ export function HeroNetwork({ seed }: { seed: string }) {
   return (
     <svg className="ag-hero-net" viewBox="0 0 1440 220" preserveAspectRatio="xMaxYMid slice" aria-hidden="true" focusable="false">
       {edges.map(([i, j], k) => <line key={k} x1={nodes[i].x} y1={nodes[i].y} x2={nodes[j].x} y2={nodes[j].y} style={{ ["--d" as any]: `${(k % 13) * 90}ms` }} />)}
-      {nodes.map((n, k) => <circle key={k} cx={n.x} cy={n.y} r={2.5 + (k % 3)} fill={NET_FILLS[k % 4]} style={{ ["--d" as any]: `${(k % 9) * 120}ms` }} />)}
+      {nodes.map((n, k) => <circle key={k} cx={n.x} cy={n.y} r={2.5 + (k % 3)} fill={TONE_FILLS[tone][k % 4]} style={{ ["--d" as any]: `${(k % 9) * 120}ms` }} />)}
     </svg>
   );
 }
@@ -256,15 +283,22 @@ export function CountUp({ value, duration = 700 }: { value: number; duration?: n
  */
 export function PageHeader({ title, subtitle, kicker, breadcrumb, actions, about }: { title: React.ReactNode; subtitle?: React.ReactNode; kicker?: React.ReactNode; breadcrumb?: React.ReactNode; actions?: React.ReactNode; about?: React.ReactNode }) {
   const seed = typeof title === "string" ? title : String((title as any)?.props?.children ?? "page");
+  const ctx = heroContextFor(useLocation().pathname);
+  const Icon = ctx.icon;
+  // replaying on hover restarts the one-shot animation by remounting the glyph
+  const [play, setPlay] = React.useState(0);
   return (
-    <Theme theme="g100" className="ag-hero">
-      <HeroNetwork seed={seed} />
+    <Theme theme="g100" className={`ag-hero ag-tone-${ctx.tone}`}>
+      <HeroNetwork seed={seed} tone={ctx.tone} />
       <div className="ag-page-header ag-row between">
         <div>
           {breadcrumb}
           {kicker && <div className="ag-muted ag-label">{kicker}</div>}
           {/* the info icon sits beside the title (after the h1, not inside it, so the heading's accessible name stays clean) */}
-          <div className="ag-title-row"><h1>{title}</h1>{about && <AboutTip about={about} />}</div>
+          <div className="ag-title-row">
+            <span className={`ag-hero-icon ag-motion-${ctx.motion}`} aria-hidden="true" onMouseEnter={() => setPlay((n) => n + 1)}><Icon key={play} size={24} /></span>
+            <h1>{title}</h1>{about && <AboutTip about={about} />}
+          </div>
           {subtitle && <div className="ag-subtitle">{subtitle}</div>}
         </div>
         {actions && <div className="ag-row">{actions}</div>}
