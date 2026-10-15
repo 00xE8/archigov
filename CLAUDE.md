@@ -175,6 +175,16 @@ last direct-to-main blob; from here on:
   (what it does; who it serves, by role; how it works — endpoints, tables, capabilities, migrations; what it
   deliberately does not do), a CHANGELOG.md entry under Unreleased, and CLAUDE.md's layout/conventions kept
   current. Code comments keep the existing rule: constraints the code cannot show, never narration.
+- **Every change — feature, fix, refactor or chore — gets a documentation impact check before its PR is
+  opened**: decide explicitly what must be **created**, **updated** or **deleted**, and do it in the same PR.
+  Walk the whole set: `README.md`, `docs/features/*`, `docs/board-sessions.md` and other specs, CHANGELOG.md,
+  this file (layout, conventions, known gaps — strike what the change closed), `infra/README.md` (env vars,
+  deployment), code comments that describe the changed behaviour, and the user documentation at
+  archigov.com/docs (sources in the private repo's `site/docs-src/`: prose, screenshots and process diagrams —
+  a changed UI label, route, rule, role or workflow step means the page, its screenshot or its diagram is now
+  wrong). Stale documentation is a defect: remove what no longer applies rather than leaving it to mislead.
+  The PR body states the outcome in one line — what was created, updated or deleted, or "no documentation
+  impact" with the reason.
 - **Quality gate** (unchanged, now per-PR): tsc clean in both folders, `npm test` green, the eight-smoke battery
   on fresh instances, axe + a browser pass on touched UI, `npm ci --dry-run` lock check.
 - **Releases**: semver. Bump both package.json versions, move Unreleased to a dated heading in CHANGELOG.md,
