@@ -138,6 +138,8 @@ web/src/pages/*                Overview, Applications, ApplicationDetail (Design
                                (NEEDS_DECISION_TYPES in http.ts); rows from a real source are read-only here (409)
 web/src/components.tsx         StatusTag, VerificationTag, FindingEvidence, ExportMenu, EmptyState, LoadError, DateField, useLoad …
 design-system/                 README.md (brand book) + tokens.json, exported from the Carbon artifact
+site/                          the archigov.com landing page: static assets (public/) on a Cloudflare Worker (wrangler.jsonc routes the apex
+                               and www as custom domains; deploy with the account token in the environment: `wrangler deploy` from site/)
 infra/                         README (self-host deployment + env matrix), litestream/ (S3/R2/MinIO example config);
                                docker-compose.prod.yml at the root. The managed-service front door (Cloudflare Worker + Durable Object +
                                Containers) and the research documents live in the private repo 00xE8/archigov-internal

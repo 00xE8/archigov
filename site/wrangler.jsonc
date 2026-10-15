@@ -1,0 +1,12 @@
+// The archigov.com landing page: static assets on a Worker, nothing else. Deploy with
+// `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID` in the environment: `npx wrangler deploy` (or the global wrangler).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "archigov-site",
+  "compatibility_date": "2026-10-01",
+  "assets": { "directory": "./public" },
+  "routes": [
+    { "pattern": "archigov.com", "custom_domain": true },
+    { "pattern": "www.archigov.com", "custom_domain": true }
+  ]
+}
