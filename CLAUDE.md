@@ -106,7 +106,8 @@ web/src/pages/*                Overview, Applications, ApplicationDetail (Design
                                Catalogue (kinds; /standards redirects), Decisions (the record argues in three parts: Recommended Option,
                                Justification — the argument the board tests — and Consequences stating what acceptance means and which risks
                                are accepted (justification_md, m013); the form's AI review block critiques the argument and offers a tightened
-                               version to apply; a personal AI Assistant toggle rides beside the admin feature flag, and missing-evidence
+                               version to apply; the Review Argument with AI button is always on the form — greyed via Gated with the enable-it
+                               reason when the admin feature is off — and missing-evidence
                                suggestions become tracked assessments in one click — save draft & trigger), DecisionDetail (Evidence section:
                                trigger/provide/complete assessments on the proposed decision; Submit for Review creates the decision review),
                                Reviews (typed; ProgressIndicator for the policy steps), ReviewDetail (logical blocks: facts strip under the
