@@ -28,6 +28,7 @@ added to .github/licensing.json (issue #<n>):
   and an error response.
 
 Do not edit sync.ts, routes/ or the web UI: list what wiring is needed and I will raise it with
-the maintainer. Run `npm test` and `npm run typecheck` in server/. Do not add a Signed-off-by
-line or run git commit -s; I will review and sign off.
+the maintainer. Run `npm test` and `npm run typecheck` in server/. If you commit, use a
+conventional message with an Assisted-by trailer and no Signed-off-by; never run git commit -s.
+I will review and sign off.
 ```

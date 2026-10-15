@@ -22,7 +22,8 @@ Work to these rules:
 
 Run `npm test`, and `npm run typecheck` in server/ and web/. If you can, start a scratch
 instance (DATA_DIR=$(mktemp -d) PORT=8091 npm run dev in server/) and run the smoke script
-nearest the change against it. Do not add a Signed-off-by line or run git commit -s, and never
-post the CLA agreement: both are mine to do. Finish with what changed and why, how you tested
-it, and anything you could not verify.
+nearest the change against it. If you commit, use a conventional message with an Assisted-by
+trailer and no Signed-off-by; never run git commit -s, and never post the CLA agreement: both
+are mine to do. Finish with what changed and why, how you tested it, and anything you could not
+verify.
 ```

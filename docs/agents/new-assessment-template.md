@@ -18,5 +18,6 @@ it asks for what a competent <type> assessment answers:
   label it needs.
 
 Run `npm test` and `npm run typecheck` in server/. Change nothing outside server/src/templates/.
-Do not add a Signed-off-by line or run git commit -s; I will review and sign off.
+If you commit, use a conventional message with an Assisted-by trailer and no Signed-off-by;
+never run git commit -s; I will review and sign off.
 ```

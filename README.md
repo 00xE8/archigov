@@ -232,8 +232,8 @@ A starting prompt:
 ```text
 Read AGENTS.md and CONTRIBUTING.md in this repository and follow them.
 Then follow docs/agents/new-policy-pack.md to add a pack for <framework>.
-Stay inside the folder it names and run the tests. Stop before committing with a
-sign-off: I will review the diff and sign off myself.
+Stay inside the folder it names and run the tests. Never add a sign-off: I will
+review the diff and sign off myself.
 ```
 
 You remain the contributor:

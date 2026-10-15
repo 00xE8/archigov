@@ -8,7 +8,7 @@ This is the brief for coding agents (Claude Code, Codex, Cursor, GitHub Copilot,
 
 The agent writes code; the person running it contributes it and answers for it. Two acts are legal statements by that person, and an agent never makes them:
 
-1. **The DCO sign-off.** Do not add `Signed-off-by:` lines, and do not run `git commit -s`. The person reviews the diff and signs off themselves (`git rebase --signoff origin/main`), certifying the [Developer Certificate of Origin](DCO).
+1. **The DCO sign-off.** Do not add `Signed-off-by:` lines, and do not run `git commit -s`. You may commit, on a branch with a conventional message and an `Assisted-by:` trailer, unless the person asks you to leave the changes uncommitted. The person reviews the diff and signs off themselves (`git rebase --signoff origin/main`), certifying the [Developer Certificate of Origin](DCO).
 2. **The CLA agreement.** If the **Archigov CLA** check asks for agreement to [docs/CLA.md](docs/CLA.md), tell the person. Never post the agreement comment.
 
 **Say when an agent helped.** Add an `Assisted-by:` trailer to every commit an agent wrote, for example `Assisted-by: Claude Code (claude-opus-5-5)`, and say so in the pull request description. Never describe work as reviewed or tested when it was not.
@@ -32,7 +32,11 @@ Archigov governs architecture decisions: argued in three parts, linked to the st
 - **Everything that matters is audited.** Every state change calls `audit()` (`server/src/db.ts`, SHA-256 hash-chained). Never edit or delete audit rows.
 - **Schema changes are forward-only.** One new file per change: `server/src/migrations/mNNN-slug.ts`.
 - **Packs and templates carry references only.** Never reproduce the text of ISO, DORA, NIST or any other control body.
-- **Compliance checks on resource configuration are imported, never rebuilt.** Defender for Cloud and Azure Policy results arrive as evidence. Missing evidence is a finding, never a pass. Fixtures never show evidence a real tenant could not produce.
+- **Compliance checks on resource configuration are imported, never rebuilt.**
+  - Defender for Cloud and Azure Policy results arrive as evidence; a rule asserts on them with `op: evidence`, using a control key that exists in `server/src/azure/controls.ts`.
+  - Missing evidence is a finding, never a pass.
+  - Architecture properties the collector derives (redundancy, region, tags, decisions, `app.*` classification) may be read directly.
+  - Fixtures never show evidence a real tenant could not produce.
 
 ## Repository map
 
