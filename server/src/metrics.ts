@@ -4,6 +4,7 @@ import { allClassifications } from "./classification.js";
 import { legacyRegister } from "./lifecycle.js";
 import { thirdParties } from "./suppliers.js";
 import { roadmap } from "./roadmap.js";
+import { signOffCoverage } from "./signoffs.js";
 
 /**
  * Governance metrics, computed from the records on read — the numbers a head of architecture reports to a board:
@@ -91,7 +92,8 @@ export function governanceMetrics(opts: { days?: number } = {}) {
   const coverage = { verification: verificationCoverage(),
     classification: { classified: cls.filter((c) => c.criticality).length, verified: cls.filter((c) => c.verification === "verified").length, total: listElements("application").length },
     legacy_assessments: { current: needLegacy.filter((a: any) => a.status === "current").length, needed: needLegacy.length },
-    exit_plans: { current: tp.exit_plans.filter((e: any) => e.status === "current").length, needed: tp.exit_plans.length } };
+    exit_plans: { current: tp.exit_plans.filter((e: any) => e.status === "current").length, needed: tp.exit_plans.length },
+    sign_offs: signOffCoverage() };
 
   return { generated_at: nowS, period_days: period, from, reviews, decisions, conditions, exceptions, conformance, coverage,
     registers: { legacy_counts: legacy.counts, concentration: tp.concentration.map((c: any) => ({ provider: c.name, designated: !!c.ctp, critical: c.critical, of: c.of })) },

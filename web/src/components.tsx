@@ -2,7 +2,7 @@ import React from "react";
 import { useLocation } from "react-router-dom";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import { Tag, Button, InlineLoading, InlineNotification, ActionableNotification, Tile, DefinitionTooltip, Tooltip, Link as CarbonLink, Breadcrumb, BreadcrumbItem, DatePicker, DatePickerInput, SkeletonText, MenuButton, MenuItem, Accordion, AccordionItem, Theme } from "@carbon/react";
-import { Checkmark, Renew, CheckmarkFilled, CheckmarkOutline, ErrorFilled, WarningFilled, WarningAlt, WarningAltFilled, Information, Pending, InProgress, Time, CloseFilled, CloseOutline, Undefined, Unknown, User, MachineLearningModel, Rule, Cloud, Idea, Template, Upload, Calendar, Send, Dashboard, Application, Roadmap, Catalog, DecisionTree, TaskApproved, UserMultiple, EventSchedule, Security, CertificateCheck, Report, Settings, BusinessProcesses, Flash, Hourglass, Partnership, Timeline, ChartLineData } from "@carbon/icons-react";
+import { Checkmark, Renew, CheckmarkFilled, CheckmarkOutline, ErrorFilled, WarningFilled, WarningAlt, WarningAltFilled, Information, Pending, InProgress, Time, CloseFilled, CloseOutline, Undefined, Unknown, User, MachineLearningModel, Rule, Cloud, Idea, Template, Upload, Calendar, Send, Dashboard, Application, Roadmap, Catalog, DecisionTree, TaskApproved, UserMultiple, EventSchedule, Security, CertificateCheck, Report, Settings, BusinessProcesses, Flash, Hourglass, Partnership, Timeline, ChartLineData, Stamp } from "@carbon/icons-react";
 import { marked } from "marked";
 import { get, post, labelFor, fmtDateTime, shortType, sentence, download, slug, areaLabel } from "./api";
 import { Gated, useCan } from "./auth";
@@ -115,6 +115,8 @@ STATUS.lifecycle_state = { supported: { type: "green", icon: CheckmarkFilled }, 
 STATUS.roadmap_status = { realised: { type: "green", icon: CheckmarkFilled }, in_progress: { type: "blue", icon: InProgress }, not_started: { type: "gray", icon: Pending }, not_checkable: { type: "outline", icon: Unknown },
   proposed: { type: "cyan", icon: Pending }, active: { type: "blue", icon: InProgress }, new: { type: "gray", icon: Pending }, closed: { type: "green", icon: CheckmarkOutline }, open: { type: "blue", icon: Time },
   overdue: { type: "red", icon: WarningFilled }, met: { type: "green", icon: CheckmarkFilled }, end_of_life: { type: "red", icon: ErrorFilled }, extended: { type: "magenta", icon: WarningAltFilled }, ending: { type: "teal", icon: Time }, excepted: { type: "teal", icon: CheckmarkOutline } };
+STATUS.signoff_status = { current: { type: "green", icon: CheckmarkFilled }, due_soon: { type: "teal", icon: Time }, overdue: { type: "red", icon: WarningFilled } };
+STATUS.signoff_outcome = { reaffirmed: { type: "green", icon: CheckmarkOutline }, revision_needed: { type: "magenta", icon: WarningAltFilled } };
 STATUS.exit_status = { current: { type: "green", icon: CheckmarkFilled }, due: { type: "red", icon: WarningFilled }, not_needed: { type: "gray", icon: Undefined } };
 STATUS.legacy_status = { current: { type: "green", icon: CheckmarkFilled }, stale: { type: "magenta", icon: WarningAltFilled }, due: { type: "red", icon: WarningFilled }, not_needed: { type: "gray", icon: Undefined } };
 const EXPLAIN: Record<string, Record<string, string>> = {
@@ -143,6 +145,15 @@ const EXPLAIN: Record<string, Record<string, string>> = {
     extended: "Past standard support, inside a paid extended-support window that ends on the date shown.",
     ending: "The vendor's support ends on the date shown.",
     excepted: "An approved exception covers this finding until it expires; the remediation is due by then.",
+  },
+  signoff_status: {
+    current: "The next review date is more than 30 days away.",
+    due_soon: "The next review date is within 30 days: the owning board's chair should reaffirm it or ask for a revision.",
+    overdue: "The review date has passed without a sign-off.",
+  },
+  signoff_outcome: {
+    reaffirmed: "The owning board's chair stated it still holds; the next review is a full cadence away.",
+    revision_needed: "The owning board's chair stated it needs revising; it comes back for sign-off in three months.",
   },
   exit_status: {
     current: "An exit plan less than a year old covers this application's reliance on this provider.",
@@ -306,6 +317,7 @@ const HERO_CONTEXT: { match: RegExp; tone: HeroTone; icon: React.ComponentType<a
   { match: /^\/reviews/, tone: "cyan", icon: TaskApproved, motion: "pop" },
   { match: /^\/boards/, tone: "magenta", icon: UserMultiple, motion: "pulse" },
   { match: /^\/sessions/, tone: "magenta", icon: EventSchedule, motion: "swing" },
+  { match: /^\/sign-offs/, tone: "magenta", icon: Stamp, motion: "pop" },
   { match: /^\/conformance/, tone: "red", icon: Security, motion: "pulse" },
   { match: /^\/legacy/, tone: "red", icon: Hourglass, motion: "swing" },
   { match: /^\/third-parties/, tone: "red", icon: Partnership, motion: "pop" },

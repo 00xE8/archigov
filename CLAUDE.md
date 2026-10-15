@@ -54,6 +54,11 @@ server/src/lifecycle.ts        legacy register: lifecycle snapshot (lifecycle/sn
                                latest SP assumed and said), stateOfCycle (supported/ending/extended/end_of_life; unknown), lifecycle_overrides
                                (m017, a person's correction), legacyOf()/recordLegacyAssessment() (register_assessments, kind legacy, 12-month
                                validity, stale when a new legacy component appears), legacyRegister(). Routes in routes/registers.ts
+server/src/signoffs.ts         review dates and sign-offs: subjects = adopted artefacts + accepted decisions; owning board = routeBoard of their
+                               review type; next due = latest sign_offs.next_due (m020) else adopted_at/decided_at + review.artefact_months (12) /
+                               review.decision_months (24); status overdue|due_soon (≤30 d)|current; signOff() — owning chair only, reaffirmed (+cadence)
+                               or revision_needed (note ≥10, +3 months), audited signoff:<outcome>; signOffsDueFor() feeds /me/work.sign_offs.
+                               Routes in routes/signoffs.ts: GET/POST /sign-offs
 server/src/metrics.ts          governanceMetrics({days}): reviews (lead time median/p90 overall+by type, recycle rate, fast-lane approvals, position
                                latency, open/oldest, 6 monthly points), decisions (accepted, lead time, realisation from the roadmap), conditions,
                                exception ageing buckets, conformance (trend = last run per day, opened/resolved, time to fix), coverage; nulls never
@@ -121,21 +126,22 @@ scripts/smoke*.sh              smoke.sh (governance flow), smoke-auth.sh (two-le
                                positions, sessions, delegation, dependencies, circulation, minutes, assessments), smoke-work.sh (/me/work by role, pipeline,
                                decisions 409, per-area findings, audit item codes), smoke-registers.sh (classification: derived, set/reset/verify,
                                business services, DORA column, app.* rules; legacy register, corrections, legacy assessment; third parties,
-                               exit plans into the DORA register; the roadmap; metrics and a signed board pack), smoke-catalogue.sh (kinds/lifecycle/import),
+                               exit plans into the DORA register; the roadmap; metrics and a signed board pack; sign-offs), smoke-catalogue.sh (kinds/lifecycle/import),
                                smoke-integrations.sh (fixtures), smoke-empty.sh (first run)
 web/src/App.tsx                Carbon shell: grouped nav (Model / Governance / Evidence / Risk; the Settings item, help-panel link and Overview
                                "Open Settings" render only with manage_platform — Settings is operations, so only the platform admin carries
                                it; the /settings route stays open for the Catalogue's ArchiMate-import deep link, and the evidence signing
                                key is republished on the Audit Log page for auditors), header search, help, account, and a notification bell:
                                /me/work polled every minute and on navigation, a numbered badge of what is ASSIGNED (positions, declarations,
-                               conditionals to resolve, assessments, owned conditions, circulations, resubmissions), a panel of linked rows,
+                               conditionals to resolve, assessments, owned conditions, circulations, resubmissions, sign-offs due), a panel of linked rows,
                                and a localStorage seen-set that only drives the per-item "New" tag (never the badge)
 web/src/auth.tsx               AuthProvider, useCan(), Gated, SignIn page, account panel / switch user
 web/src/charts.tsx             Overview charts (lazy chunk), forms by the data's job: at-a-glance row (evidence-passing and human-verification
                                gauges — neutral blue, no thresholds: a pass-rate judgment would assert compliance — and a reviews-by-stage donut
                                whose slice hues echo the stage tags), then severity bars, findings-over-time stacked area by severity (line
                                fallback for older servers), evidence by source (emphasis form), open findings by application
-web/src/pages/*                Metrics (/metrics, Evidence group: period select, figure tiles, charts lazy in metricsCharts.tsx — decided per month,
+web/src/pages/*                SignOffs (/sign-offs, Governance group after Board Sessions: sortable table — item, owning board, last sign-off,
+                               next review, status — Sign Off modal for the owning chair), Metrics (/metrics, Evidence group: period select, figure tiles, charts lazy in metricsCharts.tsx — decided per month,
                                median lead time per month, findings trend, exception ageing — Board Packs list + Prepare Board Pack modal for chairs
                                and secretaries with Draft with AI), BoardPack (/board-packs/:hash: printable document, verification re-checked on
                                open, narrative with origin, figure tables; print hides .ag-no-print — the header and side nav), Roadmap (/roadmap, Governance group after Decision Log: hero lane counts, application/kind filters, four lanes of

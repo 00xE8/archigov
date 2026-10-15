@@ -29,7 +29,7 @@ const get = (p: string, user = "a.uditor") => call("GET", p, user);
 const post = (p: string, user: string, body: any = {}) => call("POST", p, user, body);
 const put = (p: string, user: string, body: any) => call("PUT", p, user, body);
 const work = async (user: string) => { const r = await get("/me/work", user); assert.equal(r.status, 200, `${user}: ${JSON.stringify(r.body)}`); return r.body; };
-const LISTS = ["positions", "declare", "resolve", "sessions", "conditions", "circulations", "resubmit", "changed", "no_decision"];
+const LISTS = ["positions", "declare", "resolve", "sessions", "conditions", "circulations", "resubmit", "changed", "no_decision", "sign_offs"];
 const ctx: Record<string, any> = {};
 const apps = new Map((db.prepare("SELECT id, name FROM elements WHERE type='application'").all() as any[]).map((a) => [a.name, a.id]));
 const design = (title: string, appName: string, md = "## Design\n\nx\n\n## Data\n\nPatient identifiers.\n\n## Security\n\nPrivate endpoints only.") => ({ type: "design", title, application_id: apps.get(appName), risk_tier: "medium", summary: "s", design_md: md });
