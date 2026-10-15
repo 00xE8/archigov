@@ -5,6 +5,7 @@ import { evaluateAll } from "./rules.js";
 import { loadDemoEvidence } from "./sync.js";
 import { CORE_STANDARDS, type PackStandard } from "./packs.js";
 import { createArtefact, type Lifecycle } from "./artefacts.js";
+import { legacyOf } from "./lifecycle.js";
 
 const daysAgo = (n: number) => new Date(Date.now() - n * 86400000).toISOString();
 const daysAhead = (n: number) => new Date(Date.now() + n * 86400000).toISOString();
@@ -214,5 +215,34 @@ export function seedDemo(actor = "seed") {
     const a = listElements("application").find((x) => x.name === name);
     if (a) db.prepare("UPDATE app_classifications SET verification='verified', verified_by='j.duduka', verified_at=?, verified_hash=content_hash WHERE application_id=?").run(daysAgo(7), a.id);
   }
+  // one legacy assessment on record (DORA Art. 8(7)): Finance ERP's SQL Server 2016, assessed in the spring; the others are due
+  const erp = listElements("application").find((x) => x.name === "Finance ERP");
+  if (erp) {
+    const l = legacyOf(erp); const at = new Date(Date.now() - 150 * 86_400_000); const until = new Date(at); until.setUTCMonth(until.getUTCMonth() + 12);
+    db.prepare("INSERT INTO register_assessments(id,kind,application_id,subject,result,summary_md,reference,components_json,assessed_by,assessed_at,valid_until,origin) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")
+      .run(uid(), "legacy", erp.id, null, "satisfactory_with_remarks", ERP_LEGACY_ASSESSMENT, null, JSON.stringify(l.legacy), "s.patel", at.toISOString(), until.toISOString(), "human");
+  }
   return { skipped: false, ingest: stats, evaluate: ev };
 }
+
+const ERP_LEGACY_ASSESSMENT = `## Legacy components in scope
+
+SQL Server 2016 SP3 on vm-erp-db-01, past standard support since July 2026 and covered by Extended Security Updates until July 2029. It holds the general ledger and the supplier master data.
+
+## Risks
+
+Security fixes depend on the ESU subscription; the vendor's newer integration adapters no longer certify 2016.
+
+## Compensating controls
+
+The database server takes no traffic from outside the ERP subnet, and ESU is purchased through 2027.
+
+## Plan
+
+Upgrade to SQL Server 2022 with the ERP vendor's 2027 release; owner finance-it.
+
+## Conclusion
+
+Acceptable until the upgrade, provided ESU stays in place.
+`;
+

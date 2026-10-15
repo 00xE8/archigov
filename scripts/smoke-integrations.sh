@@ -193,7 +193,7 @@ def k():
     s, packs = get("/standards/packs"); assert s == 200, packs
     ids = [p["id"] for p in packs]; assert ids == ["archigov-core", "archigov-governance-starter", "azure-waf-architecture", "dora-ict-architecture", "ai-act-annex-iv-design"], ids
     s, r = post("/standards/packs/azure-waf-architecture/import"); assert s == 200 and r["imported"] == 8 and r["lifecycle"] == "draft", r; mutations.append("pack azure-waf-architecture (8 standards, drafts)")
-    s, r2 = post("/standards/packs/dora-ict-architecture/import"); assert s == 200 and r2["imported"] == 5, r2; mutations.append("pack dora-ict-architecture (5)")
+    s, r2 = post("/standards/packs/dora-ict-architecture/import"); assert s == 200 and r2["imported"] == 7, r2; mutations.append("pack dora-ict-architecture (7)")
     s, r3 = post("/standards/packs/ai-act-annex-iv-design/import"); assert s == 200 and r3["imported"] == 5, r3; mutations.append("pack ai-act-annex-iv-design (5)")
     s, ev = post("/evaluate"); assert s == 200 and ev.get("rule_errors") == [], ev.get("rule_errors")
     s, stds = get("/standards"); waf = [x for x in stds if x["code"].startswith("STD-WAF-")]

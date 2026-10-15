@@ -5,6 +5,7 @@ import { dryRunForApplication, validateRule, evaluateArtefact, modelContext } fr
 import { encryptSecret, decryptSecret, isEncrypted } from "./secrets.js";
 import { ASSESSMENT_TYPES } from "./boards/assessments.js";
 import { classificationOf, allClassifications, CRITICALITIES, SERVICE_KINDS, REGULATED_KINDS } from "./classification.js";
+import { legacyOf, LEGACY_TEMPLATE } from "./lifecycle.js";
 
 /**
  * AI gateway. Providers are configured by the platform admin (Settings · AI); keys live in the settings table
@@ -451,3 +452,22 @@ Respond JSON: {"criticality": string|null, "services": [{"name": string, "kind":
   if (regulated) criticality = "critical";
   return { origin: "ai" as const, provider, model, criticality, services, rationale: String(p.rationale || "").slice(0, 800) };
 }
+
+/** Prefill a legacy assessment (DORA Art. 8(7)) from the register's facts under its template; derive→narrate, the author records it as their own. */
+export async function draftLegacyAssessment(appId: string) {
+  const app = getElement(appId);
+  if (!app || app.type !== "application") throw Object.assign(new Error("not found"), { status: 404 });
+  if (!featureResolved("draft_assessment")) throw new Error("AI is not enabled for draft_assessment");
+  const l = legacyOf(app);
+  const facts = { application: app.name, criticality: classificationOf(app.id)?.criticality ?? null, status: l.status,
+    components: l.components.map((c) => ({ resource: c.resource_name, product: c.product_label, version: c.label, state: c.state, end_of_support: c.eol, extended_until: c.extended })),
+    previous: l.last ? { result: l.last.result, assessed_at: l.last.assessed_at, summary: String(l.last.summary_md).slice(0, 2000) } : null };
+  const { text, model, provider } = await chatFor("draft_assessment", [
+    { role: "system", content: `Draft the yearly risk assessment of an application's legacy ICT components (DORA Art. 8(7)). Fill the given markdown template headings from the facts only. Name each legacy component with its resource and support dates. Where the facts do not answer a heading (compensating controls, the plan, owners), write "To be confirmed: ..." naming what the assessor must add — never invent controls, plans or dates. Keep each section to a few sentences. Respond JSON: {"summary_md": string}.` },
+    { role: "user", content: JSON.stringify({ template: LEGACY_TEMPLATE, facts }) },
+  ]);
+  const p = parseJsonLoose(text);
+  if (!p.summary_md || typeof p.summary_md !== "string") throw new Error("model returned no summary_md");
+  return { origin: "ai" as const, provider, model, summary_md: p.summary_md };
+}
+
