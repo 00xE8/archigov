@@ -19,6 +19,7 @@ import { me } from "./routes/me.js";
 import { registers } from "./routes/registers.js";
 import { roadmapRoutes } from "./routes/roadmap.js";
 import { metricsRoutes } from "./routes/metrics.js";
+import { signOffRoutes } from "./routes/signoffs.js";
 
 /**
  * /api — one Hono app assembled from domain modules under ./routes/. Each module owns a prefix family
@@ -48,3 +49,4 @@ api.route("/", me);
 api.route("/", registers);
 api.route("/", roadmapRoutes);
 api.route("/", metricsRoutes);
+api.route("/", signOffRoutes);

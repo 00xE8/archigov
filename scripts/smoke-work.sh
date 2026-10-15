@@ -18,7 +18,7 @@ import urllib.request, urllib.error
 
 BASE = sys.argv[1].rstrip("/") + "/api"
 ADMIN = "smoke-work"
-LISTS = ["positions", "declare", "resolve", "sessions", "conditions", "circulations", "resubmit", "changed", "no_decision"]
+LISTS = ["positions", "declare", "resolve", "sessions", "conditions", "circulations", "resubmit", "changed", "no_decision", "sign_offs"]
 
 def call(method, path, body=None, user=ADMIN):
     data = json.dumps(body).encode() if body is not None else None
