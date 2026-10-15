@@ -383,3 +383,81 @@ body { font-family: var(--font-sans); color: var(--cds-text-primary); margin: 0;
 .ag-decision-form .ag-form { max-width: none; }
 .ag-decision-form .ag-ai-panel { display: grid; gap: sp.$spacing-04; border-left: 1px solid var(--cds-border-subtle-01); padding-left: sp.$spacing-06; }
 @include bp.breakpoint-down("lg") { .ag-decision-form { grid-template-columns: 1fr; } .ag-decision-form .ag-ai-panel { border-left: none; padding-left: 0; } }
+
+// ——— Expressive layer (founder decision, Oct 2026: the app carries the landing page's full style) ———
+// Palette stays Carbon (blue/purple/teal/cyan from @carbon/colors); motion uses Carbon's expressive entrance and
+// standard curves at slow-01/slow-02, and every animation below is inert under prefers-reduced-motion.
+$ag-ease-entrance: cubic-bezier(0, 0, 0.3, 1);
+$ag-ease-std: cubic-bezier(0.4, 0.14, 0.3, 1);
+$ag-ease-prod: cubic-bezier(0.2, 0, 0.38, 0.9);
+
+// the content area carries the landing page's ambient light, faint enough to keep tables and text crisp
+.ag-content {
+  background:
+    radial-gradient(1100px 520px at 100% 0%, rgba(colors.$blue-60, 0.07), transparent 60%),
+    radial-gradient(900px 640px at 0% 100%, rgba(colors.$purple-60, 0.05), transparent 60%),
+    var(--cds-background);
+}
+
+// every page opens on a g100 hero band that bleeds to the content edges
+.ag-hero {
+  position: relative; overflow: hidden; isolation: isolate;
+  background: var(--cds-background);
+  margin: calc(-1 * #{sp.$spacing-07}) calc(-1 * #{sp.$spacing-07}) sp.$spacing-07;
+  padding: sp.$spacing-07 sp.$spacing-07 sp.$spacing-08;
+  &::before { content: ""; position: absolute; inset: -60% -10% -20% 40%; z-index: -1; pointer-events: none;
+    background: radial-gradient(closest-side, rgba(colors.$blue-60, 0.38), transparent 70%), radial-gradient(closest-side at 72% 58%, rgba(colors.$purple-60, 0.3), transparent 70%); }
+  &::after { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+    background: linear-gradient(90deg, colors.$gray-100 30%, rgba(colors.$gray-100, 0.6) 62%, rgba(colors.$gray-100, 0.1)); }
+  .ag-page-header { position: relative; z-index: 1; margin-bottom: 0; }
+  .ag-page-header h1 {
+    background: linear-gradient(90deg, colors.$white 0%, colors.$blue-30 42%, colors.$purple-30 74%, colors.$teal-20 100%);
+    background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .ag-subtitle { color: var(--cds-text-secondary); }
+}
+@include bp.breakpoint-down("lg") { .ag-hero { margin: calc(-1 * #{sp.$spacing-06}) calc(-1 * #{sp.$spacing-05}) sp.$spacing-06; padding: sp.$spacing-06 sp.$spacing-05 sp.$spacing-07; } }
+.ag-hero-net { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0;
+  line { stroke: colors.$blue-50; stroke-opacity: 0.4; stroke-width: 1; }
+  circle { opacity: 0.9; transform-box: fill-box; transform-origin: center; }
+}
+
+// tiles lift and light up; charts glow on hover
+.ag-tile { position: relative; transition: transform 110ms $ag-ease-prod, box-shadow 110ms $ag-ease-prod;
+  &::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; transform: scaleX(0); transform-origin: left;
+    background: linear-gradient(90deg, colors.$blue-60, colors.$purple-60, colors.$teal-50); transition: transform 240ms $ag-ease-entrance; }
+  &:hover { transform: translateY(-2px); box-shadow: 0 10px 28px -12px rgba(colors.$blue-60, 0.45); }
+  &:hover::before { transform: scaleX(1); }
+}
+.ag-chart { transition: box-shadow 240ms $ag-ease-prod; &:hover { box-shadow: 0 12px 36px -14px rgba(colors.$purple-60, 0.4); } }
+
+// section headings carry the landing page's gradient accent
+.ag-section > h2:not(.ag-work-head)::after, .ag-section > .ag-row > h2::after {
+  content: ""; display: block; width: 32px; height: 3px; margin-top: sp.$spacing-02;
+  background: linear-gradient(90deg, colors.$blue-60, colors.$purple-60);
+}
+
+// the header bar's bottom edge shimmers with the brand gradient
+.ag-header-glow::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; pointer-events: none;
+  background: linear-gradient(90deg, colors.$blue-60, colors.$purple-60, colors.$teal-50, colors.$blue-60); background-size: 200% 100%; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .ag-hero-net line { stroke-dasharray: 600; stroke-dashoffset: 600; animation: ag-draw 1.4s $ag-ease-entrance forwards; animation-delay: var(--d); }
+  .ag-hero-net circle { opacity: 0; animation: ag-pop 400ms $ag-ease-entrance forwards, ag-breathe 6s $ag-ease-std infinite; animation-delay: var(--d), calc(var(--d) + 1.6s); }
+  .ag-hero .ag-page-header > div { animation: ag-rise 400ms $ag-ease-entrance both; }
+  .ag-hero .ag-page-header > .ag-row { animation: ag-rise 400ms $ag-ease-entrance 110ms both; }
+  .ag-hero .ag-page-header h1 { animation: ag-shimmer 10s linear 1s infinite; }
+  // page content enters in sequence beneath the hero (a remount on navigation replays it)
+  .ag-content > :not(.ag-hero) { animation: ag-rise 400ms $ag-ease-entrance both; }
+  @for $i from 2 through 9 { .ag-content > :nth-child(#{$i}):not(.ag-hero) { animation-delay: #{($i - 1) * 70}ms; } }
+  .ag-tiles > * { animation: ag-rise 400ms $ag-ease-entrance both; }
+  @for $i from 1 through 12 { .ag-tiles > :nth-child(#{$i}) { animation-delay: #{$i * 45}ms; } }
+  .ag-section > h2:not(.ag-work-head)::after, .ag-section > .ag-row > h2::after { animation: ag-bar 700ms $ag-ease-entrance 200ms both; transform-origin: left; }
+  .ag-header-glow::after { animation: ag-shimmer 8s linear infinite; }
+}
+@keyframes ag-draw { to { stroke-dashoffset: 0; } }
+@keyframes ag-pop { from { opacity: 0; transform: scale(0.4); } to { opacity: 0.9; transform: none; } }
+@keyframes ag-breathe { 0%, 100% { opacity: 0.9; } 50% { opacity: 0.35; } }
+@keyframes ag-rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes ag-shimmer { from { background-position: 0% 0; } to { background-position: -200% 0; } }
+@keyframes ag-bar { from { transform: scaleX(0); } to { transform: scaleX(1); } }

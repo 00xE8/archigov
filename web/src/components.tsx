@@ -1,6 +1,6 @@
 import React from "react";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
-import { Tag, Button, InlineLoading, InlineNotification, ActionableNotification, Tile, DefinitionTooltip, Tooltip, Link as CarbonLink, Breadcrumb, BreadcrumbItem, DatePicker, DatePickerInput, SkeletonText, MenuButton, MenuItem, Accordion, AccordionItem } from "@carbon/react";
+import { Tag, Button, InlineLoading, InlineNotification, ActionableNotification, Tile, DefinitionTooltip, Tooltip, Link as CarbonLink, Breadcrumb, BreadcrumbItem, DatePicker, DatePickerInput, SkeletonText, MenuButton, MenuItem, Accordion, AccordionItem, Theme } from "@carbon/react";
 import { Checkmark, Renew, CheckmarkFilled, CheckmarkOutline, ErrorFilled, WarningFilled, WarningAlt, WarningAltFilled, Information, Pending, InProgress, Time, CloseFilled, CloseOutline, Undefined, Unknown, User, MachineLearningModel, Rule, Cloud, Idea, Template, Upload, Calendar, Send } from "@carbon/icons-react";
 import { marked } from "marked";
 import { get, post, labelFor, fmtDateTime, shortType, sentence, download, slug, areaLabel } from "./api";
@@ -214,18 +214,62 @@ export function AboutTip({ about, label = "About this page" }: { about: React.Re
   );
 }
 
-export function PageHeader({ title, subtitle, kicker, breadcrumb, actions, about }: { title: React.ReactNode; subtitle?: React.ReactNode; kicker?: React.ReactNode; breadcrumb?: React.ReactNode; actions?: React.ReactNode; about?: React.ReactNode }) {
+/** A small deterministic PRNG so each page's constellation is stable across renders and visits. */
+const seeded = (seed: string) => { let h = 2166136261; for (const c of seed) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return () => ((h = Math.imul(h ^ (h >>> 15), 2246822507), h = Math.imul(h ^ (h >>> 13), 3266489909), (h ^= h >>> 16) >>> 0) / 4294967296); };
+const NET_FILLS = ["#78a9ff", "#33b1ff", "#be95ff", "#3ddbd9"];
+
+/** The landing page's "derived model" network, as a decorative backdrop for every page header (seeded by the page). */
+export function HeroNetwork({ seed }: { seed: string }) {
+  const { nodes, edges } = React.useMemo(() => {
+    const r = seeded(seed || "archigov");
+    const ns = Array.from({ length: 22 }, () => ({ x: 520 + r() * 900, y: 12 + r() * 196 }));
+    const es: [number, number][] = [];
+    ns.forEach((a, i) => ns.map((b, j) => ({ j, d: Math.abs(a.x - b.x) + Math.abs(a.y - b.y) })).filter((o) => o.j !== i).sort((p, q) => p.d - q.d).slice(0, 2)
+      .forEach(({ j }) => { if (!es.some(([x, y]) => x === j && y === i)) es.push([i, j]); }));
+    return { nodes: ns, edges: es };
+  }, [seed]);
   return (
-    <div className="ag-page-header ag-row between">
-      <div>
-        {breadcrumb}
-        {kicker && <div className="ag-muted ag-label">{kicker}</div>}
-        {/* the info icon sits beside the title (after the h1, not inside it, so the heading's accessible name stays clean) */}
-        <div className="ag-title-row"><h1>{title}</h1>{about && <AboutTip about={about} />}</div>
-        {subtitle && <div className="ag-subtitle">{subtitle}</div>}
+    <svg className="ag-hero-net" viewBox="0 0 1440 220" preserveAspectRatio="xMaxYMid slice" aria-hidden="true" focusable="false">
+      {edges.map(([i, j], k) => <line key={k} x1={nodes[i].x} y1={nodes[i].y} x2={nodes[j].x} y2={nodes[j].y} style={{ ["--d" as any]: `${(k % 13) * 90}ms` }} />)}
+      {nodes.map((n, k) => <circle key={k} cx={n.x} cy={n.y} r={2.5 + (k % 3)} fill={NET_FILLS[k % 4]} style={{ ["--d" as any]: `${(k % 9) * 120}ms` }} />)}
+    </svg>
+  );
+}
+
+/** A number that counts up on first render (expressive entrance); renders the final value instantly under reduced motion. */
+export function CountUp({ value, duration = 700 }: { value: number; duration?: number }) {
+  const reduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const [shown, setShown] = React.useState(reduced ? value : 0);
+  React.useEffect(() => {
+    if (reduced || !Number.isFinite(value)) { setShown(value); return; }
+    let raf = 0; const t0 = performance.now();
+    const tick = (t: number) => { const p = Math.min(1, (t - t0) / duration); setShown(Math.round(value * (1 - Math.pow(1 - p, 3)))); if (p < 1) raf = requestAnimationFrame(tick); };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+  return <>{shown}</>;
+}
+
+/**
+ * Every page opens on a g100 hero band (the landing page's language: glow, a seeded constellation, a gradient
+ * title). It is its own Carbon theme zone, so breadcrumbs, buttons and tags inside render in g100 correctly.
+ */
+export function PageHeader({ title, subtitle, kicker, breadcrumb, actions, about }: { title: React.ReactNode; subtitle?: React.ReactNode; kicker?: React.ReactNode; breadcrumb?: React.ReactNode; actions?: React.ReactNode; about?: React.ReactNode }) {
+  const seed = typeof title === "string" ? title : String((title as any)?.props?.children ?? "page");
+  return (
+    <Theme theme="g100" className="ag-hero">
+      <HeroNetwork seed={seed} />
+      <div className="ag-page-header ag-row between">
+        <div>
+          {breadcrumb}
+          {kicker && <div className="ag-muted ag-label">{kicker}</div>}
+          {/* the info icon sits beside the title (after the h1, not inside it, so the heading's accessible name stays clean) */}
+          <div className="ag-title-row"><h1>{title}</h1>{about && <AboutTip about={about} />}</div>
+          {subtitle && <div className="ag-subtitle">{subtitle}</div>}
+        </div>
+        {actions && <div className="ag-row">{actions}</div>}
       </div>
-      {actions && <div className="ag-row">{actions}</div>}
-    </div>
+    </Theme>
   );
 }
 
