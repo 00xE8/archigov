@@ -158,3 +158,12 @@ export function verifyPack(hash: string): PackVerification {
   const chain_ok = typeof blob.chain_head === "string" ? verifyAuditChain(blob.chain_head).ok : false;
   return { found: true, hash_ok, signature_ok, key_is_current, chain_ok, chain_head: blob.chain_head ?? null, generated_at: blob.generated_at ?? null, scope: blob.scope };
 }
+
+/** A persisted, signed pack by its hash (evidence or board pack), or null. */
+export function readPack(hash: string): Record<string, any> | null {
+  if (!/^[0-9a-f]{64}$/.test(hash)) return null;
+  const file = path.join(PACKS_DIR, `${hash}.json`);
+  if (!fs.existsSync(file)) return null;
+  try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch { return null; }
+}
+

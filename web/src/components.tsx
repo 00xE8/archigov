@@ -2,7 +2,7 @@ import React from "react";
 import { useLocation } from "react-router-dom";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import { Tag, Button, InlineLoading, InlineNotification, ActionableNotification, Tile, DefinitionTooltip, Tooltip, Link as CarbonLink, Breadcrumb, BreadcrumbItem, DatePicker, DatePickerInput, SkeletonText, MenuButton, MenuItem, Accordion, AccordionItem, Theme } from "@carbon/react";
-import { Checkmark, Renew, CheckmarkFilled, CheckmarkOutline, ErrorFilled, WarningFilled, WarningAlt, WarningAltFilled, Information, Pending, InProgress, Time, CloseFilled, CloseOutline, Undefined, Unknown, User, MachineLearningModel, Rule, Cloud, Idea, Template, Upload, Calendar, Send, Dashboard, Application, Roadmap, Catalog, DecisionTree, TaskApproved, UserMultiple, EventSchedule, Security, CertificateCheck, Report, Settings, BusinessProcesses, Flash, Hourglass, Partnership, Timeline } from "@carbon/icons-react";
+import { Checkmark, Renew, CheckmarkFilled, CheckmarkOutline, ErrorFilled, WarningFilled, WarningAlt, WarningAltFilled, Information, Pending, InProgress, Time, CloseFilled, CloseOutline, Undefined, Unknown, User, MachineLearningModel, Rule, Cloud, Idea, Template, Upload, Calendar, Send, Dashboard, Application, Roadmap, Catalog, DecisionTree, TaskApproved, UserMultiple, EventSchedule, Security, CertificateCheck, Report, Settings, BusinessProcesses, Flash, Hourglass, Partnership, Timeline, ChartLineData } from "@carbon/icons-react";
 import { marked } from "marked";
 import { get, post, labelFor, fmtDateTime, shortType, sentence, download, slug, areaLabel } from "./api";
 import { Gated, useCan } from "./auth";
@@ -310,6 +310,7 @@ const HERO_CONTEXT: { match: RegExp; tone: HeroTone; icon: React.ComponentType<a
   { match: /^\/legacy/, tone: "red", icon: Hourglass, motion: "swing" },
   { match: /^\/third-parties/, tone: "red", icon: Partnership, motion: "pop" },
   { match: /^\/evidence/, tone: "green", icon: CertificateCheck, motion: "pop" },
+  { match: /^\/(metrics|board-packs)/, tone: "green", icon: ChartLineData, motion: "rise" },
   { match: /^\/audit/, tone: "green", icon: Report, motion: "rise" },
   { match: /^\/settings/, tone: "gray", icon: Settings, motion: "spin" },
 ];

@@ -4,7 +4,7 @@
 
 The platform admin configures AI providers — OpenAI, Claude (Anthropic), Mistral, Ollama — and switches each AI feature on separately, with its own provider and model: pre-review can run on a local Ollama while decision drafting uses a hosted model, or everything stays off. Every feature keeps a deterministic fallback, so the product is whole with no model configured.
 
-Nine features, each an instance of the heuristics/AI boundary (AI proposes, a named human promotes):
+Ten features, each an instance of the heuristics/AI boundary (AI proposes, a named human promotes):
 
 | Feature | Pattern | What it does |
 |---|---|---|
@@ -16,6 +16,7 @@ Nine features, each an instance of the heuristics/AI boundary (AI proposes, a na
 | Session Notes Drafting | derive → narrate | Secretary's narrative from the session records; the minutes stay derived |
 | Evidence Mapping | suggest → pin | Control ids for unmapped `defender:`/`policy:` keys into the control-map editor; the admin saves to pin |
 | Classification Suggestion | suggest → confirm | Tier and dependent services for an application the tags leave open, from its resources, tags, decisions and planned changes; normalised to the classification invariants (a regulated service means critical), shown in the Classify form with Apply Suggestion; the author saves it with their own reason. `POST /applications/:id/classification/suggest`, capability `verify`. See [criticality classification](criticality-classification.md) |
+| Board Pack Narrative | derive → narrate | The narrative of a board pack from its figures only — every statement quotes a figure, a missing one is "not available", no judgement. The chair or secretary edits and submits it as their own; the pack records it as AI-assisted. `POST /board-packs/draft-narrative`, chair/secretary seat. See [governance metrics](governance-metrics.md) |
 | Decision Review | verify the human | Critical assessment of a decision draft's argument (unsupported claims, strawman options, unstated risks, contradictions with adopted artefacts by code) + a tightened version to apply; suggests the assessments that would evidence unevidenced critical claims — one click saves the draft decision and triggers them, tracked (`decision_id`) onto the eventual review as "On the Decision". `POST /decisions/review-draft`, `create_decision`; the form's AI Review panel (right column, Review Argument button at its top) is always visible; the button greys out with an explanatory tooltip when the admin has not enabled the feature |
 
 ## Why

@@ -80,7 +80,8 @@ export function roadmap(opts: { application?: string | null } = {}) {
 
   // ---- lifecycle deadlines: components past or near end of support ----
   for (const g of legacyRegister().components) {
-    if (g.state === "supported") continue;
+    // only a dated deadline belongs on the roadmap: a supported component has none yet, an unknown version has none to give
+    if (g.state === "supported" || g.state === "unknown") continue;
     const due = g.state === "extended" ? g.extended : g.eol;
     items.push({ id: `lifecycle:${g.key}`, kind: "lifecycle", lane: laneByDate(due, now), title: `Upgrade ${g.product_label} ${g.label}`, code: null, status: g.state, due, progress: null,
       applications: g.applications, link: { kind: "legacy", id: null }, detail: `${g.resources.length} resource${g.resources.length === 1 ? "" : "s"}${g.state === "extended" ? `; standard support ended ${g.eol}` : ""}.` });

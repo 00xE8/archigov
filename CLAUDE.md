@@ -54,6 +54,13 @@ server/src/lifecycle.ts        legacy register: lifecycle snapshot (lifecycle/sn
                                latest SP assumed and said), stateOfCycle (supported/ending/extended/end_of_life; unknown), lifecycle_overrides
                                (m017, a person's correction), legacyOf()/recordLegacyAssessment() (register_assessments, kind legacy, 12-month
                                validity, stale when a new legacy component appears), legacyRegister(). Routes in routes/registers.ts
+server/src/metrics.ts          governanceMetrics({days}): reviews (lead time median/p90 overall+by type, recycle rate, fast-lane approvals, position
+                               latency, open/oldest, 6 monthly points), decisions (accepted, lead time, realisation from the roadmap), conditions,
+                               exception ageing buckets, conformance (trend = last run per day, opened/resolved, time to fix), coverage; nulls never
+                               zeros, no verdicts. server/src/boardpack.ts: buildBoardPack() — the snapshot + decisions/reviews of the period, roadmap
+                               Now, register gaps, narrative {md, origin human|ai_assisted, author}; signAndPersist like the evidence pack, indexed in
+                               board_packs (m019). Routes in routes/metrics.ts: GET /metrics, GET /board-packs(/:hash), POST /board-packs and
+                               /board-packs/draft-narrative (chair or secretary seat, checked in the handler)
 server/src/roadmap.ts          roadmap(): decisions (realisation = conforming resources of allowedTypes vs open drift findings with decision_id:
                                realised/in_progress/not_started; no constraint → not_checkable; proposed), planned changes (nested under their
                                decision when linked), conditions, legacy-register deadlines, expiring exceptions → lanes now/next/later/done by
@@ -65,7 +72,7 @@ server/src/suppliers.ts        third parties: providersOf() (platform from the t
                                ≥50% of the critical estate, exit plans). Routes in routes/registers.ts
 server/src/rules.ts            rule DSL + validateRule + evaluateAll() (findings, exceptions, conditions, per-run changes_json)
 server/src/ai.ts               AI gateway: AI_PROVIDERS (openai/anthropic/mistral/ollama — two adapters: OpenAI chat-completions and the
-                               Anthropic Messages API) and AI_FEATURES — nine, each enabled separately with its own provider+model (settings
+                               Anthropic Messages API) and AI_FEATURES — ten, each enabled separately with its own provider+model (settings
                                ai.providers / ai.features; GET /ai/features is the open per-feature flag read the UI's Draft buttons key on;
                                legacy LLM_* env still drives unconfigured features): pre_review, draft_decision, draft_rule (generate→verify:
                                validateRule + live dry run travel with the draft; POST /artefacts/draft-rule, manage_artefacts),
@@ -75,7 +82,8 @@ server/src/ai.ts               AI gateway: AI_PROVIDERS (openai/anthropic/mistra
                                filtered to keys the instance has seen), review_decision (POST /decisions/review-draft, create_decision: a
                                critical assessment of a decision draft's argument — unsupported claims, strawman options, unstated risks,
                                contradictions citing adopted codes — plus a tightened version the author may apply; the form's
-                               "Review Argument with AI"), suggest_classification (POST /applications/:id/classification/suggest, verify:
+                               "Review Argument with AI"), draft_board_narrative (POST /board-packs/draft-narrative, chair/secretary:
+                               the board pack narrative from its figures only), suggest_classification (POST /applications/:id/classification/suggest, verify:
                                tier + services for an application the tags leave open, normalised to the classification invariants, shown in
                                the Classify form to apply). Draft endpoints store nothing and answer 409 when off.
                                rulesPreReview(), llmPreReview() (citation filtering), draftDecisionFromWorkItem(), aiTest() (POST /ai/test)
@@ -113,7 +121,7 @@ scripts/smoke*.sh              smoke.sh (governance flow), smoke-auth.sh (two-le
                                positions, sessions, delegation, dependencies, circulation, minutes, assessments), smoke-work.sh (/me/work by role, pipeline,
                                decisions 409, per-area findings, audit item codes), smoke-registers.sh (classification: derived, set/reset/verify,
                                business services, DORA column, app.* rules; legacy register, corrections, legacy assessment; third parties,
-                               exit plans into the DORA register; the roadmap), smoke-catalogue.sh (kinds/lifecycle/import),
+                               exit plans into the DORA register; the roadmap; metrics and a signed board pack), smoke-catalogue.sh (kinds/lifecycle/import),
                                smoke-integrations.sh (fixtures), smoke-empty.sh (first run)
 web/src/App.tsx                Carbon shell: grouped nav (Model / Governance / Evidence / Risk; the Settings item, help-panel link and Overview
                                "Open Settings" render only with manage_platform — Settings is operations, so only the platform admin carries
@@ -127,7 +135,10 @@ web/src/charts.tsx             Overview charts (lazy chunk), forms by the data's
                                gauges — neutral blue, no thresholds: a pass-rate judgment would assert compliance — and a reviews-by-stage donut
                                whose slice hues echo the stage tags), then severity bars, findings-over-time stacked area by severity (line
                                fallback for older servers), evidence by source (emphasis form), open findings by application
-web/src/pages/*                Roadmap (/roadmap, Governance group after Decision Log: hero lane counts, application/kind filters, four lanes of
+web/src/pages/*                Metrics (/metrics, Evidence group: period select, figure tiles, charts lazy in metricsCharts.tsx — decided per month,
+                               median lead time per month, findings trend, exception ageing — Board Packs list + Prepare Board Pack modal for chairs
+                               and secretaries with Draft with AI), BoardPack (/board-packs/:hash: printable document, verification re-checked on
+                               open, narrative with origin, figure tables; print hides .ag-no-print — the header and side nav), Roadmap (/roadmap, Governance group after Decision Log: hero lane counts, application/kind filters, four lanes of
                                Carbon Tiles — kind + status tags, linked title, due date, a Realisation ProgressBar, nested changes), ThirdParties (/third-parties, Risk group: counts, concentration warning, Providers table with the Designated
                                tag, Exit Plans table + Record Exit Plan modal with Draft with AI, designations footer), LegacyRegister (/legacy, Risk group: counts by state, Legacy Assessments table + Record Assessment modal with
                                Draft with AI, Components expandable table with Correct, Version Unknown with Set Version, data footer with

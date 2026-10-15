@@ -496,6 +496,18 @@ $ag-ease-prod: cubic-bezier(0.2, 0, 0.38, 0.9);
   .n { @include type.type-style("heading-05"); color: colors.$white; line-height: 1; }
   .l { @include type.type-style("label-01"); color: colors.$gray-30; } }
 .ag-glass-teal { --g: #{colors.$teal-40}; } .ag-glass-cyan { --g: #{colors.$cyan-40}; } .ag-glass-blue { --g: #{colors.$blue-40}; }
+// Governance metrics: figure tiles, as many across as fit.
+.ag-figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: sp.$spacing-01; }
+.ag-figure { display: grid; gap: sp.$spacing-02; align-content: start; }
+.ag-figure .label { @include type.type-style("label-01"); color: var(--cds-text-secondary); }
+.ag-figure .value { @include type.type-style("heading-04"); color: var(--cds-text-primary); }
+.ag-figure .sub { @include type.type-style("helper-text-01"); color: var(--cds-text-secondary); }
+.ag-plain-list { margin: sp.$spacing-03 0 0; padding: 0; list-style: none; display: grid; gap: sp.$spacing-02; }
+// A board pack prints as a document: no shell, no hero decoration, ink on paper.
+@media print {
+  .ag-no-print, .ag-hero-net { display: none !important; }
+  .ag-content { margin: 0 !important; padding: 0 !important; }
+}
 // Roadmap lanes: four columns on a wide screen, two on a laptop, one on a phone; cards are Carbon tiles.
 .ag-lanes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: sp.$spacing-05; align-items: start; }
 @include bp.breakpoint-down("lg") { .ag-lanes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

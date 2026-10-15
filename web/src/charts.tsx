@@ -24,7 +24,7 @@ import { labelFor } from "./api";
  * Theme follows the content zone (g10); motion is off under prefers-reduced-motion; the toolbar keeps the table view.
  */
 const reduced = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-const base = (title: string, height = "220px") => ({
+export const base = (title: string, height = "220px") => ({
   title, theme: "g10", height, animations: !reduced(), resizable: true,
   toolbar: { enabled: true, controls: [{ type: "Show as data-table" }, { type: "Make fullscreen" }] },
 });
@@ -106,7 +106,7 @@ export function SeverityBars({ bySeverity }: { bySeverity: Record<string, number
 
 // en-GB, 24-hour tick labels (the rest of the app formats dates this way); fewer ticks so labels never collide.
 // Carbon labels the first tick of a period with `primary` and the rest with `secondary`; both must be 24-hour.
-const TIME_FORMATS = { addSpaceOnEdges: 0, timeIntervalFormats: {
+export const TIME_FORMATS = { addSpaceOnEdges: 0, timeIntervalFormats: {
   "15seconds": { primary: "HH:mm:ss", secondary: "HH:mm:ss" }, minute: { primary: "HH:mm", secondary: "HH:mm" }, "30minutes": { primary: "HH:mm", secondary: "HH:mm" },
   hourly: { primary: "d MMM HH:mm", secondary: "HH:mm" }, daily: { primary: "d MMM", secondary: "d MMM" }, weekly: { primary: "d MMM", secondary: "d MMM" },
   monthly: { primary: "MMM yyyy", secondary: "MMM" }, quarterly: { primary: "MMM yyyy", secondary: "MMM" }, yearly: { primary: "yyyy", secondary: "yyyy" } } };

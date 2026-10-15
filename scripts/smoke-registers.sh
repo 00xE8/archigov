@@ -3,7 +3,8 @@
 # verified, read by rules as app.*), the business-service dependency map and the DORA register's criticality column;
 # the legacy register (lifecycle states, a person's version correction, the yearly legacy assessment); third parties
 # (providers, concentration on a designated critical third party, exit plans into the DORA register); the roadmap
-# built from records (decision realisation, lanes, per-application view), end to end
+# built from records (decision realisation, lanes, per-application view); governance metrics and a signed board
+# pack (prepared by a secretary, verified like the evidence pack), end to end
 # through the API of a LOCAL-mode seeded instance.
 #
 #   scripts/smoke-registers.sh [base_url]   default http://localhost:8080
@@ -11,7 +12,7 @@
 # Run after smoke-work.sh on the same instance (before smoke-catalogue.sh). The default x-user ("smoke-registers") is
 # a platform admin ONLY and must be refused every classification change; authors act as the seeded cast. MUTATES the
 # tenant (a classification set and reset, a verification, a draft standard, a version set and reset, a legacy
-# assessment, an exit plan); reset with
+# assessment, an exit plan, a board pack); reset with
 # `docker compose down -v && docker compose up -d`.
 set -u
 BASE="${1:-http://localhost:8080}"
@@ -191,6 +192,20 @@ def j_():
     s, x = get("/roadmap?application=nope", user="a.uditor"); assert s == 404, s
     return f"{rm['counts']['now']} now · {rm['counts']['next']} next · {rm['counts']['later']} later · {rm['counts']['done']} done; ADR-0002 {adr['ADR-0002']['status']} ({adr['ADR-0002']['progress']['done']}/{adr['ADR-0002']['progress']['total']}); Pharmacy's own roadmap"
 step("j  the roadmap: built from records, by lane, per application", j_)
+
+# ---------- k. governance metrics and a board pack ----------
+def k_():
+    s, m = get("/metrics?days=90", user="a.uditor"); assert s == 200 and m["period_days"] == 90, f"{s} {m}"
+    assert len(m["reviews"]["monthly"]) == 6 and "realisation" in m["decisions"] and "legacy_assessments" in m["coverage"], list(m)
+    for u in (ADMIN, "a.uditor", "m.hughes"):
+        s, r = post("/board-packs", {"days": 90}, user=u); assert s == 403, f"{u}: {s} {r}"
+    s, r = post("/board-packs", {"days": 90, "title": "Smoke-registers board pack", "narrative_md": "Two reviews decided.", "narrative_origin": "human"}, user="a.okafor"); assert s == 200, f"{s} {r}"
+    mutations.append("board pack (a.okafor)")
+    s, p = get(f"/board-packs/{r['hash']}", user="a.uditor"); assert s == 200 and p["kind"] == "board_pack" and p["narrative"]["author"] == "a.okafor", p.get("kind")
+    s, v = get(f"/evidence-pack/verify?hash={r['hash']}", user="a.uditor"); assert v["hash_ok"] and v["signature_ok"] and v["chain_ok"], v
+    s, d = post("/board-packs/draft-narrative", {"days": 90}, user="j.duduka"); assert s == 409, f"AI narrative off: {s} {d}"
+    return f"metrics over {m['period_days']} days ({m['reviews']['decided']} reviews decided, lead time median {m['reviews']['lead_time_days']['median']} d); board pack {r['hash'][:12]}… signed, chained and verified; narrative draft 409 while AI is off"
+step("k  governance metrics and a signed board pack", k_)
 
 passed = sum(1 for _, ok in results if ok); failed = len(results) - passed
 print(f"\n{passed} passed, {failed} failed  ({BASE})")
