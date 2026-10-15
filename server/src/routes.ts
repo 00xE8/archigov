@@ -16,6 +16,7 @@ import { boards } from "./routes/boards.js";
 import { artefacts } from "./routes/artefacts.js";
 import { sessions } from "./routes/sessions.js";
 import { me } from "./routes/me.js";
+import { registers } from "./routes/registers.js";
 
 /**
  * /api — one Hono app assembled from domain modules under ./routes/. Each module owns a prefix family
@@ -42,3 +43,4 @@ api.route("/", boards);
 api.route("/", artefacts);
 api.route("/", sessions);
 api.route("/", me);
+api.route("/", registers);

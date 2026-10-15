@@ -1,6 +1,7 @@
 import { db, uid, nowIso, j, audit } from "./db.js";
 import { listElements, resourcesOf, hashOf, getElement, type Element } from "./model.js";
 import { allClassifications, classificationOf, classificationView, refreshClassifications, type Classification } from "./classification.js";
+import { lifecycleIndex, lifecycleOf, lifecycleView, legacyOf, LIFECYCLE_STATES, type ResourceLifecycle } from "./lifecycle.js";
 
 /**
  * Rule DSL. A standard's rule_json is one of:
@@ -25,11 +26,12 @@ import { allClassifications, classificationOf, classificationView, refreshClassi
  * An unknown op or an invalid regex is a rule error: the standard is reported in the run's rule_errors and
  * never counts as passing.
  */
-export type Assert = { path?: string; op: string; value?: any; topic?: string; type?: string; max?: number; control?: string; source?: string; state?: string };
+export type Assert = { path?: string; op: string; value?: any; topic?: string; type?: string; max?: number; control?: string; source?: string; state?: string; states?: string[]; unknown?: "ignore" | "finding"; kind?: string };
 export interface Rule { scope: "resource" | "application"; match?: { type?: string; typeIn?: string[]; typePrefix?: string; where?: Assert[] }; assert: Assert; }
 
 const RESOURCE_OPS = new Set(["eq", "neq", "in", "notIn", "exists", "missing", "gte", "lte", "matches"]);
-const APP_OPS = new Set(["hasDecision", "hasOwnerTag", "maxResourcesOfType"]);
+const APP_OPS = new Set(["hasDecision", "hasOwnerTag", "maxResourcesOfType", "assessmentCurrent"]);
+const REGISTER_ASSESSMENT_KINDS = ["legacy"];
 
 function getPath(obj: any, path: string): any {
   return path.split(".").reduce((o, k) => (o == null ? undefined : o[k]), obj);
@@ -66,7 +68,7 @@ function matches(res: Element, m: Rule["match"] | undefined, view: any): boolean
   return true;
 }
 
-const resourceView = (r: Element, app?: Classification | null) => ({ name: r.name, type: r.subtype, location: r.props.location, tags: r.tags, props: r.props, app: classificationView(app) });
+const resourceView = (r: Element, app?: Classification | null, lc?: ResourceLifecycle) => ({ name: r.name, type: r.subtype, location: r.props.location, tags: r.tags, props: r.props, app: classificationView(app), lifecycle: lifecycleView(lc ?? lifecycleOf(r)) });
 const applicationView = (a: { name: string }, c?: Classification | null) => ({ name: a.name, app: classificationView(c) });
 
 /** Validate the shape of a rule before running it, so a typo'd op is an error for that artefact, not a silent pass. */
@@ -77,11 +79,17 @@ export function validateRule(rule: Rule) {
   if (rule.scope === "resource") {
     if (a.op === "decisionConstraint") { if (!a.topic) throw new Error("decisionConstraint needs a topic"); }
     else if (a.op === "evidence") { if (!a.control) throw new Error("evidence assert needs a control"); }
+    else if (a.op === "lifecycle") {
+      const bad = (a.states ?? ["end_of_life"]).filter((x) => !(LIFECYCLE_STATES as readonly string[]).includes(x));
+      if (!Array.isArray(a.states ?? []) || bad.length) throw new Error(`lifecycle states must be among ${LIFECYCLE_STATES.join(", ")} (got ${bad.join(", ")})`);
+      if (a.unknown !== undefined && a.unknown !== "ignore" && a.unknown !== "finding") throw new Error(`lifecycle "unknown" is ignore or finding`);
+    }
     else if (!RESOURCE_OPS.has(a.op)) throw new Error(`unknown assert op "${a.op}"`);
     else if (!a.path && a.op !== "exists" && a.op !== "missing") throw new Error(`assert op "${a.op}" needs a path`);
     for (const w of rule.match?.where || []) if (!RESOURCE_OPS.has(w.op)) throw new Error(`unknown match op "${w.op}"`);
   } else {
     if (!APP_OPS.has(a.op)) throw new Error(`unknown application assert op "${a.op}"`);
+    if (a.op === "assessmentCurrent" && !REGISTER_ASSESSMENT_KINDS.includes(a.kind || "")) throw new Error(`assessmentCurrent needs a kind (${REGISTER_ASSESSMENT_KINDS.join(", ")})`);
     for (const w of rule.match?.where || []) if (!RESOURCE_OPS.has(w.op)) throw new Error(`unknown match op "${w.op}"`);
   }
 }
@@ -123,6 +131,16 @@ function checkResource(r: Element, a: Assert, s: any, app: Element | null, view:
         evidence: { control: a.control, source: ev.source, state: ev.state, observed_at: ev.observed_at, imported_severity: ev.severity, detail: j(ev.detail_json, {}), resource: r.source_ref } };
     return null;
   }
+  if (a.op === "lifecycle") {
+    // a finding per resource whose worst component sits in one of the listed states; an unknown version is no finding unless asked
+    const l = view.lifecycle as ReturnType<typeof lifecycleView>;
+    if (!l.tracked) return "skip";
+    const states = a.states ?? ["end_of_life"];
+    if (l.state === "unknown") return a.unknown === "finding" ? { message: `${r.name}: lifecycle could not be determined (no version fact collected)`, severity: s.severity, decision_id: null, evidence: { lifecycle: "unknown", resource: r.source_ref } } : null;
+    if (!states.includes(l.state)) return null;
+    const when = l.state === "end_of_life" ? `ended ${l.eol ?? ""}`.trim() : l.state === "extended" ? `past standard support (${l.eol ?? "date unknown"})` : `support ends ${l.eol ?? ""}`.trim();
+    return { message: `${r.name}: ${l.product} ${l.cycle} — ${when}`, severity: s.severity, decision_id: null, evidence: { lifecycle: l.state, product: l.product, cycle: l.cycle, eol: l.eol, resource: r.source_ref } };
+  }
   if (!evalAssert(view, a)) {
     const actual = a.path ? getPath(view, a.path) : undefined;
     return { message: `${r.name}: ${s.title}`, severity: s.severity, decision_id: null, evidence: { path: a.path, expected: { op: a.op, value: a.value }, actual: actual ?? null, resource: r.source_ref } };
@@ -131,13 +149,14 @@ function checkResource(r: Element, a: Assert, s: any, app: Element | null, view:
 }
 
 /** The slice of the derived model an evaluation runs over, built once per run (and once per dry run). */
-export interface ModelContext { apps: Element[]; appOf: Map<string, Element>; appResources: Map<string, Element[]>; allResources: Element[]; cls: Map<string, Classification> }
+export interface ModelContext { apps: Element[]; appOf: Map<string, Element>; appResources: Map<string, Element[]>; allResources: Element[]; cls: Map<string, Classification>; lc: Map<string, ResourceLifecycle> }
 export function modelContext(): ModelContext {
   const apps = listElements("application");
   const appOf = new Map<string, Element>();
   const appResources = new Map<string, Element[]>();
   for (const app of apps) { const rs = resourcesOf(app.id); appResources.set(app.id, rs); rs.forEach((r) => appOf.set(r.id, app)); }
-  return { apps, appOf, appResources, allResources: listElements("resource"), cls: allClassifications() };
+  const allResources = listElements("resource");
+  return { apps, appOf, appResources, allResources, cls: allClassifications(), lc: lifecycleIndex(allResources) };
 }
 
 /** Only adopted artefacts (of any kind) on the active side of the radar are evaluated: a draft, a retired artefact or one still being assessed never produces a finding. */
@@ -150,7 +169,7 @@ export function evaluateArtefact(s: any, rule: Rule, ctx: ModelContext): Finding
   if (rule.scope === "resource") {
     for (const r of ctx.allResources) {
       const app = ctx.appOf.get(r.id) || null;
-      const view = resourceView(r, app ? ctx.cls.get(app.id) : null);
+      const view = resourceView(r, app ? ctx.cls.get(app.id) : null, ctx.lc.get(r.id));
       if (!matches(r, rule.match, view)) continue;
       const res = checkResource(r, rule.assert, s, app, view);
       if (res && res !== "skip") findings.push({ standard_id: s.id, element_id: r.id, application_id: app?.id || null, decision_id: res.decision_id, severity: res.severity, message: res.message, evidence: res.evidence });
@@ -170,6 +189,11 @@ export function evaluateArtefact(s: any, rule: Rule, ctx: ModelContext): Finding
         const owners = new Set(rs.map((r) => r.tags.owner || r.tags.Owner).filter(Boolean));
         if (owners.size === 0) findings.push({ standard_id: s.id, element_id: app.id, application_id: app.id, decision_id: null, severity: s.severity,
           message: `${app.name} has no owner on any of its ${rs.length} resources`, evidence: { resources: rs.length } });
+      } else if (a.op === "assessmentCurrent") {
+        const l = legacyOf(app, ctx.lc);
+        if (l.status === "due" || l.status === "stale") findings.push({ standard_id: s.id, element_id: app.id, application_id: app.id, decision_id: null, severity: s.severity,
+          message: l.status === "due" ? `${app.name} has legacy components (${l.legacy.join(", ")}) and no current legacy assessment` : `${app.name}'s legacy assessment predates ${l.new_since_last.join(", ")}`,
+          evidence: { kind: a.kind, status: l.status, legacy: l.legacy, last_assessed_at: l.last?.assessed_at ?? null, valid_until: l.last?.valid_until ?? null } });
       } else if (a.op === "maxResourcesOfType") {
         const n = rs.filter((r) => (r.subtype || "").toLowerCase() === a.type!.toLowerCase()).length;
         if (n > (a.max ?? 0)) findings.push({ standard_id: s.id, element_id: app.id, application_id: app.id, decision_id: null, severity: s.severity,
@@ -280,6 +304,9 @@ export function dryRunForApplication(appId: string): { standard: any; message: s
       } else if (rule.assert.op === "hasDecision") {
         const relevant = !rule.assert.type || rs.some((r) => (r.subtype || "").toLowerCase().startsWith(rule.assert.type!.toLowerCase()));
         if (relevant && !acceptedDecision(appId, rule.assert.topic!)) out.push({ standard: s, message: `No accepted decision on "${rule.assert.topic}"`, evidence: { topic: rule.assert.topic } });
+      } else if (rule.assert.op === "assessmentCurrent") {
+        const el = getElement(appId); const l = el ? legacyOf(el) : null;
+        if (l && (l.status === "due" || l.status === "stale")) out.push({ standard: s, message: l.status === "due" ? `Legacy components (${l.legacy.join(", ")}) with no current legacy assessment` : `The legacy assessment predates ${l.new_since_last.join(", ")}`, evidence: { kind: rule.assert.kind, status: l.status } });
       }
     } catch (e: any) {
       out.push({ standard: s, message: `Rule could not be evaluated: ${e.message}`, evidence: { rule_error: true }, error: true });

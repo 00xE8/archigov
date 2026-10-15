@@ -496,7 +496,7 @@ $ag-ease-prod: cubic-bezier(0.2, 0, 0.38, 0.9);
   .n { @include type.type-style("heading-05"); color: colors.$white; line-height: 1; }
   .l { @include type.type-style("label-01"); color: colors.$gray-30; } }
 .ag-glass-teal { --g: #{colors.$teal-40}; } .ag-glass-cyan { --g: #{colors.$cyan-40}; } .ag-glass-blue { --g: #{colors.$blue-40}; }
-.ag-glass-red { --g: #{colors.$red-50}; } .ag-glass-green { --g: #{colors.$green-40}; }
+.ag-glass-red { --g: #{colors.$red-50}; } .ag-glass-green { --g: #{colors.$green-40}; } .ag-glass-magenta { --g: #{colors.$magenta-40}; }
 
 // KPI tiles: a tone, a permanent accent, a tinted wash and an icon square; "alert" when the number needs attention
 .ag-ktile { --kt: #{colors.$blue-60}; --kt-wash: #{rgba(colors.$blue-60, 0.06)};
