@@ -17,8 +17,8 @@ These folders are licensed **Apache-2.0**. A contribution to them needs only a D
 |---|---|
 | `server/src/packs/` | Policy packs. A pack is one file exporting a `StandardsPack`, plus one line in `index.ts`. It holds statements, control **references** (never a framework's own text), and rules that pass `validateRule`. Each item's code is unique and carries its kind's prefix (`STD-`, `PRN-`, `PAT-`, `POL-`). `server/test/packs.test.ts` checks every pack automatically. Packs import as drafts for a board to review. |
 | `server/src/templates/` | Assessment templates: the headings a competent assessment result answers. Improving one is Apache-only. A *new* assessment type also needs a label in `web/src/api.ts` (core); the maintainer can add that line. |
-| `server/src/azure/`, `server/src/ado/` | Connectors: Azure Resource Graph, Defender for Cloud, Azure Policy, Azure DevOps. Follow their pattern: recorded fixtures for `ARCHIGOV_FIXTURES=1`, parsed by the real code, and never evidence a real tenant cannot produce. |
-| `server/src/importers/` | Import adapters: CSV and ArchiMate. An import is a source with provenance, not an editor. |
+| `server/src/azure/`, `server/src/ado/` | Connectors: Azure Resource Graph, Defender for Cloud, Azure Policy, Azure DevOps. Follow their pattern: recorded fixtures for `ARCHIGOV_FIXTURES=1`, parsed by the real code, and never evidence a real tenant cannot produce. A **new** connector (AWS, GCP, Jira, GitHub Issues…) gets its own folder: open an issue first so the maintainer adds the folder to the Apache-2.0 list, because the CLA check reads that list from `main`, not from your pull request. |
+| `server/src/importers/` | Import adapters: CSV and ArchiMate today; LeanIX or Ardoq would sit beside them. An import is a source with provenance, not an editor. |
 
 Keep a pull request inside these folders and it stays CLA-free: the maintainer adds the CHANGELOG line and any documentation. The exact list lives in [.github/licensing.json](.github/licensing.json), and every file in those folders starts with an `SPDX-License-Identifier: Apache-2.0` header (`server/test/licensing.test.ts` checks both).
 
