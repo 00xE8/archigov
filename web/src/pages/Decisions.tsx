@@ -59,10 +59,8 @@ export function DecisionForm({ value, onChange, apps, onTriggerAssessment, trigg
           ? "A critical test of the argument before you submit: does the recommendation follow from the options, which claims lack evidence, which risks go unstated, what contradicts the adopted catalogue. Advisory — nothing is stored, and you decide what to submit."
           : "AI Decision Review is not enabled for this instance. A platform admin can switch it on under Settings · AI."}</p>}
         {review && <div className="ag-ai-review">
-          <div className="ag-row snug">
-            <StatusTag kind="recommendation" value={review.verdict === "sound" ? "proceed" : "request_changes"} label={review.verdict === "sound" ? "Argument holds" : "Argument needs work"} />
-            <span className="ag-muted ag-label">AI review ({review.model}) — advisory; nothing is stored.</span>
-          </div>
+          {/* The verdict tag explains itself on hover (origin, model, advisory nature); the panel's empty state already said the rest. */}
+          <StatusTag kind="recommendation" value={review.verdict === "sound" ? "proceed" : "request_changes"} label={review.verdict === "sound" ? "Argument holds" : "Argument needs work"} explain={`AI review (${review.model}) — advisory and never stored; you decide what to submit.`} />
           <Markdown md={review.assessment_md} />
           {review.issues?.length > 0 && <ul className="ag-area-findings">{review.issues.map((i: any, k: number) => <li key={k}><KindTag kind="decision_issue" value={i.kind} /><span>{i.point}</span></li>)}</ul>}
           {/* Critical claims without evidence: each suggestion can become a tracked assessment on the draft decision. */}
