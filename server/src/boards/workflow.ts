@@ -2,6 +2,7 @@ import { db, j, uid, nowIso, audit } from "../db.js";
 import { normaliseBoardRole, seatHas, capabilitiesFor, APPROVING_ROLES, DECIDING_ROLES, type BoardRole, type Capability } from "../auth/roles.js";
 import type { Principal } from "../auth/context.js";
 import { boardAreas, touchedAreas, areaLabel, memberAreas } from "./areas.js";
+import { fastLaneOf, normaliseFastLane, type FastLane, type FastLanePolicy } from "./fastlane.js";
 
 /**
  * Boards, routing and the approval workflow.
@@ -19,6 +20,10 @@ import { boardAreas, touchedAreas, areaLabel, memberAreas } from "./areas.js";
  * and no `no` is live; only then may a decision-step seat declare it approved. Positions are never deleted: a
  * resubmission (or a referral to another board) supersedes them, so the audit trail keeps what was said about
  * the earlier version.
+ *
+ * A design policy may offer a fast lane (boards/fastlane.ts): a low-risk review that follows adopted patterns and
+ * passes every deterministic check is satisfied without positions, so the chair may declare it at once; any `no` or
+ * open conditional takes it out of the lane again.
  */
 export const REVIEW_TYPES = ["design", "decision", "standard", "principle", "pattern", "policy", "exception"] as const;
 export type ReviewType = (typeof REVIEW_TYPES)[number];
@@ -39,7 +44,7 @@ export type Resolution = (typeof RESOLUTIONS)[number];
 
 export type PolicyMode = "count" | "areas";
 export interface PolicyStep { name: string; kind: "pre_review" | "approvals" | "decision"; mode?: PolicyMode; min?: number; roles?: BoardRole[] }
-export interface Policy { steps: PolicyStep[] }
+export interface Policy { steps: PolicyStep[]; fast_lane?: FastLanePolicy }
 export const DEFAULT_POLICY: Policy = { steps: [
   { name: "Automatic pre-review", kind: "pre_review" },
   { name: "Board approval", kind: "approvals", mode: "count", min: 1, roles: ["decision_maker", "chair"] },
@@ -68,7 +73,8 @@ export function normalisePolicy(input: any): Policy {
     return { name: String(s.name || s.kind).slice(0, 120), kind: s.kind, ...(mode ? { mode } : {}), ...(min !== undefined ? { min } : {}), ...(roles ? { roles } : {}) };
   });
   if (!out.some((s) => s.kind === "decision")) throw new Error("policy needs a decision step");
-  return { steps: out };
+  const fast_lane = normaliseFastLane(input?.fast_lane);
+  return { steps: out, ...(fast_lane ? { fast_lane } : {}) };
 }
 const parsePolicy = (json: string): Policy => { try { return normalisePolicy(j(json, null)); } catch { return DEFAULT_POLICY; } };
 
@@ -96,6 +102,7 @@ export const policiesOf = (boardId: string) => Object.fromEntries((db.prepare("S
 export interface ReviewLike {
   id: string; type: string; stage: string; board_id: string | null; submitted_by: string | null; created_at: string; resubmitted_at?: string | null;
   areas_json?: string | null; application_id?: string | null; design_md?: string | null; target_kind?: string | null; target_id?: string | null; decision_id?: string | null; session_id?: string | null;
+  risk_tier?: string | null; patterns_json?: string | null;
 }
 export interface Position {
   id: string; review_id: string; session_id: string | null; user_id: string; board_role: BoardRole; on_behalf_of: string | null; delegation_id: string | null;
@@ -158,6 +165,8 @@ export interface AdvisoryObjection { by: string; board_role: BoardRole; text: st
 export interface Progress {
   mode: PolicyMode; required: number; received: number; satisfied: boolean; changes_requested: boolean; blocked: boolean; open_conditionals: number; open_assessments: number; ready: boolean;
   steps: ProgressStep[]; outstanding: Outstanding[]; areas: AreaState[]; advisory_objections: AdvisoryObjection[];
+  /** the board's fast lane for this review (null when not offered); via_fast_lane: satisfied by the lane, not by positions */
+  fast_lane: FastLane | null; via_fast_lane: boolean;
 }
 /** Requested assessments still open on a review: they block the approving outcomes until recorded or waived (boards/assessments.ts). */
 const openAssessmentRows = (reviewId: string) => db.prepare("SELECT type, title FROM review_assessments WHERE review_id=? AND status='requested' ORDER BY created_at").all(reviewId) as { type: string; title: string | null }[];
@@ -183,6 +192,13 @@ export function areaStateOf(area: string, live: Position[], review: ReviewLike, 
 }
 /** Where a review stands against its board's policy, counting only live positions (not superseded by a resubmission). */
 export function approvalProgress(review: ReviewLike): Progress {
+  const base = positionProgress(review);
+  const fast_lane = OPEN_STAGES.includes(review.stage) || review.stage === "changes_requested" ? fastLaneOf(review, modeOf(review).policy) : null;
+  if (!fast_lane?.eligible || base.satisfied) return { ...base, fast_lane, via_fast_lane: false };
+  // eligibility already rules out a live no, an open conditional and an open assessment: the chair may declare now
+  return { ...base, satisfied: true, ready: OPEN_STAGES.includes(review.stage), fast_lane, via_fast_lane: true };
+}
+function positionProgress(review: ReviewLike): Omit<Progress, "fast_lane" | "via_fast_lane"> {
   const { mode, policy, touched } = modeOf(review);
   const live = livePositions(review.id);
   const open_assessments = openAssessmentRows(review.id).length;
@@ -391,11 +407,12 @@ export function awaitingMe(p: Principal | null, review: ReviewLike): boolean {
   const prog = approvalProgress(review);
   const live = livePositions(review.id);
   if (prog.mode === "areas") {
-    for (const a of prog.areas) if (canRecordPosition(p, review, a.area).ok && !live.some((x) => x.area === a.area && x.user_id === p.id)) return true;
+    // a fast-lane item waits on the chair alone; owners may still object, but nobody is awaited for a position
+    if (!prog.via_fast_lane) for (const a of prog.areas) if (canRecordPosition(p, review, a.area).ok && !live.some((x) => x.area === a.area && x.user_id === p.id)) return true;
     if (OPEN_STAGES.includes(review.stage) && review.submitted_by !== p.id && isDecider(p, review).ok && (prog.ready || prog.open_conditionals > 0)) return true;
     return false;
   }
   const a = canApprove(p, review);
-  if (a.ok && !live.some((x) => x.user_id === p.id && x.position === "yes")) return true;
+  if (a.ok && !prog.via_fast_lane && !live.some((x) => x.user_id === p.id && x.position === "yes")) return true;
   return canDecide(p, review).ok;
 }

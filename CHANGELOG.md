@@ -6,6 +6,8 @@ All notable changes to Archigov are documented here. The format follows [Keep a 
 
 ### Added
 
+- **Fast lane for low-risk designs** ([docs](docs/features/fast-lane.md)): a board can let a design review that is low risk, follows adopted patterns and passes every deterministic check be declared by the chair without collecting area positions — one at a time, on the consent agenda, or all together from the board page. The risk tier is derived (the submitter can raise it, never lower it), claimed patterns must be adopted and their rules pass for the application, the latest pre-review must be clean on this version (an AI pre-review can veto, never grant), and any area owner takes an item out of the lane with a no or a conditional. Approvals record that they rested on the lane and which checks held. Submitters claim patterns on submission and can edit the claim; the policy editor gains a Fast Lane toggle; the demo Design Authority offers the lane with one Intranet review in it (migration m016).
+
 - **Criticality classification and Business Services** ([docs](docs/features/criticality-classification.md)): every application is classified Critical, Important or Standard and names the business services or regulated functions that depend on it — important business services (PRA SS1/21, FCA SYSC 15A), critical or important functions (DORA), essential functions (NCSC CAF). Derived from resource tags with the evidence kept; an author can verify it or set it with a reason, which collection never overwrites; supporting a regulated service makes an application critical. A new **Business Services** page maps each service to the applications, resources, regions and shared platforms behind it; the Applications list gains a Criticality column and filter; rules can target `app.criticality`, `app.regulated` and the service names in either scope; the DORA register fills B_06.01.0050 and the function name from the classification; the evidence pack records who stands behind each one (migration m015).
 - A ninth AI feature, **Classification Suggestion** (off by default): for an application the tags leave open, suggests a tier and the dependent services with a rationale inside the Classify form. Nothing is stored; the author applies it and saves with their own reason.
 - `scripts/smoke-registers.sh`: the classification flow end to end (runs after `smoke-work.sh`).
@@ -36,6 +38,9 @@ All notable changes to Archigov are documented here. The format follows [Keep a 
 
 ### Fixed
 
+- The DORA register no longer writes "Not critical or important" for applications classified **important**: whether that tier is a DORA important function is the entity's call, so the cell stays blank, as it does for unclassified ones.
+- Business Services: region names no longer wrap mid-word in the expanded service rows.
+- Review page: the areas table drops its Actions column when the viewer has no action on any area, so it fits its half of the page.
 - Action buttons no longer vanish for signed-in users: the page trusted a dev-mode fallback identity when deciding whether the viewer is the submitter, which hid Record Position and Approve from everyone on reviews submitted by the fallback user.
 - The design section no longer shows a duplicated "Design" heading, and pre-review errors surface as an inline error notification instead of a muted line.
 

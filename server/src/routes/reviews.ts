@@ -9,10 +9,11 @@ import { capabilitiesFor, type Capability } from "../auth/roles.js";
 import { forbidden } from "../auth/middleware.js";
 import { REVIEW_TYPES, ARTEFACT_TYPES, OPEN_STAGES, FINAL_STAGES, POSITIONS, RESOLUTIONS, routeBoard, boardById, boardSummary, policyFor, approvalProgress, approvalsOf, positionsOf, livePositions, canApprove, canRequestChanges, canActOn, canDecide, canResolve, canRecordPosition, recordableAreas, declareOutcomes, supersedePositions, awaitingMe, memberRole, modeOf, frozenBy, positionById, listedSessionOf, sessionById, type ReviewType } from "../boards/workflow.js";
 import { boardAreas, areaOfCategory } from "../boards/areas.js";
-import { reviewRow, targetOf, userName, preReviewByType, createReview } from "../reviews.js";
+import { reviewRow, targetOf, userName, preReviewByType, createReview, resolvePatterns } from "../reviews.js";
 import { declareOutcome, validateDeclare, DeclareIn, takePosition, resolvePosition, createDependency, dependenciesOf, dependentsOf } from "../boards/declare.js";
 import { ASSESSMENT_TYPES, ASSESSMENT_RESULTS, ASSESSMENT_TEMPLATES, assessmentsOf, assessmentsOfDecision, assessmentById, assessmentLabel, withAssessmentNames, canRequestAssessment, canWaiveAssessment, canProvideAssessment, requestAssessment, reassignAssessment, recordAssessmentResult, recordDecisionAssessmentResult, waiveAssessment, markAssessmentsStale, provideAssessment, updateProvidedAssessment, updateProvidedDecisionAssessment } from "../boards/assessments.js";
 import { artefactById } from "../artefacts.js";
+import { claimedPatterns } from "../boards/fastlane.js";
 
 /**
  * Reviews are typed: a design (an application), a decision (an ADR), a governance artefact (standard, principle,
@@ -94,7 +95,7 @@ reviews.get("/reviews/:id", (c) => {
     dependencies: dependenciesOf(r.id), dependents: r.type === "decision" ? dependentsOf(r.decision_id) : [],
     // the review's own assessments, plus the evidence gathered on the decision before it was submitted (tracked, never blocking)
     assessments: [...assessmentsOf(r.id).map(withAssessmentNames), ...(r.decision_id ? assessmentsOfDecision(r.decision_id).map((a) => ({ ...withAssessmentNames(a), on_decision: true })) : [])],
-    submitted_by_name: userName(r.submitted_by),
+    submitted_by_name: userName(r.submitted_by), patterns: r.type === "design" ? claimedPatterns(r) : [],
     can: { approve: approve.ok && !frozen, request_changes: changes.ok && !frozen, decide: decide.ok, comment: open && canActOn(p, r, "comment").ok, resubmit: r.stage === "changes_requested" && isSubmitter && has(p, "resubmit"), pre_review: open && canActOn(p, r, "pre_review").ok,
       record_position: recordable.length > 0 && !frozen, resolve: resolve.ok && openConditional && !frozen,
       create_dependency: open && !!p && (isSubmitter || role === "chair" || role === "decision_maker" || role === "reviewer"),
@@ -113,6 +114,7 @@ const ReviewIn = z.object({
   application_id: z.string().nullable().optional(), decision_id: z.string().nullable().optional(), artefact_id: z.string().nullable().optional(), finding_id: z.string().nullable().optional(), work_item_id: z.string().nullable().optional(),
   risk_tier: z.string().default("medium"), impact: z.enum(["minor", "major"]).optional(), summary: z.string().optional(), design_md: z.string().optional(),
   reason: z.string().optional(), proposed_expires_at: z.string().nullable().optional(),
+  patterns: z.array(z.string()).max(10).optional(),
 });
 reviews.post("/reviews", async (c) => {
   const b = ReviewIn.parse(await c.req.json()); const p = currentPrincipal(); const actor = actorOf(c);
@@ -134,9 +136,12 @@ reviews.post("/reviews", async (c) => {
     else return c.json({ error: "an exception review needs finding_id, or artefact_id with application_id" }, 400);
     if (!b.reason) return c.json({ error: "reason is required for an exception review" }, 400);
   }
+  if (b.patterns?.length && b.type !== "design") return c.json({ error: "only a design review claims patterns" }, 400);
+  let patterns: string[] = [];
+  try { patterns = resolvePatterns(b.patterns); } catch (e) { return fail(c, e); }
   const board = routeBoard(b.type, kind, category);
   if (!board) return c.json({ error: "no board can receive this review (no routing rule and no board coded DA)" }, 500);
-  const r = await createReview({ type: b.type, title: b.title, target_kind, target_id, board, submitted_by: actor, application_id, decision_id, work_item_id: b.work_item_id || null, risk_tier: b.risk_tier, impact: b.impact || null, summary: b.summary || b.reason || "", design_md: b.design_md || "",
+  const r = await createReview({ type: b.type, title: b.title, target_kind, target_id, board, submitted_by: actor, application_id, decision_id, work_item_id: b.work_item_id || null, risk_tier: b.risk_tier, impact: b.impact || null, summary: b.summary || b.reason || "", design_md: b.design_md || "", patterns,
     submitted_data: b.type === "exception" ? { reason: b.reason, proposed_expires_at: b.proposed_expires_at || null, finding_id: b.finding_id || null, artefact_id: b.artefact_id || null, application_id } : {} }, actor);
   return c.json({ id: r.id, code: r.code, type: r.type, stage: r.stage, board: boardSummary(board), areas: j(r.areas_json, []) || [] });
 });
@@ -166,6 +171,25 @@ reviews.put("/reviews/:id/areas", async (c) => {
   audit(actor, "review:areas", "reviews", r.id, { from, to: areas });
   const r2 = row(r.id);
   return c.json({ ok: true, areas: areas, origin: "human", progress: approvalProgress(r2) });
+});
+
+/** The patterns a design claims to follow (the fast lane's claim): the submitter, while the review is open or sent back. */
+reviews.put("/reviews/:id/patterns", async (c) => {
+  const r = row(c.req.param("id")); if (!r) return c.json({ error: "not found" }, 404);
+  const p = currentPrincipal();
+  if (!p || p.id !== r.submitted_by) return forbidden(c, "submit_review", p, "only the submitter states which patterns the design follows");
+  if (r.type !== "design") return c.json({ error: "only a design review claims patterns" }, 400);
+  if (!OPEN_STAGES.includes(r.stage) && r.stage !== "changes_requested") return c.json({ error: `review is ${r.stage}` }, 409);
+  const b = z.object({ patterns: z.array(z.string()).max(10) }).parse(await c.req.json());
+  let to: string[]; try { to = resolvePatterns(b.patterns); } catch (e) { return fail(c, e); }
+  const from: string[] = j(r.patterns_json, []) || [];
+  const now = nowIso(), actor = actorOf(c);
+  db.prepare("UPDATE reviews SET patterns_json=?, updated_at=? WHERE id=?").run(JSON.stringify(to), now, r.id);
+  const codes = (ids: string[]) => ids.map((id) => (db.prepare("SELECT code FROM standards WHERE id=?").get(id) as any)?.code ?? id);
+  db.prepare(`INSERT INTO review_events(id,review_id,kind,actor,body_md,data_json,origin,verification,verified_by,verified_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(uid(), r.id, "patterns_changed", actor, to.length ? `Follows ${codes(to).join(", ")}.` : "No pattern claimed.", JSON.stringify({ from: codes(from), to: codes(to) }), "human", "verified", actor, now, now);
+  audit(actor, "review:patterns", "reviews", r.id, { from: codes(from), to: codes(to) });
+  return c.json({ ok: true, patterns: to, progress: approvalProgress(row(r.id)) });
 });
 
 // ---------- discussion, positions, resubmission ----------

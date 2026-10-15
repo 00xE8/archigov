@@ -1,7 +1,7 @@
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Table, TableHead, TableRow, TableHeader, TableBody, TableCell, TableContainer, DataTableSkeleton, SkeletonText, Button, Modal, TextInput, TextArea, Select, SelectItem, Dropdown, NumberInput, MultiSelect, InlineNotification, InlineLoading, Tag, Checkbox, FormGroup } from "@carbon/react";
-import { Add, Edit, TrashCan, Save, Calendar, User, TreeViewAlt, Flow } from "@carbon/icons-react";
+import { Table, TableHead, TableRow, TableHeader, TableBody, TableCell, TableContainer, DataTableSkeleton, SkeletonText, Button, Modal, TextInput, TextArea, Select, SelectItem, Dropdown, NumberInput, MultiSelect, InlineNotification, InlineLoading, Tag, Checkbox, FormGroup, Toggle, UnorderedList, ListItem } from "@carbon/react";
+import { Add, Edit, TrashCan, Save, Calendar, User, TreeViewAlt, Flow, Checkmark } from "@carbon/icons-react";
 import { get, post, put, del, labelFor, fmtDateTime, REVIEW_TYPES, BOARD_ROLES, BOARD_ROLE_LABELS, APPROVAL_SEATS, DECISION_SEATS, NO_SYSTEM_ROLE, normaliseSeat, ARTEFACT_KINDS, SEEDED_AREAS, AREA_LABELS, areaLabel } from "../api";
 import { PageHeader, PageIntro, useLoad, LoadError, RLink, StatusTag, EmptyState, Empty, Crumbs, KindTag, AreaTag, progressText, useDocTitle } from "../components";
 import { Gated, useCan, useAuth } from "../auth";
@@ -86,7 +86,8 @@ export function BoardDetail() {
   const [editingAreas, setEditingAreas] = React.useState<string | null>(null);
   const [areasForm, setAreasForm] = React.useState<{ selected: string[]; custom: Area[]; newLabel: string; newId: string } | null>(null);
   const [routing, setRouting] = React.useState<any[] | null>(null);
-  const [policy, setPolicy] = React.useState<{ type: string; steps: any[] } | null>(null);
+  const [policy, setPolicy] = React.useState<{ type: string; steps: any[]; fast_lane?: { enabled: boolean; require_pattern: boolean } } | null>(null);
+  const [fastDeclare, setFastDeclare] = React.useState<{ rationale: string } | null>(null);
   const [session, setSession] = React.useState(false);
   const [removeM, setRemoveM] = React.useState<any>(null); // member pending removal (danger confirm names the consequence)
   // The structure and flow diagrams open full-size on demand; the page itself stays a scannable summary.
@@ -119,7 +120,9 @@ export function BoardDetail() {
   const memberAreas = (m: any) => areaEdits[m.user_id] ?? (m.areas || []);
   const openAreasEditor = () => setAreasForm({ selected: areas.map((a) => a.id), custom: areas.filter((a) => !SEEDED_AREAS.includes(a.id)), newLabel: "", newId: "" });
   const nameOf = (uid: string) => members.find((m) => m.user_id === uid)?.name || uid;
-  const openPolicyEditor = (t: string) => setPolicy({ type: t, steps: (policies[t]?.steps || []).map((s: any) => ({ name: s.name || labelFor("step", s.kind), kind: s.kind || "approvals", mode: s.mode === "areas" ? "areas" : "count", min: s.min ?? 1, roles: Array.from(new Set<string>((s.roles || defaultSeats(s.kind, s.mode)).map(normaliseSeat))) })) });
+  const openPolicyEditor = (t: string) => setPolicy({ type: t, fast_lane: t === "design" ? { enabled: !!policies[t]?.fast_lane?.enabled, require_pattern: policies[t]?.fast_lane?.require_pattern !== false } : undefined, steps: (policies[t]?.steps || []).map((s: any) => ({ name: s.name || labelFor("step", s.kind), kind: s.kind || "approvals", mode: s.mode === "areas" ? "areas" : "count", min: s.min ?? 1, roles: Array.from(new Set<string>((s.roles || defaultSeats(s.kind, s.mode)).map(normaliseSeat))) })) });
+  // reviews the fast lane currently satisfies; the chair may declare them together (the server re-checks each one)
+  const fastLane: any[] = (b.reviews_in_flight || []).filter((r: any) => r.progress?.via_fast_lane);
   const bySeat = (r: string) => members.filter((m) => normaliseSeat(m.board_role) === r).map((m) => m.name || m.user_id);
   const supportNames = members.filter((m) => ["reviewer", "secretary", "observer"].includes(normaliseSeat(m.board_role))).map((m) => m.name || m.user_id);
   const seatSummary = [
@@ -212,9 +215,10 @@ export function BoardDetail() {
             {canSessions && <div className="ag-mt-03"><Button size="sm" kind="tertiary" renderIcon={Calendar} onClick={() => setSession(true)}>New Session</Button></div>}
           </section>}
 
-          <section className="ag-section"><h2>Reviews in Flight ({(b.reviews_in_flight || []).length})</h2>
+          <section className="ag-section"><div className="ag-row between"><h2>Reviews in Flight ({(b.reviews_in_flight || []).length})</h2>
+            {fastLane.length > 0 && mySeat === "chair" && <Button size="sm" kind="tertiary" renderIcon={Checkmark} onClick={() => setFastDeclare({ rationale: "" })}>Declare Fast Lane ({fastLane.length})</Button>}</div>
             {(b.reviews_in_flight || []).length === 0 ? <Empty>Nothing waiting on this board.</Empty> : b.reviews_in_flight.map((r: any) => (
-              <div className="ag-finding" key={r.id}><div className="ag-row snug"><RLink to={`/reviews/${r.id}`} className="title">{r.code} · {r.title}</RLink><KindTag kind="review_type" value={r.type} /><StatusTag kind="stage" value={r.stage} /></div>{r.progress && <div className="detail ag-muted">{progressText(r.progress)}</div>}</div>))}
+              <div className="ag-finding" key={r.id}><div className="ag-row snug"><RLink to={`/reviews/${r.id}`} className="title">{r.code} · {r.title}</RLink><KindTag kind="review_type" value={r.type} /><StatusTag kind="stage" value={r.stage} />{r.progress?.via_fast_lane && <StatusTag kind="fast_lane" value="eligible" size="sm" label="Fast Lane" />}</div>{r.progress && <div className="detail ag-muted">{progressText(r.progress)}</div>}</div>))}
           </section>
       </div>
 
@@ -240,7 +244,7 @@ export function BoardDetail() {
                   ? <div className="ag-row tight">{rules.map((r: any, i: number) => <span key={i} className="ag-label">{r.kind ? labelFor("kind", r.kind) : "any kind"}{r.category ? ` · ${r.category}` : ""} <span className="ag-muted">· priority {r.priority ?? 0}</span></span>)}</div>
                   : <span className="ag-muted">Not routed here</span>}</TableCell>
                 <TableCell>{steps
-                  ? <span className="ag-label">{steps.map((s: any) => s.name || labelFor("step", s.kind)).join(" → ") || "No steps"}</span>
+                  ? <div className="ag-row tight"><span className="ag-label">{steps.map((s: any) => s.name || labelFor("step", s.kind)).join(" → ") || "No steps"}</span>{policies[t]?.fast_lane?.enabled && <StatusTag kind="fast_lane" value="eligible" size="sm" label={policies[t].fast_lane.require_pattern ? "Fast Lane · Pattern Required" : "Fast Lane"} />}</div>
                   : <span className={rules.length ? "" : "ag-muted"}>{rules.length ? <StatusTag kind="attention" value="decision" size="sm" label="No workflow — chair declares at once" /> : <span className="ag-muted">—</span>}</span>}</TableCell>
                 <TableCell><div className="ag-actions">
                   {steps && <Button size="sm" kind="ghost" renderIcon={Flow} onClick={() => setViewFlow({ types: [t], steps })}>View Flow</Button>}
@@ -323,7 +327,7 @@ export function BoardDetail() {
       </Modal>
 
       <Modal open={!!policy} size="lg" modalHeading={policy ? `${labelFor("review_type", policy.type)} reviews · approval policy` : ""} primaryButtonText="Save Policy" secondaryButtonText="Cancel" primaryButtonDisabled={!policy?.steps?.length} onRequestClose={() => setPolicy(null)}
-        onRequestSubmit={() => { const p = policy!; setPolicy(null); run("policy", () => put(`/boards/${b.id}/policies/${p.type}`, { policy: { steps: p.steps.map((s) => (s.kind === "pre_review" ? { name: s.name, kind: s.kind } : s.kind === "approvals" ? (s.mode === "areas" ? { name: s.name, kind: s.kind, mode: "areas", roles: s.roles } : { name: s.name, kind: s.kind, mode: "count", min: Number(s.min) || 1, roles: s.roles }) : { name: s.name, kind: s.kind, roles: s.roles })) } }), `Policy for ${labelFor("review_type", p.type).toLowerCase()} reviews saved`); }}>
+        onRequestSubmit={() => { const p = policy!; setPolicy(null); run("policy", () => put(`/boards/${b.id}/policies/${p.type}`, { policy: { ...(p.fast_lane ? { fast_lane: p.fast_lane } : {}), steps: p.steps.map((s) => (s.kind === "pre_review" ? { name: s.name, kind: s.kind } : s.kind === "approvals" ? (s.mode === "areas" ? { name: s.name, kind: s.kind, mode: "areas", roles: s.roles } : { name: s.name, kind: s.kind, mode: "count", min: Number(s.min) || 1, roles: s.roles }) : { name: s.name, kind: s.kind, roles: s.roles })) } }), `Policy for ${labelFor("review_type", p.type).toLowerCase()} reviews saved`); }}>
         {policy && <div className="ag-form">
           <p className="ag-body">Steps run in order. An approvals step counts distinct approvals from the listed seats (count mode) or needs a yes on every area the review touches from the decision makers who own it (areas mode); a decision step names the seat that may declare once every earlier step is satisfied.</p>
           {areas.length === 0 && policy.steps.some((s) => s.kind === "approvals" && s.mode === "areas") && <InlineNotification kind="info" lowContrast hideCloseButton title="This board has no areas" subtitle="Areas mode needs areas on the board and on its decision makers; until then this step runs as count mode." />}
@@ -338,8 +342,22 @@ export function BoardDetail() {
               <Button size="md" kind="ghost" renderIcon={TrashCan} iconDescription="Remove step" hasIconOnly onClick={() => setPolicy({ ...policy, steps: policy.steps.filter((_x, k) => k !== i) })} />
             </div>))}
           <div><Button size="sm" kind="tertiary" renderIcon={Add} onClick={() => { const mode = areas.length ? "areas" : "count"; setPolicy({ ...policy, steps: [...policy.steps, { name: "Approvals", kind: "approvals", mode, min: 1, roles: defaultSeats("approvals", mode) }] }); }}>Add Step</Button></div>
+          {policy.fast_lane && <FormGroup legendText="Fast Lane">
+            <p className="ag-muted ag-body ag-mb-03">A low-risk design that follows adopted patterns and passes every deterministic check — derived risk tier low, claimed patterns adopted and passing, a clean pre-review on this version, no medium or higher finding, no open assessment, no objection — counts as satisfied without positions, so the chair may declare it at once. Any area owner takes it out of the lane by recording a no or a conditional.</p>
+            <Toggle id="pl-fast" labelText="Offer a Fast Lane" labelA="Off" labelB="On" toggled={policy.fast_lane.enabled} onToggle={(on) => setPolicy({ ...policy, fast_lane: { ...policy.fast_lane!, enabled: on } })} />
+            <Checkbox id="pl-fast-pattern" labelText="Require At Least One Adopted Pattern" disabled={!policy.fast_lane.enabled} checked={policy.fast_lane.require_pattern} onChange={(_, { checked }) => setPolicy({ ...policy, fast_lane: { ...policy.fast_lane!, require_pattern: checked } })} />
+          </FormGroup>}
         </div>}
       </Modal>
+
+      {fastDeclare && <Modal open modalHeading={`Declare ${fastLane.length} Fast-Lane Review${fastLane.length === 1 ? "" : "s"} Approved`} primaryButtonText="Declare Approved" secondaryButtonText="Cancel" onRequestClose={() => setFastDeclare(null)}
+        onRequestSubmit={() => { const f = fastDeclare; setFastDeclare(null); run("fast", async () => { const out: any = await post(`/boards/${b.id}/fast-lane/declare`, { review_ids: fastLane.map((r) => r.id), rationale: f.rationale.trim() || undefined }); if (out.skipped?.length) throw new Error(`${out.declared.length} declared; skipped ${out.skipped.map((s: any) => `${s.code || s.id} (${s.reason})`).join(", ")}`); }, `${fastLane.length} review${fastLane.length === 1 ? "" : "s"} declared approved in the fast lane`); }}>
+        <div className="ag-form">
+          <p className="ag-body">Each review is checked again as it is declared; one that has left the lane since this page loaded is skipped and named.</p>
+          <UnorderedList>{fastLane.map((r) => <ListItem key={r.id}><RLink to={`/reviews/${r.id}`}>{r.code}</RLink> · {r.title}</ListItem>)}</UnorderedList>
+          <TextArea id="fast-rationale" labelText="Rationale (optional)" helperText="Recorded on each review's timeline and in the audit log." rows={2} value={fastDeclare.rationale} onChange={(e) => setFastDeclare({ rationale: e.target.value })} />
+        </div>
+      </Modal>}
     </>
   );
 }

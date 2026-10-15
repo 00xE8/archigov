@@ -40,7 +40,7 @@ AI, optional and advisory — **Classification Suggestion** (`suggest_classifica
 
 - Migration m015: `app_classifications` (one row per application — criticality, `services_json`, `origin` derived|human, `method`, `evidence_json`, `derived_json`, `reason`, `set_by/at`, verification fields, `content_hash`/`verified_hash`). Refreshed at the start of every evaluation run.
 - Audit actions on `applications`: `classification:set` (from → to, with the reason), `classification:reset`, `classification:verify` / `classification:unverify`.
-- DORA register (`/exports/dora-roi.csv`): `B_06.01.0050` reads "Critical or important" / "Not critical or important" from the classification and stays blank for an unclassified application; the function name comes from its regulated services.
+- DORA register (`/exports/dora-roi.csv`): `B_06.01.0050` reads "Critical or important" for a critical application and "Not critical or important" for a standard one, and stays blank for an important or unclassified one — whether our important tier is a DORA important function is the entity's call, never guessed; the function name comes from its regulated services.
 - The evidence pack carries each application's classification with its origin and who verified it.
 
 ## UI

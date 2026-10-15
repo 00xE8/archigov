@@ -1,6 +1,6 @@
 import React from "react";
 import { useParams } from "react-router-dom";
-import { Button, SkeletonText, Modal, TextArea, Select, SelectItem, TextInput, Checkbox, ProgressIndicator, ProgressStep, Table, TableHead, TableRow, TableHeader, TableBody, TableCell, RadioButtonGroup, RadioButton, MultiSelect, InlineNotification, InlineLoading, Tag } from "@carbon/react";
+import { Button, SkeletonText, Modal, TextArea, Select, SelectItem, TextInput, Checkbox, ProgressIndicator, ProgressStep, Table, TableHead, TableRow, TableHeader, TableBody, TableCell, RadioButtonGroup, RadioButton, MultiSelect, FilterableMultiSelect, InlineNotification, InlineLoading, Tag } from "@carbon/react";
 import { MachineLearningModel, Send, Checkmark, Add, ThumbsUp, Edit, Renew, Link as LinkIcon, ChevronDown, ChevronUp } from "@carbon/icons-react";
 import { get, post, put, fmtDate, fmtDateTime, labelFor, sentence, currentUser, areaLabel, POSITIONS, RESOLUTIONS, ASSESSMENT_TYPES, ASSESSMENT_RESULTS } from "../api";
 import { PageHeader, useLoad, useAiFeatures, VerificationTag, VerifyButton, Markdown, SeverityTag, Empty, OriginTag, LoadError, RLink, Crumbs, StatusTag, DateField, CitationLink, KindTag, targetLink, AreaTag, AreaPositionTag, artefactLink, progressText, progressShort, useDocTitle } from "../components";
@@ -23,7 +23,7 @@ const ACTIVE_STAGES = [...OPEN_STAGES, "approved_subject_to_circulation"];
 const TOPICS = ["general", "hosting", "data-store", "integration", "ai-system", "security", "identity", "resilience"];
 const POSITION_HELP: Record<string, string> = { yes: "The area is content; the item can proceed as far as this area is concerned.", no: "The area objects; the item goes back to the submitter as changes requested.", conditional: "Yes if the condition is met. The item stays open until the chair resolves the condition and explains how.", not_my_area: "This area was derived wrongly; it is dropped from the item with your reason." };
 // Event kinds as the server writes them: declare events are named by verb (approve, defer, refer…), a count-mode position is an "approval".
-const EVENT_LABELS: Record<string, string> = { position: "Position recorded", approval: "Approval recorded", position_resolved: "Conditional resolved", dependency_created: "Dependent decision created", dependency_rejected: "Dependent decision rejected", became_effective: "Became effective", consent_declared: "Declared on the consent agenda", approve: "Outcome declared", request_changes: "Changes requested", defer: "Deferred", deferred: "Deferred", refer: "Referred", referred: "Referred", reject: "Rejected", withdraw: "Withdrawn", resubmitted: "Resubmitted", circulation_objection: "Objection in circulation", areas_changed: "Areas changed", declared: "Outcome declared", decided: "Outcome declared", assessment_requested: "Assessment requested", assessment_completed: "Assessment result recorded", assessment_waived: "Assessment waived" };
+const EVENT_LABELS: Record<string, string> = { position: "Position recorded", approval: "Approval recorded", position_resolved: "Conditional resolved", dependency_created: "Dependent decision created", dependency_rejected: "Dependent decision rejected", became_effective: "Became effective", consent_declared: "Declared on the consent agenda", approve: "Outcome declared", request_changes: "Changes requested", defer: "Deferred", deferred: "Deferred", refer: "Referred", referred: "Referred", reject: "Rejected", withdraw: "Withdrawn", resubmitted: "Resubmitted", circulation_objection: "Objection in circulation", areas_changed: "Areas changed", patterns_changed: "Patterns claimed", declared: "Outcome declared", decided: "Outcome declared", assessment_requested: "Assessment requested", assessment_completed: "Assessment result recorded", assessment_waived: "Assessment waived" };
 const asAreas = (list: any): { id: string; label: string }[] => (Array.isArray(list) ? list.map((a) => (typeof a === "string" ? { id: a, label: areaLabel(a) } : { id: a.id, label: a.label || areaLabel(a.id) })) : []);
 
 export default function ReviewDetail() {
@@ -49,6 +49,8 @@ export default function ReviewDetail() {
   const [decisions] = useLoad<any[] | null>(() => (needDecisions ? get<any[]>("/decisions").catch(() => []) : Promise.resolve(null)), [needDecisions]);
   // the assessor picker: loaded when the request modal opens; auditors and service accounts cannot assess
   const needUsers = modal?.kind === "assess_request";
+  const needPatterns = modal?.kind === "patterns";
+  const [adoptedPatterns] = useLoad<any[] | null>(() => (needPatterns ? get<any[]>("/artefacts?kind=pattern").then((l) => l.filter((a) => a.lifecycle === "adopted")).catch(() => []) : Promise.resolve(null)), [needPatterns]);
   // one template per assessment type (served by the API): the summary's skeleton for both recording and providing
   const [assessTypes] = useLoad<any[] | null>(() => get<any[]>("/assessments/types").catch(() => null));
   const tpl = (t: string) => (assessTypes || []).find((x: any) => x.type === t)?.template || "";
@@ -117,6 +119,7 @@ export default function ReviewDetail() {
   const openAssessments: any[] = (r.assessments || []).filter((a: any) => a.status === "requested");
   const waitingOn: React.ReactNode = (() => {
     if (!active) return null;
+    if (r.progress?.via_fast_lane) return <>In the fast lane — nothing outstanding; ready for the chair to declare.</>;
     if (r.stage === "changes_requested") return <>Waiting on <span className="ag-strong">{r.submitted_by_name || r.submitted_by}</span> to revise and resubmit.</>;
     const parts: React.ReactNode[] = [];
     if (areasMode && missingAreas.length) {
@@ -130,6 +133,14 @@ export default function ReviewDetail() {
     if (!parts.length) return r.stage === "approved_subject_to_circulation" ? null : <>Nothing outstanding — ready for the chair to declare.</>;
     return <>Waiting on {parts.map((p, i) => <React.Fragment key={i}>{i > 0 ? "; " : ""}{p}</React.Fragment>)}.</>;
   })();
+
+  // the row actions an area offers this viewer; with none anywhere the column is dropped, so the table fits its half of the page
+  const areaActions = (a: any) => ({
+    canRow: canRecord && (myAreas.length === 0 || (a.owners || []).includes(myId)) && a.state !== "not_my_area",
+    canResolve: can.resolve === true && a.state === "conditional" && !!(liveFor(a)?.id || a.position_id),
+  });
+  const anyAreaAction = progressAreas.some((a) => { const x = areaActions(a); return x.canRow || x.canResolve; });
+  const fastLane = r.progress?.fast_lane ? <FastLaneSection fl={r.progress.fast_lane} via={!!r.progress.via_fast_lane} canEdit={isSubmitter && (open || r.stage === "changes_requested")} onEdit={() => setModal({ kind: "patterns", selected: (r.patterns || r.progress.fast_lane.patterns).map((p: any) => p.id) })} /> : null;
 
   return (
     <>
@@ -163,6 +174,7 @@ export default function ReviewDetail() {
         {target && <div><dt>For</dt><dd>{tLink ? <RLink inline to={tLink}>{target.code ? `${target.code}${target.name ? ` · ${target.name}` : ""}` : target.name}</RLink> : target.name}</dd></div>}
         {r.board && <div><dt>Board</dt><dd><RLink inline to={`/boards/${r.board.id}`}>{r.board.name}</RLink></dd></div>}
         <div><dt>Submitted By</dt><dd>{r.submitted_by_name || r.submitted_by} · {fmtDate(r.created_at)}</dd></div>
+        {(r.patterns || []).length > 0 && <div><dt>Follows</dt><dd>{r.patterns.map((p: any, i: number) => <React.Fragment key={p.id}>{i > 0 ? ", " : ""}<RLink inline to={artefactLink(p.id)}>{p.code}</RLink></React.Fragment>)}</dd></div>}
         {r.decision && type !== "decision" && <div><dt>Decision</dt><dd><RLink inline to={`/decisions/${r.decision.id}`}>{r.decision.code}</RLink></dd></div>}
         {r.deferred_count > 0 && <div><dt>Deferred</dt><dd>{r.deferred_count} time{r.deferred_count === 1 ? "" : "s"}{r.deferred_reason ? ` (${r.deferred_reason})` : ""}</dd></div>}
         {!active && decided && <div><dt>Declared By</dt><dd>{nameOf(decided.actor)} · {fmtDateTime(decided.created_at)}</dd></div>}
@@ -211,6 +223,8 @@ export default function ReviewDetail() {
         </div>
         <div>
           <p className="ag-colhead">Board Record</p>
+          {/* In the lane, the lane is the record that matters and leads; out of it, the positions lead and the lane says briefly why not. */}
+          {r.progress?.fast_lane?.eligible && fastLane}
           {areasMode ? (
             <section className="ag-section">
               {/* One action language on the page: section-header actions are tertiary, in-row actions are ghost. */}
@@ -222,17 +236,17 @@ export default function ReviewDetail() {
                   {o.text && <div className="detail">{o.text}</div>}
                 </div>))}
               {progressAreas.length === 0 ? <Empty>No areas touched. Run a pre-review to derive them, or set them by hand.</Empty> : (
-              <Table size="sm"><TableHead><TableRow><TableHeader>Area</TableHeader><TableHeader>Position</TableHeader><TableHeader>Recorded By</TableHeader><TableHeader>Note</TableHeader><TableHeader>Actions</TableHeader></TableRow></TableHead>
+              <Table size="sm"><TableHead><TableRow><TableHeader>Area</TableHeader><TableHeader>Position</TableHeader><TableHeader>Recorded By</TableHeader><TableHeader>Note</TableHeader>{anyAreaAction && <TableHeader>Actions</TableHeader>}</TableRow></TableHead>
                 <TableBody>{progressAreas.map((a) => {
                   const live = liveFor(a); const earlier = earlierFor(a);
-                  const canRow = canRecord && (myAreas.length === 0 || (a.owners || []).includes(myId)) && a.state !== "not_my_area";
-                  const canResolve = can.resolve === true && a.state === "conditional" && !!(live?.id || a.position_id);
+                  const { canRow, canResolve } = areaActions(a);
                   const findings = Array.isArray(a.findings) ? a.findings.length : a.findings_count;
                   return (<React.Fragment key={a.area}>
                     <TableRow>
                       <TableCell><AreaTag id={a.area} label={a.label} boardAreas={boardAreas} size="md" /></TableCell>
                       {/* A closed review awaits nobody: a position that was never recorded reads as history, not as outstanding work. */}
-                      <TableCell><StatusTag kind="position" value={a.state || "missing"} label={!active && (a.state || "missing") === "missing" ? "Not recorded" : undefined} /></TableCell>
+                      <TableCell><StatusTag kind="position" value={a.state || "missing"} label={!active && (a.state || "missing") === "missing" ? "Not recorded" : r.progress?.via_fast_lane && (a.state || "missing") === "missing" ? "Not required" : undefined}
+                        explain={r.progress?.via_fast_lane && (a.state || "missing") === "missing" ? "In the fast lane no position is required; the owner may still record one, and a no or a conditional takes the item out of the lane." : undefined} /></TableCell>
                       <TableCell>{a.by
                         ? <><div>{nameOf(a.by)}{a.on_behalf_of ? <span className="ag-muted"> for {nameOf(a.on_behalf_of)}</span> : null}</div>{live?.at && <div className="ag-muted ag-label">{fmtDateTime(live.at)}</div>}</>
                         : <span className="ag-muted ag-label">owner{(a.owners || []).length === 1 ? "" : "s"}: {(a.owners || []).length ? a.owners.map((u: string) => nameOf(u)).join(", ") : "nobody"}</span>}</TableCell>
@@ -242,14 +256,14 @@ export default function ReviewDetail() {
                         {earlier.length > 0 && <div className="ag-muted ag-label">Earlier: {earlier.map((p) => `${labelFor("position", p.position).toLowerCase()} by ${nameOf(p.user_id)} ${fmtDateTime(p.at)}`).join(" · ")}</div>}
                         {!(a.text || live?.text) && a.state !== "resolved" && !live?.resolution && !earlier.length && <span className="ag-muted">—</span>}
                       </TableCell>
-                      <TableCell><div className="ag-actions">
+                      {anyAreaAction && <TableCell><div className="ag-actions">
                         {canRow && <Button size="sm" kind="ghost" renderIcon={ThumbsUp} onClick={() => setModal({ kind: "position", area: a.area, position: "yes", text: "" })}>Record Position</Button>}
                         {canResolve && <Button size="sm" kind="ghost" renderIcon={Checkmark} onClick={() => setModal({ kind: "resolve", position: live || { id: a.position_id, area: a.area, text: a.text }, resolution: "accepted_condition", text: "", owner: r.submitted_by, due_at: "", decision_id: "", create: false, title: "", topic: "general" })}>Resolve</Button>}
                         {!canRow && !canResolve && <span className="ag-muted">—</span>}
-                      </div></TableCell>
+                      </div></TableCell>}
                     </TableRow>
                     {/* Findings get the table's full width under their area instead of a cramped note cell. */}
-                    {findings ? <TableRow className="ag-subrow"><TableCell colSpan={5}><AreaFindings a={a} /></TableCell></TableRow> : null}
+                    {findings ? <TableRow className="ag-subrow"><TableCell colSpan={anyAreaAction ? 5 : 4}><AreaFindings a={a} /></TableCell></TableRow> : null}
                   </React.Fragment>);
                 })}</TableBody></Table>)}
               <p className="ag-muted ag-label ag-mt-03">Each area needs a yes, or a conditional the chair has resolved, from the decision maker who owns it. The chair declares; the chair has no vote.</p>
@@ -266,6 +280,7 @@ export default function ReviewDetail() {
                 </TableRow>)}</TableBody></Table>)}
             </section>}
           <AssessmentsSection r={r} active={active} myId={myId} boardAreas={boardAreas} setModal={setModal} tpl={tpl} />
+          {r.progress?.fast_lane && !r.progress.fast_lane.eligible && fastLane}
           {((r.conditions || []).length > 0 || active) && <section className="ag-section"><h2>Conditions ({(r.conditions || []).length})</h2>
             {(r.conditions || []).length === 0 ? <Empty>No conditions.</Empty> : (
             <Table size="sm"><TableHead><TableRow><TableHeader>Condition</TableHeader><TableHeader>Area</TableHeader><TableHeader>Owner</TableHeader><TableHeader>Due</TableHeader><TableHeader>Status</TableHeader><TableHeader>Actions</TableHeader></TableRow></TableHead>
@@ -364,6 +379,16 @@ export default function ReviewDetail() {
           <div className="ag-form">
             <MultiSelect id="areas-ms" titleText="Areas" label={modal.selected.length ? modal.selected.map((a: string) => areaLabel(a, boardAreas)).join(", ") : "Choose areas"} helperText={(r.areas?.derived || []).length ? `Derived from the item: ${r.areas.derived.map((a: string) => areaLabel(a, boardAreas)).join(", ")}` : "Nothing was derived; pick the areas this item touches."} items={boardAreas} itemToString={(x: any) => x?.label || ""} initialSelectedItems={boardAreas.filter((x) => modal.selected.includes(x.id))} onChange={({ selectedItems }: any) => setModal({ ...modal, selected: selectedItems.map((y: any) => y.id) })} />
             <p className="ag-muted ag-label">Each area set here needs its owner's position before the chair can declare. A hand-set list sticks: pre-review no longer re-derives it.</p>
+          </div>
+        </Modal>)}
+
+      {modal?.kind === "patterns" && (
+        <Modal open modalHeading={`Patterns ${r.code} Follows`} primaryButtonText="Save Patterns" secondaryButtonText="Cancel" primaryButtonDisabled={busy === "patterns" || !adoptedPatterns} onRequestClose={() => setModal(null)}
+          onRequestSubmit={() => { const m = modal; setModal(null); run("patterns", () => put(`/reviews/${r.id}/patterns`, { patterns: m.selected })); }}>
+          <div className="ag-form">
+            {adoptedPatterns ? <FilterableMultiSelect id="patterns-ms" titleText="Adopted Patterns" placeholder="Filter patterns" helperText="Name only patterns the design really follows: a pattern with a rule is checked against the application, and reviewers judge the rest."
+              items={adoptedPatterns} itemToString={(x: any) => (x ? `${x.code} · ${x.title}` : "")} selectedItems={adoptedPatterns.filter((x) => modal.selected.includes(x.id))}
+              onChange={({ selectedItems }: any) => setModal({ ...modal, selected: selectedItems.map((y: any) => y.id) })} /> : <SkeletonText />}
           </div>
         </Modal>)}
 
@@ -522,10 +547,40 @@ function EventBody({ e, boardAreas, nameOf }: { e: any; boardAreas: { id: string
     case "assessment_completed": line = <div className="ag-row tight"><KindTag kind="assessment_type" value={d.type} />{d.title && <span className="ag-body">{d.title}</span>}<StatusTag kind="assessment_result" value={d.result} size="sm" />{d.reference && <a className="cds--link" href={d.reference} target="_blank" rel="noreferrer">reference</a>}</div>; break;
     case "assessment_waived": line = <div className="ag-row tight"><KindTag kind="assessment_type" value={d.type} />{d.title && <span className="ag-body">{d.title}</span>}<StatusTag kind="assessment_status" value="waived" size="sm" /></div>; break;
     case "consent_declared": line = d.outcome ? <StatusTag kind="outcome" value={d.outcome} size="sm" /> : null; break;
-    default: { if (d.outcome) line = <div className="ag-row tight"><StatusTag kind="outcome" value={d.outcome} size="sm" />{d.circulation_due ? <span className="ag-muted ag-label">positions due {fmtDate(d.circulation_due)}</span> : null}</div>; }
+    case "patterns_changed": { const to: string[] = d.to || []; line = to.length ? <div className="ag-row tight">{to.map((c) => <Tag key={c} size="sm" type="purple"><span title="An adopted pattern the design claims to follow">{c}</span></Tag>)}</div> : null; break; }
+    default: { if (d.outcome) line = <div className="ag-row tight"><StatusTag kind="outcome" value={d.outcome} size="sm" />{d.fast_lane ? <StatusTag kind="fast_lane" value="eligible" size="sm" label="Via the Fast Lane" /> : null}{d.circulation_due ? <span className="ag-muted ag-label">positions due {fmtDate(d.circulation_due)}</span> : null}</div>; }
   }
   // The dependency event's body repeats the link line; everything else keeps its body (the position text, the rationale, a comment).
   return <>{line}{e.body_md && e.kind !== "dependency_created" ? <Markdown md={e.body_md} /> : null}</>;
+}
+
+/**
+ * The fast lane on this review: whether the deterministic checks hold (each one with its reason), the derived risk
+ * tier and the patterns claimed. In the lane the chair may declare without positions; out of it the full policy applies.
+ */
+function FastLaneSection({ fl, via, canEdit, onEdit }: { fl: any; via: boolean; canEdit: boolean; onEdit: () => void }) {
+  const failed = (fl.checks || []).filter((c: any) => !c.ok);
+  const [all, setAll] = React.useState(false);
+  const shown = fl.eligible || all ? fl.checks || [] : failed;
+  return (
+    <section className="ag-section">
+      <div className="ag-row between"><h2>Fast Lane</h2>{canEdit && <Button size="sm" kind="tertiary" renderIcon={Edit} onClick={onEdit}>Edit Patterns</Button>}</div>
+      <div className="ag-row snug ag-mb-03">
+        <StatusTag kind="fast_lane" value={fl.eligible ? "eligible" : "full"} label={fl.eligible ? "In the Fast Lane" : "Full Policy"} />
+        <StatusTag kind="risk" value={fl.risk?.tier} label={`Risk: ${labelFor("severity", fl.risk?.tier)}`} explain={(fl.risk?.reasons || []).join(" ")} />
+      </div>
+      <p className="ag-body ag-mb-03">{fl.eligible
+        ? via ? "Every check passes: the chair may declare this design approved without area positions. Any area owner can still take it out of the lane by recording a no or a conditional." : "Every check passes, and the positions already satisfy the policy."
+        : `This board's fast lane is open to low-risk designs that follow adopted patterns. ${failed.length === 1 ? "One check keeps" : `${failed.length} checks keep`} this one on the full policy.`}</p>
+      <Table size="sm" aria-label="Fast lane checks"><TableHead><TableRow><TableHeader>Check</TableHeader><TableHeader>Result</TableHeader><TableHeader>Why</TableHeader></TableRow></TableHead>
+        <TableBody>{shown.map((c: any) => <TableRow key={c.id}>
+          <TableCell className="ag-nowrap">{c.name}</TableCell>
+          <TableCell><StatusTag kind="check" value={c.ok ? "ok" : "failed"} label={c.ok ? "Passes" : "Fails"} size="sm" /></TableCell>
+          <TableCell className="ag-wrap"><span className="ag-label">{c.detail}</span></TableCell>
+        </TableRow>)}</TableBody></Table>
+      {!fl.eligible && failed.length < (fl.checks || []).length && <Button size="sm" kind="ghost" renderIcon={all ? ChevronUp : ChevronDown} onClick={() => setAll(!all)}>{all ? "Show Failing Checks Only" : `Show All ${(fl.checks || []).length} Checks`}</Button>}
+    </section>
+  );
 }
 
 /** The board's approval policy as steps, with where this review stands: done, current, or blocked by requested changes. */

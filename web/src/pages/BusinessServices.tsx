@@ -71,7 +71,7 @@ export default function BusinessServices() {
                             <TableCell><RLink to={`/applications/${a.id}`}>{a.name}</RLink></TableCell>
                             <TableCell><div className="ag-row tight"><CriticalityTag value={a.criticality} /><VerificationTag state={a.verification} origin={a.origin} size="sm" /></div></TableCell>
                             <TableCell><div className="ag-row tight">{a.resource_types.map((t: any) => <span key={t.type} className="ag-mono ag-nowrap">{shortType(t.type)} ×{t.n}</span>)}</div></TableCell>
-                            <TableCell><span className="ag-mono">{a.regions.join(", ") || "—"}</span></TableCell>
+                            <TableCell><span className="ag-mono ag-nowrap">{a.regions.join(", ") || "—"}</span></TableCell>
                             <TableCell>{a.shared_services.length ? a.shared_services.map((x: any) => x.name).join(", ") : <span className="ag-muted">None</span>}</TableCell>
                             <TableCell><CountTag n={a.open_findings} /></TableCell>
                           </TableRow>))}</TableBody>

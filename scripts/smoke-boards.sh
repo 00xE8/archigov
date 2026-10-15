@@ -7,7 +7,8 @@
 # The default x-user ("smoke-boards") is a platform admin ONLY: it configures boards and policies but never
 # authors, approves or decides — those act as the seeded cast (s.patel authors, j.duduka/m.hughes decide-make,
 # r.khan chairs the PCB). MUTATES the tenant (adds/removes a board member, edits a policy, creates two draft
-# policies and their reviews, approves/decides them); reset with `docker compose down -v && docker compose up -d`.
+# policies and their reviews, approves/decides them, declares fast-lane design reviews on the Intranet); reset with
+# `docker compose down -v && docker compose up -d`.
 set -u
 BASE="${1:-http://localhost:8080}"
 command -v python3 >/dev/null || { echo "python3 is required"; exit 2; }
@@ -191,6 +192,32 @@ def sh():
     s, me = get("/auth/me"); assert me["user"]["is_platform_admin"] and me["user"]["user_type"] is None and not me["can"]["decide_review"] and not me["can"]["approve_review"], "platform admin alone cannot decide"
     return "legacy 'reviewer' → author + DA reviewer (advisory); 'board_member' → DA decision maker, no system role; platform admin alone never approves or decides"
 step("h  legacy aliases and segregation", sh)
+
+FAST_DESIGN = "## Design\n\nA page on the existing web app.\n\n## Data\n\nEditor-written posts only.\n\n## Security\n\nExisting sign-in; ingress through the gateway.\n\n## Resilience\n\nBest effort.\n"
+def si():
+    s, da = get("/boards/DA"); fl = da["policies"]["design"].get("fast_lane"); assert fl == {"enabled": True, "require_pattern": True}, fl
+    s, r = put(f"/boards/{da['id']}/policies/decision", {"policy": {**da["policies"]["decision"], "fast_lane": {"enabled": True}}}, user="j.duduka"); assert s == 400, f"design reviews only: {s} {r}"
+    s, apps = get("/applications"); intranet = next(a for a in apps if a["name"] == "Intranet")["id"]
+    body = {"type": "design", "application_id": intranet, "risk_tier": "low", "summary": "smoke-boards fast lane", "design_md": FAST_DESIGN, "patterns": ["PAT-001"]}
+    s, x = post("/reviews", {**body, "patterns": ["STD-001"], "title": "x"}, user="t.nguyen"); assert s == 400, f"a standard is not a pattern: {s} {x}"
+    s, a = post("/reviews", {**body, "title": "Smoke-boards: fast lane one"}, user="t.nguyen"); assert s == 200, f"{s} {a}"
+    s, b = post("/reviews", {**body, "title": "Smoke-boards: fast lane two"}, user="t.nguyen"); assert s == 200, f"{s} {b}"
+    mutations.append(f"fast-lane reviews {a['code']}, {b['code']}")
+    s, ra = get(f"/reviews/{a['id']}"); p = ra["progress"]
+    assert p["via_fast_lane"] and p["ready"], [c for c in (p.get("fast_lane") or {}).get("checks", []) if not c["ok"]]
+    s, w = get("/me/work", user="j.duduka"); assert any(d["review"]["id"] == a["id"] for d in w["declare"]), "the chair is asked to declare it"
+    s, w = get("/me/work", user="m.hughes"); assert not any(d["review"]["id"] == a["id"] for d in w["positions"]), "no position is awaited in the lane"
+    # an owner pulls one out: a no on an area it touches
+    area = next(x["area"] for x in p["areas"] if "m.hughes" in x["owners"])
+    s, x = post(f"/reviews/{b['id']}/positions", {"area": area, "position": "no", "text": "Editors need MFA first."}, user="m.hughes"); assert s == 200, f"{s} {x}"
+    s, rb = get(f"/reviews/{b['id']}"); assert not rb["progress"]["via_fast_lane"] and any(c["id"] == "objections" and not c["ok"] for c in rb["progress"]["fast_lane"]["checks"]), rb["progress"]["fast_lane"]
+    s, x = post(f"/boards/{da['id']}/fast-lane/declare", {"review_ids": [a["id"]]}); assert s == 403, f"platform admin: {s} {x}"
+    s, x = post(f"/boards/{da['id']}/fast-lane/declare", {"review_ids": [a["id"], b["id"]]}, user="j.duduka"); assert s == 200, f"{s} {x}"
+    assert [d["id"] for d in x["declared"]] == [a["id"]] and [k["id"] for k in x["skipped"]] == [b["id"]], x
+    s, ra = get(f"/reviews/{a['id']}"); assert ra["stage"] == "approved", ra["stage"]
+    s, au = get(f"/audit?entity=reviews&entity_id={a['id']}&action=decide:approved"); assert au["rows"] and au["rows"][0]["data"].get("basis") == "fast_lane", au["rows"][:1]
+    return f"{a['code']} in the lane (low, PAT-001, every check passing) → declared by the chair with basis fast_lane; {b['code']} taken out by m.hughes's no and skipped; policy guard and 403 for the platform admin"
+step("i  fast lane: eligibility, an owner's veto, the chair's board-wide declaration", si)
 
 passed = sum(1 for _, ok in results if ok); failed = len(results) - passed
 print(f"\n{passed} passed, {failed} failed  ({BASE})")

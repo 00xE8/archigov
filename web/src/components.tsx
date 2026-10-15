@@ -2,7 +2,7 @@ import React from "react";
 import { useLocation } from "react-router-dom";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import { Tag, Button, InlineLoading, InlineNotification, ActionableNotification, Tile, DefinitionTooltip, Tooltip, Link as CarbonLink, Breadcrumb, BreadcrumbItem, DatePicker, DatePickerInput, SkeletonText, MenuButton, MenuItem, Accordion, AccordionItem, Theme } from "@carbon/react";
-import { Checkmark, Renew, CheckmarkFilled, CheckmarkOutline, ErrorFilled, WarningFilled, WarningAlt, WarningAltFilled, Information, Pending, InProgress, Time, CloseFilled, CloseOutline, Undefined, Unknown, User, MachineLearningModel, Rule, Cloud, Idea, Template, Upload, Calendar, Send, Dashboard, Application, Roadmap, Catalog, DecisionTree, TaskApproved, UserMultiple, EventSchedule, Security, CertificateCheck, Report, Settings, BusinessProcesses } from "@carbon/icons-react";
+import { Checkmark, Renew, CheckmarkFilled, CheckmarkOutline, ErrorFilled, WarningFilled, WarningAlt, WarningAltFilled, Information, Pending, InProgress, Time, CloseFilled, CloseOutline, Undefined, Unknown, User, MachineLearningModel, Rule, Cloud, Idea, Template, Upload, Calendar, Send, Dashboard, Application, Roadmap, Catalog, DecisionTree, TaskApproved, UserMultiple, EventSchedule, Security, CertificateCheck, Report, Settings, BusinessProcesses, Flash } from "@carbon/icons-react";
 import { marked } from "marked";
 import { get, post, labelFor, fmtDateTime, shortType, sentence, download, slug, areaLabel } from "./api";
 import { Gated, useCan } from "./auth";
@@ -105,7 +105,14 @@ const EXPLAIN_KIND: Record<string, string> = {
   criticality: "How critical this application is, derived from resource tags or set by a person with a reason.",
   service_kind: "A service this application supports; regulated services make it critical.",
 };
+// The fast lane: a design satisfied by deterministic checks instead of positions (teal, the "approved with a caveat"
+// colour — it still waits on the chair), or held to the board's full policy.
+STATUS.fast_lane = { eligible: { type: "teal", icon: Flash }, full: { type: "gray", icon: Rule } };
 const EXPLAIN: Record<string, Record<string, string>> = {
+  fast_lane: {
+    eligible: "Low risk, follows adopted patterns and every deterministic check passes: the chair may declare it approved without area positions. Any area owner takes it out of the lane by recording a no or a conditional.",
+    full: "The board's full policy applies: every touched area needs a position before the chair declares.",
+  },
   origin: {
     derived: "Collected from a connected source and recorded exactly as reported.",
     inferred: "Derived by deterministic rules with a confidence score; a person should verify it.",
@@ -487,6 +494,7 @@ export function useDocTitle(title?: string | null) {
  */
 export function progressText(p: any): string {
   if (!p) return "";
+  if (p.via_fast_lane) return "In the fast lane: every check passes, ready for the chair to declare";
   const parts: string[] = [];
   if (p.mode === "areas" && Array.isArray(p.areas)) {
     const areas: any[] = p.areas;
@@ -506,6 +514,7 @@ export function progressText(p: any): string {
 /** The short form for a list cell: "2/3 areas" or "1/2 approvals"; the long form (progressText) goes in the title. */
 export function progressShort(p: any): string {
   if (!p) return "";
+  if (p.via_fast_lane) return "Fast lane";
   if (p.mode === "areas" && Array.isArray(p.areas)) {
     const areas: any[] = p.areas;
     const required = typeof p.required === "number" ? p.required : areas.filter((a) => a.state !== "not_my_area").length;

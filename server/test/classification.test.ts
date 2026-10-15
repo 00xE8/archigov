@@ -128,6 +128,8 @@ test("the DORA register takes criticality and the function name from the classif
   assert.ok(pf.length > 0 && pf.every((l) => l.includes("Admit and discharge patients") && l.includes("Critical or important")), pf[0]);
   const intra = lines.find((l) => l.includes(apps.get("Intranet")!))!;
   assert.ok(intra.includes("Not critical or important"));
+  const appt = lines.find((l) => l.includes(apps.get("Appointments")!))!;
+  assert.ok(!/critical or important|undefined/i.test(appt), "an important tier is not asserted either way: the entity decides");
   const ph = lines.find((l) => l.includes(apps.get("Pharmacy")!))!;
   assert.ok(!ph.includes("critical or important"), "nobody classified it: the cell stays blank");
 });
