@@ -6,6 +6,7 @@ import { AREA_CATALOGUE } from "./areas.js";
 import { createSession } from "./sessions.js";
 import { refreshAreas } from "../reviews.js";
 import { preReviewArtefact, setArtefactLifecycle } from "../artefacts.js";
+import { rulesPreReview } from "../ai.js";
 import type { BoardRole, UserType } from "../auth/roles.js";
 
 /**
@@ -30,9 +31,12 @@ const DA_POLICY: Policy = { steps: [
   { name: "Positions by area", kind: "approvals", mode: "areas", roles: ["decision_maker"] },
   { name: "Chair declares", kind: "decision", roles: ["chair"] },
 ] };
+/** Design reviews at the demo DA may take the fast lane: low risk, at least one adopted pattern, every check passing. */
+const DA_DESIGN_POLICY: Policy = { ...DA_POLICY, fast_lane: { enabled: true, require_pattern: true } };
+const daPolicy = (t: string) => (t === "design" ? DA_DESIGN_POLICY : DA_POLICY);
 const DA_AREAS = AREA_CATALOGUE.map((a) => a.id);
 
-const DEMO_USERS_VERSION = "3";
+const DEMO_USERS_VERSION = "4";
 /** id, display name, system role, platform admin */
 const DEMO_USERS: [string, string, UserType | null, boolean][] = [
   ["j.duduka", "Joel Duduka", "author", false],      // chief architect: authors, chairs the DA, decides at the PCB
@@ -52,6 +56,24 @@ const DEMO_SEATS: [string, string, BoardRole, string[] | null][] = [
   ["DA", "s.patel", "reviewer", null], ["DA", "a.okafor", "secretary", null],
   ["PCB", "r.khan", "chair", null], ["PCB", "j.duduka", "decision_maker", null], ["PCB", "m.hughes", "decision_maker", null],
 ];
+
+const FAST_LANE_TITLE = "Intranet: staff news feed";
+const FAST_LANE_DESIGN = `## Design
+
+A news feed page on the existing intranet web app: editors publish short posts, staff read them. No new resources; the app service and its storage are reused.
+
+## Data
+
+Post titles and bodies written by internal editors. No personal data beyond the editor's display name.
+
+## Security
+
+Staff sign in through the existing identity platform; the feed is read-only for everyone but editors. Ingress stays on the governed gateway (PAT-001).
+
+## Resilience
+
+Best effort: the feed is informational. If it is down, the rest of the intranet is unaffected.
+`;
 
 function ensureBoard(code: string, name: string, purpose: string) {
   let b = boardByCode(code);
@@ -78,7 +100,7 @@ export function seedBoards(actor = "bootstrap") {
   const da = ensureBoard("DA", "Design Authority", "Approves designs and architecture decisions and curates standards and patterns.");
   const pcb = ensureBoard("PCB", "Policy & Compliance Board", "Adopts policies and principles and grants exceptions.");
   const demo = demoLoaded();
-  for (const t of ["design", "decision", "standard", "pattern"]) { ensurePolicy(da.id, t, demo ? DA_POLICY : DEFAULT_POLICY); ensureRouting(da.id, t); }
+  for (const t of ["design", "decision", "standard", "pattern"]) { ensurePolicy(da.id, t, demo ? daPolicy(t) : DEFAULT_POLICY); ensureRouting(da.id, t); }
   for (const t of ["policy", "principle", "exception"]) { ensurePolicy(pcb.id, t, PCB_POLICY); ensureRouting(pcb.id, t); }
   const summary: Record<string, unknown> = { boards: ["DA", "PCB"] };
 
@@ -92,7 +114,7 @@ export function seedBoards(actor = "bootstrap") {
     for (const [id, name, user_type, is_platform_admin] of DEMO_USERS) assertCast ? upsertUser(id, { name, user_type, is_platform_admin }) : ensureUser(id, { name, user_type, is_platform_admin });
     // the Design Authority's areas of responsibility (and, with the cast, its policies in areas mode)
     if (assertCast || !(j((db.prepare("SELECT areas_json FROM boards WHERE id=?").get(da.id) as any)?.areas_json, []) || []).length) db.prepare("UPDATE boards SET areas_json=? WHERE id=?").run(JSON.stringify(DA_AREAS), da.id);
-    if (assertCast) for (const t of ["design", "decision", "standard", "pattern"]) assertPolicy(da.id, t, DA_POLICY);
+    if (assertCast) for (const t of ["design", "decision", "standard", "pattern"]) assertPolicy(da.id, t, daPolicy(t));
     for (const [code, id, role, areas] of DEMO_SEATS) {
       const b = boards[code];
       if (assertCast || !db.prepare("SELECT 1 FROM board_members WHERE board_id=? AND user_id=?").get(b.id, id)) setMembership(b.id, id, role, areas);
@@ -116,6 +138,25 @@ export function seedBoards(actor = "bootstrap") {
         audit(actor, "create", "reviews", id, { code, type: "policy", target: pol.code, board: "PCB", seeded: true });
         summary.policy_review = code;
       } catch (e: any) { summary.policy_review_error = String(e?.message || e); }
+    }
+  }
+
+  // one design review in the fast lane: the Intranet (classified standard) following PAT-001, pre-reviewed clean
+  if (demo) {
+    const app = db.prepare("SELECT id FROM elements WHERE type='application' AND name='Intranet' AND deleted_at IS NULL").get() as any;
+    const pat = db.prepare("SELECT id FROM standards WHERE code='PAT-001' AND lifecycle='adopted'").get() as any;
+    if (app && pat && !db.prepare("SELECT 1 FROM reviews WHERE title=?").get(FAST_LANE_TITLE)) {
+      try {
+        const id = uid(), now = nowIso(), code = nextCode("reviews", "REV");
+        db.prepare(`INSERT INTO reviews(id,code,title,application_id,risk_tier,stage,summary,design_md,submitted_by,created_at,updated_at,type,target_kind,target_id,board_id,impact,patterns_json) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+          .run(id, code, FAST_LANE_TITLE, app.id, "low", "submitted", "A news feed on the existing intranet web app, published through the governed gateway like the rest of the site.", FAST_LANE_DESIGN, "t.nguyen", now, now, "design", "application", app.id, da.id, "minor", JSON.stringify([pat.id]));
+        db.prepare(`INSERT INTO review_events(id,review_id,kind,actor,body_md,data_json,origin,verification,created_at) VALUES (?,?,?,?,?,?,?,?,?)`).run(uid(), id, "submitted", "t.nguyen", "Submitted for review.", "{}", "human", "verified", now);
+        const pre = rulesPreReview(id);
+        db.prepare(`INSERT INTO review_events(id,review_id,kind,actor,body_md,data_json,origin,verification,created_at) VALUES (?,?,?,?,?,?,?,?,?)`).run(uid(), id, "pre_review", "system", pre.summary, JSON.stringify(pre), "rules", "unverified", now);
+        db.prepare("UPDATE reviews SET stage='in_review', updated_at=? WHERE id=?").run(now, id);
+        audit(actor, "create", "reviews", id, { code, type: "design", board: "DA", patterns: ["PAT-001"], seeded: true });
+        summary.fast_lane_review = code;
+      } catch (e: any) { summary.fast_lane_review_error = String(e?.message || e); }
     }
   }
 

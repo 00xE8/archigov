@@ -94,7 +94,7 @@ function acceptedDecision(appId: string, topic: string) {
   return rows.find((d) => { const ids = j(d.application_ids_json, []) as string[]; return ids.length === 0 || ids.includes(appId); }) || null;
 }
 
-function activeException(standardId: string, appId: string | null, elementId: string | null): boolean {
+export function activeException(standardId: string, appId: string | null, elementId: string | null): boolean {
   const now = nowIso();
   const rows = db.prepare("SELECT * FROM exceptions WHERE standard_id=? AND status='active' AND (expires_at IS NULL OR expires_at > ?)").all(standardId, now) as any[];
   return rows.some((e) => (e.element_id && e.element_id === elementId) || (e.application_id && e.application_id === appId && !e.element_id));

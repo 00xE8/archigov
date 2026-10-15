@@ -130,8 +130,9 @@ export const DORA_COLUMNS = [
   "archigov_application_id", "archigov_service_family", "archigov_region", "archigov_resource_count", "archigov_origin", "archigov_verification",
 ];
 // B_06.01.0050 from the classification: "Critical or important" when the application supports a regulated service or
-// is classified critical, "Not critical or important" when it is classified lower, blank when nobody has classified it.
-const CRIT_CELL: Record<string, string> = { critical: "Critical or important", important: "Not critical or important", standard: "Not critical or important" };
+// is classified critical, "Not critical or important" when it is classified standard. Our "important" tier (material
+// disruption) may or may not be a DORA important function, so it stays blank with the unclassified: the entity decides.
+const CRIT_CELL: Record<string, string> = { critical: "Critical or important", standard: "Not critical or important" };
 exportsRoutes.get("/exports/dora-roi.csv", (c) => {
   const apps = listElements("application");
   const cls = allClassifications();
@@ -151,7 +152,7 @@ exportsRoutes.get("/exports/dora-roi.csv", (c) => {
       const g = groups.get(key) || { family, location, n: 0, criticality: "", storesData: false };
       g.n++;
       if (STORES_DATA.test(r.subtype || "")) g.storesData = true;
-      g.criticality = k?.criticality ? CRIT_CELL[k.criticality] : "";
+      g.criticality = (k?.criticality && CRIT_CELL[k.criticality]) || "";
       groups.set(key, g);
     }
     for (const g of groups.values()) {

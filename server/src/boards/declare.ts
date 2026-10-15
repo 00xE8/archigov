@@ -45,6 +45,11 @@ export function declareOutcome(review: any, b: DeclareBody, chk: Check, actor: s
   const session = openSessionOf(id); const item = session ? itemOf(session.id, id) : null; const sid = session?.id ?? null;
   const conds = b.conditions || [];
   const data: Record<string, unknown> = { outcome: b.outcome, conditions: conds.length, board_role: chk.role ?? null, acting_chair: !!chk.acting, board_id: review.board_id, session_id: sid };
+  // an approval the positions alone did not allow rests on the fast lane: the checks that held are recorded with it
+  if (b.outcome === "approved" || b.outcome === "approved_with_conditions") {
+    const prog = approvalProgress(review);
+    if (prog.via_fast_lane && prog.fast_lane) data.fast_lane = { risk_tier: prog.fast_lane.risk.tier, patterns: prog.fast_lane.patterns.map((x) => x.code), checks: prog.fast_lane.checks.map((x) => x.id) };
+  }
   let stage = review.stage, pending: string | null = null, decided = false;
   switch (b.outcome) {
     case "withdrawn": stage = "withdrawn"; decided = true; break;
@@ -77,7 +82,7 @@ export function declareOutcome(review: any, b: DeclareBody, chk: Check, actor: s
   }
   // a withdrawn review leaves every forthcoming agenda
   if (b.outcome === "withdrawn") db.prepare(`UPDATE session_items SET state='withdrawn', outcome='withdrawn', declared_at=? WHERE review_id=? AND state='listed' AND session_id IN (SELECT id FROM board_sessions WHERE status IN ('planned','open'))`).run(now, id);
-  audit(actor, `decide:${b.outcome}`, "reviews", id, { conditions: conds.length, type: review.type, board_id: b.outcome === "referred" ? data.to_board : review.board_id, board_role: chk.role ?? null, acting_chair: !!chk.acting, session_id: sid, pending_outcome: pending, ...(b.outcome === "referred" ? { from_board: review.board_id } : {}) });
+  audit(actor, `decide:${b.outcome}`, "reviews", id, { conditions: conds.length, type: review.type, ...(data.fast_lane ? { basis: "fast_lane", fast_lane: data.fast_lane } : {}), board_id: b.outcome === "referred" ? data.to_board : review.board_id, board_role: chk.role ?? null, acting_chair: !!chk.acting, session_id: sid, pending_outcome: pending, ...(b.outcome === "referred" ? { from_board: review.board_id } : {}) });
   const effective = ["approved", "approved_with_conditions", "rejected", "withdrawn"].includes(b.outcome) && !pending;
   if (effective) applyOutcomeEffects(reviewRow(id), b.outcome, actor);
   return { ok: true as const, stage, pending_outcome: pending, session_id: sid, effective };

@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { DataTable, Table, TableHead, TableRow, TableHeader, TableBody, TableCell, TableContainer, TableToolbar, TableToolbarContent, TableToolbarSearch, DataTableSkeleton, Button, Modal, TextInput, TextArea, Select, SelectItem, Dropdown, SkeletonText, InlineNotification } from "@carbon/react";
+import { DataTable, Table, TableHead, TableRow, TableHeader, TableBody, TableCell, TableContainer, TableToolbar, TableToolbarContent, TableToolbarSearch, DataTableSkeleton, Button, Modal, TextInput, TextArea, Select, SelectItem, Dropdown, SkeletonText, InlineNotification, FilterableMultiSelect } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { get, post, fmtDate, labelFor, REVIEW_TYPES, ARTEFACT_KINDS, kindOfCode } from "../api";
 import { PageIntro, useLoad, LoadError, RLink, StatusTag, EmptyState, KindTag, targetLink, progressText, progressShort, useDocTitle } from "../components";
@@ -49,7 +49,7 @@ export default function Reviews() {
   const typed = list.some((r) => r.type);
   const visible = list.filter((r) => (type === "all" || (r.type || "design") === type) && (board === "all" || r.board?.id === board) && (!session || !r.session || r.session.id === session || r.session.code === session));
   const rows = visible.map((r) => ({ id: r.id, review: `${r.code} ${r.title}`, type: labelFor("review_type", r.type || "design"), target: r.target?.name || r.application_name || "", board: `${r.board?.name || ""} ${r.session?.code || ""}`, progress: progressShort(r.progress), stage: r.stage, open_conditions: r.open_conditions }));
-  const open = () => setForm({ type: "design", title: "", summary: "", application_id: "", decision_id: "", artefact_id: "", finding_id: "", risk_tier: "medium", impact: "minor", design_md: TEMPLATE });
+  const open = () => setForm({ type: "design", title: "", summary: "", application_id: "", decision_id: "", artefact_id: "", finding_id: "", risk_tier: "medium", impact: "minor", design_md: TEMPLATE, patterns: [] });
   const setParam = (k: string, v: string) => { const n = new URLSearchParams(params); if (v) n.set(k, v); else n.delete(k); setParams(n, { replace: true }); };
   const setAwaiting = (on: boolean) => setParam("awaiting", on ? "me" : "");
   // Open and planned sittings first, then the record; a session the URL names but the list lacks still shows as an option.
@@ -89,7 +89,7 @@ export default function Reviews() {
                   {/* "2/3 areas" at a glance; which areas still hold the item up is one hover away. */}
                   <TableCell>{x.progress ? <span className="ag-label ag-nowrap" title={progressText(x.progress)}>{progressShort(x.progress) || progressText(x.progress)}</span> : <span className="ag-muted">—</span>}</TableCell>
                   {/* "Awaiting you" is a notification, not a problem: the same filled-blue tag as My work, never the red attention tag. */}
-                  <TableCell><div className="ag-row tight"><StatusTag kind="stage" value={x.stage} />{x.awaiting_me && <StatusTag kind="position" value="mine" label="Awaiting you" />}</div></TableCell>
+                  <TableCell><div className="ag-row tight"><StatusTag kind="stage" value={x.stage} />{x.progress?.via_fast_lane && <StatusTag kind="fast_lane" value="eligible" size="sm" label="Fast Lane" />}{x.awaiting_me && <StatusTag kind="position" value="mine" label="Awaiting you" />}</div></TableCell>
                   <TableCell>{x.open_conditions ? (x.overdue_conditions ? <StatusTag kind="condition" value="overdue" label={`${x.open_conditions} open · ${x.overdue_conditions} overdue`} /> : <StatusTag kind="condition" value="open" label={`${x.open_conditions} open`} />) : null}</TableCell>
                 </TableRow>); })}</TableBody>
             </Table>
@@ -109,6 +109,7 @@ function SubmitModal({ form, setForm, onDone }: { form: any; setForm: (f: any) =
   const [apps] = useLoad<any[]>(() => get<any[]>("/applications").catch(() => []));
   const [decisions] = useLoad<any[]>(() => (t === "decision" ? get<any[]>("/decisions").catch(() => []) : Promise.resolve([])), [t]);
   const [artefacts] = useLoad<any[]>(() => (isArtefact ? get<any[]>(`/artefacts?kind=${t}`).catch(() => get<any[]>("/standards").then((l) => l.filter((s) => kindOfCode(s.code) === t))) : Promise.resolve([])), [t]);
+  const [patterns] = useLoad<any[]>(() => (t === "design" ? get<any[]>("/artefacts?kind=pattern").then((l) => l.filter((a) => a.lifecycle === "adopted")).catch(() => []) : Promise.resolve([])), [t]);
   const [findings] = useLoad<any[]>(() => (t === "exception" ? get<any>("/conformance").then((d) => (d.findings || []).filter((f: any) => f.status === "open")).catch(() => []) : Promise.resolve([])), [t]);
   const artefact = (artefacts || []).find((a) => a.id === form.artefact_id);
   const [route, setRoute] = React.useState<any>(null);
@@ -120,7 +121,7 @@ function SubmitModal({ form, setForm, onDone }: { form: any; setForm: (f: any) =
   const targetOk = t === "design" ? true : t === "decision" ? !!form.decision_id : t === "exception" ? !!form.finding_id : !!form.artefact_id;
   const submit = async () => {
     const body: any = { type: t, title: form.title, summary: form.summary };
-    if (t === "design") { body.application_id = form.application_id || null; body.risk_tier = form.risk_tier; body.design_md = form.design_md; }
+    if (t === "design") { body.application_id = form.application_id || null; body.risk_tier = form.risk_tier; body.design_md = form.design_md; if ((form.patterns || []).length) body.patterns = form.patterns; }
     else if (t === "decision") body.decision_id = form.decision_id;
     else if (t === "exception") body.finding_id = form.finding_id;
     else { body.artefact_id = form.artefact_id; body.impact = form.impact; }
@@ -134,8 +135,12 @@ function SubmitModal({ form, setForm, onDone }: { form: any; setForm: (f: any) =
         <Dropdown id="rv-type" titleText="Type" label="Choose a type" helperText={TYPE_HELP[t]} items={typeItems} itemToString={(i: any) => i?.label || ""} selectedItem={typeItems.find((i) => i.id === t)} onChange={({ selectedItem }: any) => selectedItem && setForm({ ...form, type: selectedItem.id, artefact_id: "", decision_id: "", finding_id: "" })} />
         {t === "design" && <div className="ag-row">
           <Select id="app" labelText="Application" value={form.application_id} onChange={(e) => setForm({ ...form, application_id: e.target.value })}><SelectItem value="" text="None (new application)" />{(apps || []).map((a) => <SelectItem key={a.id} value={a.id} text={a.name} />)}</Select>
-          <Select id="risk" labelText="Risk tier" helperText="Low risk is pre-reviewed automatically" value={form.risk_tier} onChange={(e) => setForm({ ...form, risk_tier: e.target.value })}>{["low", "medium", "high"].map((x) => <SelectItem key={x} value={x} text={labelFor("severity", x)} />)}</Select>
+          <Select id="risk" labelText="Risk Tier" helperText="The board holds the design to at least its application's criticality" value={form.risk_tier} onChange={(e) => setForm({ ...form, risk_tier: e.target.value })}>{["low", "medium", "high"].map((x) => <SelectItem key={x} value={x} text={labelFor("severity", x)} />)}</Select>
         </div>}
+        {t === "design" && (patterns || []).length > 0 && <FilterableMultiSelect id="rv-patterns" titleText="Follows Adopted Patterns" placeholder="Filter patterns"
+          helperText={route?.policy?.fast_lane?.enabled ? `${route.name} offers a fast lane: a low-risk design that follows ${route.policy.fast_lane.require_pattern ? "at least one adopted pattern" : "adopted patterns"} and passes every check can be declared without area positions.` : "Optional: the adopted patterns this design follows. A pattern with a rule is checked against the application."}
+          items={patterns!} itemToString={(x: any) => (x ? `${x.code} · ${x.title}` : "")} selectedItems={patterns!.filter((x) => (form.patterns || []).includes(x.id))}
+          onChange={({ selectedItems }: any) => setForm({ ...form, patterns: selectedItems.map((y: any) => y.id) })} />}
         {t === "decision" && <Select id="dec" labelText="Decision" value={form.decision_id} onChange={(e) => pick("decision_id", e.target.value, decisions || [])}><SelectItem value="" text={decisions ? "Choose a decision" : "Loading"} />{(decisions || []).map((d) => <SelectItem key={d.id} value={d.id} text={`${d.code} · ${d.title} (${labelFor("decision", d.status).toLowerCase()})`} />)}</Select>}
         {isArtefact && <div className="ag-row">
           <Select id="art" labelText={labelFor("review_type", t)} value={form.artefact_id} onChange={(e) => pick("artefact_id", e.target.value, artefacts || [])}><SelectItem value="" text={artefacts ? (artefacts.length ? `Choose a ${km.label.toLowerCase()}` : `No ${km.plural.toLowerCase()} in the catalogue yet`) : "Loading"} />{(artefacts || []).map((a) => <SelectItem key={a.id} value={a.id} text={`${a.code} · ${a.title}${a.lifecycle ? ` (${labelFor("lifecycle", a.lifecycle).toLowerCase()})` : ""}`} />)}</Select>
