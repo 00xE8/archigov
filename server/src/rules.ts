@@ -2,6 +2,7 @@ import { db, uid, nowIso, j, audit } from "./db.js";
 import { listElements, resourcesOf, hashOf, getElement, type Element } from "./model.js";
 import { allClassifications, classificationOf, classificationView, refreshClassifications, type Classification } from "./classification.js";
 import { lifecycleIndex, lifecycleOf, lifecycleView, legacyOf, LIFECYCLE_STATES, type ResourceLifecycle } from "./lifecycle.js";
+import { reliancesOf } from "./suppliers.js";
 
 /**
  * Rule DSL. A standard's rule_json is one of:
@@ -31,7 +32,18 @@ export interface Rule { scope: "resource" | "application"; match?: { type?: stri
 
 const RESOURCE_OPS = new Set(["eq", "neq", "in", "notIn", "exists", "missing", "gte", "lte", "matches"]);
 const APP_OPS = new Set(["hasDecision", "hasOwnerTag", "maxResourcesOfType", "assessmentCurrent"]);
-const REGISTER_ASSESSMENT_KINDS = ["legacy"];
+const REGISTER_ASSESSMENT_KINDS = ["legacy", "exit_plan"];
+/** An application's register-assessment gap for a kind, as a finding message, or null when there is none. */
+function registerGap(app: Element, kind: string, ctx?: ModelContext): { message: string; evidence: any } | null {
+  if (kind === "exit_plan") {
+    const due = reliancesOf(app, ctx ? ctx.cls.get(app.id) ?? null : undefined).filter((r) => r.exit.status === "due");
+    return due.length ? { message: `${app.name} relies on ${due.map((r) => r.name).join(", ")} with no exit plan in date`, evidence: { kind, providers: due.map((r) => r.provider), last: due.map((r) => r.exit.last?.assessed_at ?? null) } } : null;
+  }
+  const l = legacyOf(app, ctx?.lc);
+  if (l.status !== "due" && l.status !== "stale") return null;
+  return { message: l.status === "due" ? `${app.name} has legacy components (${l.legacy.join(", ")}) and no current legacy assessment` : `${app.name}'s legacy assessment predates ${l.new_since_last.join(", ")}`,
+    evidence: { kind, status: l.status, legacy: l.legacy, last_assessed_at: l.last?.assessed_at ?? null, valid_until: l.last?.valid_until ?? null } };
+}
 
 function getPath(obj: any, path: string): any {
   return path.split(".").reduce((o, k) => (o == null ? undefined : o[k]), obj);
@@ -190,10 +202,8 @@ export function evaluateArtefact(s: any, rule: Rule, ctx: ModelContext): Finding
         if (owners.size === 0) findings.push({ standard_id: s.id, element_id: app.id, application_id: app.id, decision_id: null, severity: s.severity,
           message: `${app.name} has no owner on any of its ${rs.length} resources`, evidence: { resources: rs.length } });
       } else if (a.op === "assessmentCurrent") {
-        const l = legacyOf(app, ctx.lc);
-        if (l.status === "due" || l.status === "stale") findings.push({ standard_id: s.id, element_id: app.id, application_id: app.id, decision_id: null, severity: s.severity,
-          message: l.status === "due" ? `${app.name} has legacy components (${l.legacy.join(", ")}) and no current legacy assessment` : `${app.name}'s legacy assessment predates ${l.new_since_last.join(", ")}`,
-          evidence: { kind: a.kind, status: l.status, legacy: l.legacy, last_assessed_at: l.last?.assessed_at ?? null, valid_until: l.last?.valid_until ?? null } });
+        const gap = registerGap(app, a.kind!, ctx);
+        if (gap) findings.push({ standard_id: s.id, element_id: app.id, application_id: app.id, decision_id: null, severity: s.severity, message: gap.message, evidence: gap.evidence });
       } else if (a.op === "maxResourcesOfType") {
         const n = rs.filter((r) => (r.subtype || "").toLowerCase() === a.type!.toLowerCase()).length;
         if (n > (a.max ?? 0)) findings.push({ standard_id: s.id, element_id: app.id, application_id: app.id, decision_id: null, severity: s.severity,
@@ -305,8 +315,8 @@ export function dryRunForApplication(appId: string): { standard: any; message: s
         const relevant = !rule.assert.type || rs.some((r) => (r.subtype || "").toLowerCase().startsWith(rule.assert.type!.toLowerCase()));
         if (relevant && !acceptedDecision(appId, rule.assert.topic!)) out.push({ standard: s, message: `No accepted decision on "${rule.assert.topic}"`, evidence: { topic: rule.assert.topic } });
       } else if (rule.assert.op === "assessmentCurrent") {
-        const el = getElement(appId); const l = el ? legacyOf(el) : null;
-        if (l && (l.status === "due" || l.status === "stale")) out.push({ standard: s, message: l.status === "due" ? `Legacy components (${l.legacy.join(", ")}) with no current legacy assessment` : `The legacy assessment predates ${l.new_since_last.join(", ")}`, evidence: { kind: rule.assert.kind, status: l.status } });
+        const el = getElement(appId); const gap = el ? registerGap(el, rule.assert.kind!) : null;
+        if (gap) out.push({ standard: s, message: gap.message, evidence: gap.evidence });
       }
     } catch (e: any) {
       out.push({ standard: s, message: `Rule could not be evaluated: ${e.message}`, evidence: { rule_error: true }, error: true });

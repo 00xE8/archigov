@@ -128,6 +128,11 @@ export const DORA_STANDARDS: PackStandard[] = [
     rationale: "An unsupported component cannot be patched; the risk grows every month it stays.",
     control_refs: ["DORA Art.8(7)", "ISO 27001 A.8.8", "NIST SP 800-53 SA-22"],
     rule: { scope: "resource", assert: { op: "lifecycle", states: ["end_of_life"] } } },
+  { code: "STD-DORA-08", title: "Critical reliance on a third party has an exit plan", category: "Resilience", severity: "high", status: "adopt",
+    statement: "Every application supporting a critical or important function has, for each ICT provider it relies on, an exit plan less than a year old that states its substitutability and when it was last tested.",
+    rationale: "Exit strategies must be documented, adequately tested and reviewed, so a provider's failure or a contract's end does not stop a critical function.",
+    control_refs: ["DORA Art.28(8)", "ITS on the register of information (B_07.01)", "PRA SS2/21 ch.10"],
+    rule: { scope: "application", assert: { op: "assessmentCurrent", kind: "exit_plan" } } },
 ];
 
 /** EU AI Act Annex IV: the technical-documentation evidence a high-risk AI system's architecture must be able to produce. Manual, except the decision check. */
@@ -205,8 +210,8 @@ export const PACKS: StandardsPack[] = [
   { id: "azure-waf-architecture", name: "Azure Well-Architected architecture standards", version: "1.0.0", lifecycle_on_import: "draft",
     description: "Eight standards aligned to the Azure Well-Architected Framework checklists: transport security, data-store isolation, deletion protection, supported platforms, zone redundancy, private control planes and environment tagging. Platform checks assert on evidence imported from Defender for Cloud and Azure Policy.",
     standards: AZURE_WAF_STANDARDS },
-  { id: "dora-ict-architecture", name: "DORA ICT risk — architecture standards", version: "1.0.0", lifecycle_on_import: "draft",
-    description: "Five standards covering what DORA Articles 8, 9, 11, 12 and 28 expect the architecture to evidence: hosting decisions, geo-redundant backup, the third-party register, recovery objectives and reviewed change. Two are checkable; three are evidenced through reviews.",
+  { id: "dora-ict-architecture", name: "DORA ICT risk — architecture standards", version: "1.1.0", lifecycle_on_import: "draft",
+    description: "Eight standards covering what DORA Articles 8, 9, 11, 12 and 28 expect the architecture to evidence: hosting decisions, geo-redundant backup, the third-party register, recovery objectives, reviewed change, the yearly legacy assessment, no component past end of life, and an exit plan for each critical reliance on a provider. Five are checkable; three are evidenced through reviews.",
     standards: DORA_STANDARDS },
   { id: "ai-act-annex-iv-design", name: "EU AI Act Annex IV — design evidence", version: "1.0.0", lifecycle_on_import: "draft",
     description: "Five standards for the technical documentation a high-risk AI system's architecture must be able to produce: a decided system, design specifications, human oversight, logging and lifecycle risk management. References point at Annex IV sections; no regulation text is reproduced.",

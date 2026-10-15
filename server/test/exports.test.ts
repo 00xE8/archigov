@@ -79,10 +79,12 @@ test("DORA register CSV: labelled as simplified, ITS column codes in the header,
   for (const row of data) {
     assert.equal(row.length, DORA_COLUMNS.length);
     assert.match(row[col("B_06.01.0010_function_identifier")], /^F\d+$/);
-    assert.equal(row[col("B_05.01.0050_provider_legal_name")], "Microsoft");
+    // the cloud platform, or a supplier named on the resources' tags (the demo's ERP vendor)
+    assert.ok(["Microsoft", "Ledgerline"].includes(row[col("B_05.01.0050_provider_legal_name")]), row[col("B_05.01.0050_provider_legal_name")]);
     assert.equal(row[col("B_02.02.0060_type_of_ict_services")], "", "Annex III codes are not invented");
     assert.equal(row[col("B_05.01.0010_provider_identification_code")], "", "LEIs are not inferred");
-    assert.equal(row[col("B_07.01_substitutability")], "");
+    // substitutability only where an exit plan records it (the demo's PatientFlow plan), never inferred
+    assert.ok(["", "Highly complex substitutability"].includes(row[col("B_07.01_substitutability")]), row[col("B_07.01_substitutability")]);
     assert.match(row[col("B_02.02.0130_country_of_provision")], /^([A-Z]{2})?$/, "ISO 3166-1 alpha-2 or blank");
   }
   assert.ok(data.some((row) => row[col("B_02.02.0130_country_of_provision")] === "GB" && row[col("B_02.02.0140_storage_of_data")] === "Yes" && row[col("B_02.02.0150_data_at_rest_country")] === "GB"));

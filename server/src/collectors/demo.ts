@@ -51,7 +51,8 @@ export const DEMO_RESOURCES: NormalisedResource[] = [
     { publicAccess: true }),
 
   // --- Finance ERP (resource-group convention, no app tag; in West Europe) ---
-  r("rg-finance-erp-prod", "Microsoft.Compute/virtualMachines", "vm-erp-app-01", "westeurope", { owner: "finance-it", env: "prod", criticality: "important", "business-service": "Pay suppliers" },
+  // the ERP software is a vendor's (a named supplier on the tags, beside the cloud platform it runs on)
+  r("rg-finance-erp-prod", "Microsoft.Compute/virtualMachines", "vm-erp-app-01", "westeurope", { owner: "finance-it", env: "prod", criticality: "important", "business-service": "Pay suppliers", vendor: "Ledgerline" },
     { osSku: "2016-Datacenter", hardwareProfile_vmSize: "Standard_D4s_v3" },
     [ref("rg-finance-erp-prod", "Microsoft.Compute/virtualMachines", "vm-erp-db-01")]),
   r("rg-finance-erp-prod", "Microsoft.Compute/virtualMachines", "vm-erp-db-01", "westeurope", { owner: "finance-it", env: "prod", dataClass: "financial" },

@@ -211,6 +211,7 @@ export const ROUTE_RULES: RouteRule[] = [
   // the legacy register: correcting a resource's components and recording the yearly legacy assessment are an author's act
   { method: "*", pattern: /^\/resources\/[^/]+\/lifecycle(\/reset)?$/, capability: "verify" },
   { method: "POST", pattern: /^\/applications\/[^/]+\/legacy-assessments(\/draft)?$/, capability: "verify" },
+  { method: "POST", pattern: /^\/applications\/[^/]+\/exit-plans(\/draft)?$/, capability: "verify" },
   // design annotations: commentary beside the generated views — authors and acting seats; the handler locks edit/delete to the author
   { method: "POST", pattern: /^\/applications\/[^/]+\/annotations$/, capability: "comment" },
   { method: "*", pattern: /^\/annotations\/[^/]+$/, capability: "comment" },
