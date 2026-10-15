@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <!-- Gray 100 square, blue-60 "A" caret: square corners and the one brand blue, per the Carbon brand book. -->
-  <rect width="32" height="32" fill="#161616"/>
-  <path d="M16 5 L27 27 H22.6 L16 13.4 L9.4 27 H5 Z" fill="#0f62fe"/>
-  <rect x="12.5" y="20.5" width="7" height="3" fill="#ffffff"/>
-</svg>
