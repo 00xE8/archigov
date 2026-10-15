@@ -38,7 +38,7 @@ const asJson = (o: any) => ({ choices: [{ message: { content: JSON.stringify(o) 
 test("every draft endpoint answers 409 when its feature is off, and /ai/features is readable by the auditor", async () => {
   const flags = await call("GET", "/ai/features", "a.uditor");
   assert.equal(flags.status, 200);
-  assert.deepEqual(Object.values(flags.body), Array(9).fill(false));
+  assert.deepEqual(Object.values(flags.body), Array(10).fill(false));
   assert.equal((await call("POST", "/decisions/review-draft", "s.patel", { title: "t", decision_md: "d" })).status, 409);
   assert.equal((await call("POST", "/artefacts/draft-rule", "s.patel", { title: "t", statement: "s" })).status, 409);
   assert.equal((await call("POST", "/artefacts/suggest-references", "s.patel", { title: "t", statement: "s" })).status, 409);
@@ -52,7 +52,7 @@ test("every draft endpoint answers 409 when its feature is off, and /ai/features
 });
 
 test("keys are ciphertext at rest; legacy plaintext re-encrypts on first read", async () => {
-  const on = Object.fromEntries(["draft_rule", "suggest_references", "draft_assessment", "draft_minutes", "suggest_evidence_mapping", "review_decision", "suggest_classification"].map((f) => [f, { enabled: true, provider: "mistral", model: "m" }]));
+  const on = Object.fromEntries(["draft_rule", "suggest_references", "draft_assessment", "draft_minutes", "suggest_evidence_mapping", "review_decision", "suggest_classification", "draft_board_narrative"].map((f) => [f, { enabled: true, provider: "mistral", model: "m" }]));
   const r = await call("POST", "/settings", "ops.admin", { ai_providers: { mistral: { api_key: FAKE_KEY } }, ai_features: on });
   assert.equal(r.status, 200, JSON.stringify(r.body));
   const stored = JSON.parse(getSetting("ai.providers")!);

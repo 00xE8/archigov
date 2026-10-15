@@ -6,6 +6,8 @@ All notable changes to Archigov are documented here. The format follows [Keep a 
 
 ### Added
 
+- **Governance metrics and the signed board pack** ([docs](docs/features/governance-metrics.md)): a **Governance Metrics** page reports, from the records over a stated period, review lead time (median and 90th percentile), recycling, fast-lane approvals, position latency, decisions accepted and realised, conditions met on time, exception ageing, the conformance trend and time to fix, and how much a named person stands behind — figures, never verdicts. A board's chair or secretary prepares a **board pack**: a snapshot of those figures with the period's decisions and reviews, the roadmap's Now lane and the register gaps, signed and chained like the evidence pack and verifiable the same way, with a print view. A tenth AI feature, **Board Pack Narrative** (off by default), drafts the narrative from the figures only; the preparer submits it as their own and the pack records it as AI-assisted (migration m019).
+
 - **Roadmap built from records** ([docs](docs/features/roadmap.md)): a **Roadmap** in the Governance group lays decisions, the planned changes under them, conditions of approvals, end-of-support deadlines and expiring exceptions into Now, Next, Later and Done by fixed rules. A decision with a checkable constraint shows how far the estate has realised it — resources of an allowed type against the drift it raised — and one without is "not checkable", never guessed. Filter by application or kind; nothing is drawn by hand, so it moves when the records move. No AI.
 
 - **Third parties, concentration and exit plans** ([docs](docs/features/third-parties.md)): a **Third Parties** page in the Risk group derives the ICT providers the estate relies on (the cloud platform from resource types, named suppliers from `supplier`/`vendor`/`provider` tags), shows how many critical and important applications sit on each, marks the UK designated critical third parties (SI 2026/777, effective 13 July 2026; the platform admin keeps the list current) and warns when one provider carries half or more of the critical estate. Every critical or important reliance needs an exit plan recorded by a named author (adequacy, the plan, substitutability in the DORA ITS vocabulary, last test), valid for a year; substitutability fills the DORA register's B_07.01 column and suppliers named on tags get rows of their own. A new `assessmentCurrent` kind (`exit_plan`) and STD-DORA-08 make it checkable; the optional AI draft rides on Assessment Drafting (migration m018).
@@ -44,6 +46,7 @@ All notable changes to Archigov are documented here. The format follows [Keep a 
 
 ### Fixed
 
+- The roadmap no longer lists a component whose version is not in the lifecycle data as an upgrade with an unlabelled "unknown" status; only dated deadlines belong on it.
 - Status tags in the fast lane, legacy register and third-parties screens were rendered small, which drops their icon; they now carry colour, icon and word like every other status.
 - Azure collection now keeps MySQL flexible servers' version, network access, backup and HA properties (they were dropped), so the legacy register can match their engine version and the public-network rules can read them.
 - The DORA pack's description named five standards; it now describes all eight (version 1.1.0).

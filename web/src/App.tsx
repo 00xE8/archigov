@@ -1,13 +1,15 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Header, HeaderName, HeaderGlobalBar, HeaderGlobalAction, HeaderPanel, SideNav, SideNavItems, SideNavLink, SideNavMenu, SideNavMenuItem, SideNavDivider, Content, Theme, HeaderMenuButton, SkipToContent, Search, Form, ContainedList, ContainedListItem, Tag } from "@carbon/react";
-import { Dashboard, Application, Rule, Document, Task, Compare, ListChecked, Settings, UserAvatar, Help, Search as SearchIcon, Catalog, Receipt, DataBase, Group, Calendar, Notification, BusinessProcesses, Hourglass, WarningSquare, Partnership, Timeline } from "@carbon/icons-react";
+import { Dashboard, Application, Rule, Document, Task, Compare, ListChecked, Settings, UserAvatar, Help, Search as SearchIcon, Catalog, Receipt, DataBase, Group, Calendar, Notification, BusinessProcesses, Hourglass, WarningSquare, Partnership, Timeline, ChartLineData } from "@carbon/icons-react";
 import Overview from "./pages/Overview";
 import Applications from "./pages/Applications";
 import BusinessServices from "./pages/BusinessServices";
 import LegacyRegister from "./pages/LegacyRegister";
 import ThirdParties from "./pages/ThirdParties";
 import RoadmapPage from "./pages/Roadmap";
+import Metrics from "./pages/Metrics";
+import BoardPack from "./pages/BoardPack";
 import ApplicationDetail from "./pages/ApplicationDetail";
 import Catalogue from "./pages/Catalogue";
 import Boards, { BoardDetail } from "./pages/Boards";
@@ -48,6 +50,7 @@ const GROUPS: { title: string; icon: React.ComponentType; items: Item[] }[] = [
   ] },
   { title: "Evidence", icon: Compare, items: [
     { to: "/conformance", label: "Conformance", icon: Compare },
+    { to: "/metrics", label: "Governance Metrics", icon: ChartLineData },
     { to: "/evidence", label: "Imported Evidence", icon: Catalog },
     { to: "/audit", label: "Audit Log", icon: Receipt },
   ] },
@@ -101,7 +104,7 @@ function Shell() {
   return (
     <div className="ag-shell">
       <Theme theme="g100">
-        <Header aria-label="Archigov" className="ag-header-glow">
+        <Header aria-label="Archigov" className="ag-header-glow ag-no-print">
           <SkipToContent />
           <HeaderMenuButton aria-label={open ? "Close menu" : "Open menu"} onClick={() => setOpen((o) => !o)} isActive={open} />
           <HeaderName href="/" prefix="">Archigov</HeaderName>
@@ -125,7 +128,7 @@ function Shell() {
           </HeaderPanel>
           {wide ? (
             // ≥lg: expanded, fixed, grouped. The nav has its own column; it never overlays content.
-            <SideNav aria-label="Side navigation" expanded isFixedNav isChildOfHeader>
+            <SideNav aria-label="Side navigation" expanded isFixedNav isChildOfHeader className="ag-no-print">
               <SideNavItems>
                 <SideNavLink as={NavLink} to={OVERVIEW.to} end renderIcon={OVERVIEW.icon} isActive={isActive(loc.pathname, OVERVIEW)}>{OVERVIEW.label}</SideNavLink>
                 {GROUPS.map((g) => (
@@ -140,7 +143,7 @@ function Shell() {
             </SideNav>
           ) : (
             // <lg: a rail (labels on hover) that the header button expands into an overlay.
-            <SideNav aria-label="Side navigation" expanded={open} isChildOfHeader isFixedNav={false} isRail>
+            <SideNav aria-label="Side navigation" expanded={open} isChildOfHeader isFixedNav={false} isRail className="ag-no-print">
               <SideNavItems>
                 {[OVERVIEW, ...GROUPS.flatMap((g) => g.items)].map((it) => <SideNavLink key={it.to} as={NavLink} to={it.to} end={it.end} renderIcon={it.icon} isActive={isActive(loc.pathname, it)}>{it.label}</SideNavLink>)}
                 {settingsLink}
@@ -160,6 +163,8 @@ function Shell() {
             <Route path="/legacy" element={<LegacyRegister />} />
             <Route path="/third-parties" element={<ThirdParties />} />
             <Route path="/roadmap" element={<RoadmapPage />} />
+            <Route path="/metrics" element={<Metrics />} />
+            <Route path="/board-packs/:hash" element={<BoardPack />} />
             <Route path="/governance" element={<Catalogue />} />
             {/* The catalogue used to be /standards; deep links (?open=, ?q=) keep working. */}
             <Route path="/standards" element={<Navigate to={`/governance${loc.search}`} replace />} />
@@ -195,7 +200,7 @@ function HelpPanel() {
         <dt>Overview</dt><dd>Your work first: positions, declarations and sessions waiting on you, then the governance pipeline and the state of the estate.</dd>
         <dt>Governance</dt><dd>What people decided: the catalogue of standards, principles, patterns and policies, architecture decisions and the roadmap of how far the estate has realised them, reviews of all of them, the boards that approve them and the sessions they sit in.</dd>
         <dt>Board Sessions</dt><dd>A board sits in sessions: decision makers record a position for each area of responsibility they own, or delegate their seat for the sitting, and the chair declares the outcome those positions allow.</dd>
-        <dt>Evidence</dt><dd>Where the two meet: conformance findings and drift, imported assessments from Defender for Cloud and Azure Policy, and the audit log.</dd>
+        <dt>Evidence</dt><dd>Where the two meet: conformance findings and drift, governance metrics and the signed board packs prepared from them, imported assessments from Defender for Cloud and Azure Policy, and the audit log.</dd>
         <dt>Risk</dt><dd>Registers derived from the model: the legacy register of components past or near their vendor's end of support and the yearly legacy assessments that cover them, and the third parties the estate relies on — concentration on designated critical third parties and the exit plan for each critical reliance.</dd>
       </dl>
       <div className="ag-row snug"><RLink to="/?start=1">Get started</RLink>{useCan("manage_platform") && <RLink to="/settings">Settings</RLink>}</div>
