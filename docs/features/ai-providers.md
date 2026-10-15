@@ -12,7 +12,7 @@ Nine features, each an instance of the heuristics/AI boundary (AI proposes, a na
 | Decision Drafting | generate → verify | MADR draft from a work item; the author edits and submits |
 | Rule Drafting | generate → verify | JSON-DSL rule from a statement; `validateRule` + a live dry run come back with the draft; a board still adopts |
 | Control References | suggest → pin | Framework references for a draft artefact; the author prunes and saves |
-| Assessment Drafting | derive → narrate | Prefills the type's template headings from the review; gaps say "To be confirmed" |
+| Assessment Drafting | derive → narrate | Prefills the type's template headings from the review; gaps say "To be confirmed". Also drafts the yearly legacy assessment from the legacy register's facts (`POST /applications/:id/legacy-assessments/draft`, capability `verify`) |
 | Session Notes Drafting | derive → narrate | Secretary's narrative from the session records; the minutes stay derived |
 | Evidence Mapping | suggest → pin | Control ids for unmapped `defender:`/`policy:` keys into the control-map editor; the admin saves to pin |
 | Classification Suggestion | suggest → confirm | Tier and dependent services for an application the tags leave open, from its resources, tags, decisions and planned changes; normalised to the classification invariants (a regulated service means critical), shown in the Classify form with Apply Suggestion; the author saves it with their own reason. `POST /applications/:id/classification/suggest`, capability `verify`. See [criticality classification](criticality-classification.md) |

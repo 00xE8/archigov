@@ -6,6 +6,7 @@ import { listElements, resourcesOf, verificationCoverage } from "./model.js";
 import { evidenceFor } from "./evidence.js";
 import { std, dec, fnd, DECISIONS_FOR_APP } from "./http.js";
 import { classificationOf } from "./classification.js";
+import { legacyOf } from "./lifecycle.js";
 
 /**
  * The evidence pack: what the derived model, the imported compliance evidence, the decision log and the review
@@ -95,6 +96,7 @@ export function buildEvidencePack(appId: string | null): Record<string, any> | n
       return {
         id: a.id, name: a.name, verification: a.verification, verified_by: a.verified_by, verified_at: a.verified_at, provenance: a.provenance,
         classification: (({ criticality, services, origin, method, reason, set_by, set_at, verification, verified_by, verified_at }) => ({ criticality, services, origin, method, reason, set_by, set_at, verification, verified_by, verified_at }))(classificationOf(a.id)!),
+        legacy: (({ status, legacy, last }) => ({ status, components: legacy, assessment: last ? { result: last.result, assessed_by: last.assessed_by, assessed_at: last.assessed_at, valid_until: last.valid_until, reference: last.reference, covers: last.components } : null }))(legacyOf(a)),
         resources: resources.map((r) => ({ ref: r.source_ref, name: r.name, type: r.subtype, location: r.props.location, verification: r.verification, verified_by: r.verified_by, content_hash: r.content_hash,
           evidence: evidenceFor(r.id).map((e) => ({ source: e.source, control: e.control, state: e.state, severity: e.severity, observed_at: e.observed_at })) })),
         decisions: decisions.map((d: any) => ({ code: d.code, title: d.title, status: d.status, decided_at: d.decided_at, author: d.author, verification: d.verification, verified_by: d.verified_by, constraint: d.constraint, depends_on: dependsOn(d.id), dependents: dependents(d.id) })),

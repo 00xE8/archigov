@@ -118,6 +118,16 @@ export const DORA_STANDARDS: PackStandard[] = [
     statement: "Material changes to applications supporting critical or important functions are reviewed by the Design Authority before release, and the approval records its conditions.",
     rationale: "ICT change management must be evidenced, including who approved what and on which conditions.",
     control_refs: ["DORA Art.9(4)(e)", "DORA RTS on ICT risk management Art.17"], rule: null },
+  { code: "STD-DORA-06", title: "Legacy ICT systems are risk-assessed every year", category: "Governance", severity: "high", status: "adopt",
+    statement: "Every application running a component past its vendor's standard support has a legacy ICT risk assessment that is less than a year old and covers each of those components.",
+    rationale: "Legacy systems carry risk the rest of the estate does not; the assessment is yearly, and again when what is connected changes.",
+    control_refs: ["DORA Art.8(7)"],
+    rule: { scope: "application", assert: { op: "assessmentCurrent", kind: "legacy" } } },
+  { code: "STD-DORA-07", title: "No ICT component runs past its end of life", category: "Resilience", severity: "high", status: "adopt",
+    statement: "Operating systems, runtimes, database engines and Kubernetes versions are retired or upgraded before their vendor stops issuing security fixes; paid extended support counts until it ends.",
+    rationale: "An unsupported component cannot be patched; the risk grows every month it stays.",
+    control_refs: ["DORA Art.8(7)", "ISO 27001 A.8.8", "NIST SP 800-53 SA-22"],
+    rule: { scope: "resource", assert: { op: "lifecycle", states: ["end_of_life"] } } },
 ];
 
 /** EU AI Act Annex IV: the technical-documentation evidence a high-risk AI system's architecture must be able to produce. Manual, except the decision check. */

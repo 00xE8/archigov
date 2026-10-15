@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 # Archigov registers smoke test — criticality classification (derived from tags, set by a person with a reason, reset,
-# verified, read by rules as app.*), the business-service dependency map and the DORA register's criticality column,
-# end to end through the API of a LOCAL-mode seeded instance.
+# verified, read by rules as app.*), the business-service dependency map and the DORA register's criticality column;
+# the legacy register (lifecycle states, a person's version correction, the yearly legacy assessment), end to end
+# through the API of a LOCAL-mode seeded instance.
 #
 #   scripts/smoke-registers.sh [base_url]   default http://localhost:8080
 #
 # Run after smoke-work.sh on the same instance (before smoke-catalogue.sh). The default x-user ("smoke-registers") is
 # a platform admin ONLY and must be refused every classification change; authors act as the seeded cast. MUTATES the
-# tenant (a classification set and reset, a verification, a draft standard); reset with
+# tenant (a classification set and reset, a verification, a draft standard, a version set and reset, a legacy
+# assessment); reset with
 # `docker compose down -v && docker compose up -d`.
 set -u
 BASE="${1:-http://localhost:8080}"
@@ -121,6 +123,38 @@ def f():
     s, ch = get("/audit/verify"); assert ch["ok"] is True, ch
     return f"reset hands Pharmacy back to the tags (unclassified, 409 on repeat); Intranet verified; audit chain intact over {ch['rows']} rows"
 step("f  reset to derived; verify; audit chain intact", f)
+
+# ---------- g. the legacy register ----------
+def g():
+    s, lc = get("/lifecycle", user="a.uditor"); assert s == 200, f"{s} {lc}"
+    assert lc["snapshot"]["source"] == "endoflife.date" and lc["counts"]["end_of_life"] >= 1, lc["counts"]
+    w = next(c_ for c_ in lc["components"] if c_["key"] == "windows-server:2012-r2"); assert w["state"] == "end_of_life" and w["label"] == "2012 R2", w
+    apps_ = {a_["name"]: a_ for a_ in lc["applications"]}
+    assert apps_["Finance ERP"]["status"] == "current" and apps_["Pharmacy"]["status"] == "due", {k: v["status"] for k, v in apps_.items()}
+    assert any(u["name"] == "app-appointments" for u in lc["unmatched"]), lc["unmatched"]
+    return f"{lc['counts']['end_of_life']} end-of-life, {lc['counts']['extended']} extended, {lc['counts']['ending']} ending component(s); {lc['due']} application(s) due; Finance ERP assessed"
+step("g  the legacy register: states from support dates, the seeded assessment, an unknown version", g)
+
+def h():
+    rid = next(u["id"] for u in get("/lifecycle", user="a.uditor")[1]["unmatched"] if u["name"] == "app-appointments")
+    body = {"components": [{"product": "dotnet", "cycle": "6"}], "reason": "Runs .NET 6 on Windows; confirmed with the team."}
+    for u in (ADMIN, "a.uditor"):
+        s, r = put(f"/resources/{rid}/lifecycle", body, user=u); assert s == 403, f"{u}: {s} {r}"
+    s, r = put(f"/resources/{rid}/lifecycle", body, user="s.patel"); assert s == 200 and r["origin"] == "human" and r["state"] == "end_of_life", f"{s} {r}"
+    s, r = post(f"/resources/{rid}/lifecycle/reset", user="s.patel"); assert s == 200, f"{s} {r}"
+    s, r = post(f"/resources/{rid}/lifecycle/reset", user="s.patel"); assert s == 409, f"already derived: {s} {r}"
+    mutations.append("app-appointments version set and reset")
+    pid = apps()["Pharmacy"]["id"]
+    ab = {"result": "unsatisfactory", "summary_md": "Windows Server 2012 R2 is past ESU; isolate and replace by Q1.", "reference": "https://docs.example.org/pharmacy-legacy"}
+    s, r = post(f"/applications/{pid}/legacy-assessments", ab); assert s == 403, f"platform admin: {s} {r}"
+    s, r = post(f"/applications/{pid}/legacy-assessments", {**ab, "reference": "c:/x.docx"}, user="s.patel"); assert s == 400, f"a reference is a link: {s} {r}"
+    s, r = post(f"/applications/{pid}/legacy-assessments", ab, user="s.patel"); assert s == 200 and r["status"] == "current", f"{s} {r}"
+    mutations.append("Pharmacy legacy assessment (unsatisfactory)")
+    s, r = post(f"/applications/{pid}/legacy-assessments/draft", user="s.patel"); assert s == 409, f"AI drafting off: {s} {r}"
+    s, r = post("/lifecycle/refresh", user="s.patel"); assert s == 403, f"an author does not refresh the lifecycle data: {s} {r}"
+    s, au = get(f"/audit?entity=applications&entity_id={pid}&action=legacy:assess"); assert au["rows"] and au["rows"][0]["actor"] == "s.patel", au["rows"][:1]
+    return "a version set by an author (403 platform admin/auditor) and reset (409 on repeat); Pharmacy assessed → current, audited; draft 409 while AI is off; refresh is the platform admin's"
+step("h  corrections and the yearly legacy assessment", h)
 
 passed = sum(1 for _, ok in results if ok); failed = len(results) - passed
 print(f"\n{passed} passed, {failed} failed  ({BASE})")

@@ -2,7 +2,7 @@ import React from "react";
 import { useLocation } from "react-router-dom";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import { Tag, Button, InlineLoading, InlineNotification, ActionableNotification, Tile, DefinitionTooltip, Tooltip, Link as CarbonLink, Breadcrumb, BreadcrumbItem, DatePicker, DatePickerInput, SkeletonText, MenuButton, MenuItem, Accordion, AccordionItem, Theme } from "@carbon/react";
-import { Checkmark, Renew, CheckmarkFilled, CheckmarkOutline, ErrorFilled, WarningFilled, WarningAlt, WarningAltFilled, Information, Pending, InProgress, Time, CloseFilled, CloseOutline, Undefined, Unknown, User, MachineLearningModel, Rule, Cloud, Idea, Template, Upload, Calendar, Send, Dashboard, Application, Roadmap, Catalog, DecisionTree, TaskApproved, UserMultiple, EventSchedule, Security, CertificateCheck, Report, Settings, BusinessProcesses, Flash } from "@carbon/icons-react";
+import { Checkmark, Renew, CheckmarkFilled, CheckmarkOutline, ErrorFilled, WarningFilled, WarningAlt, WarningAltFilled, Information, Pending, InProgress, Time, CloseFilled, CloseOutline, Undefined, Unknown, User, MachineLearningModel, Rule, Cloud, Idea, Template, Upload, Calendar, Send, Dashboard, Application, Roadmap, Catalog, DecisionTree, TaskApproved, UserMultiple, EventSchedule, Security, CertificateCheck, Report, Settings, BusinessProcesses, Flash, Hourglass } from "@carbon/icons-react";
 import { marked } from "marked";
 import { get, post, labelFor, fmtDateTime, shortType, sentence, download, slug, areaLabel } from "./api";
 import { Gated, useCan } from "./auth";
@@ -108,7 +108,24 @@ const EXPLAIN_KIND: Record<string, string> = {
 // The fast lane: a design satisfied by deterministic checks instead of positions (teal, the "approved with a caveat"
 // colour — it still waits on the chair), or held to the board's full policy.
 STATUS.fast_lane = { eligible: { type: "teal", icon: Flash }, full: { type: "gray", icon: Rule } };
+// Lifecycle of a component against its vendor's support dates, worst last; unknown is the outline tag (nothing to go on).
+STATUS.lifecycle_state = { supported: { type: "green", icon: CheckmarkFilled }, ending: { type: "teal", icon: Time }, extended: { type: "magenta", icon: WarningAltFilled }, end_of_life: { type: "red", icon: ErrorFilled }, unknown: { type: "outline", icon: Unknown } };
+// A legacy assessment's standing for an application (DORA Art. 8(7)).
+STATUS.legacy_status = { current: { type: "green", icon: CheckmarkFilled }, stale: { type: "magenta", icon: WarningAltFilled }, due: { type: "red", icon: WarningFilled }, not_needed: { type: "gray", icon: Undefined } };
 const EXPLAIN: Record<string, Record<string, string>> = {
+  lifecycle_state: {
+    supported: "The vendor still supports this version and its end of support is more than the warning window away.",
+    ending: "The vendor's support for this version ends within the warning window: plan the upgrade.",
+    extended: "Past the vendor's standard support, inside a paid extended-support window: legacy, assessed yearly.",
+    end_of_life: "The vendor no longer issues security fixes for this version: legacy, and nothing patches it.",
+    unknown: "No version fact was collected, or the version is not in the lifecycle data; a person can set it.",
+  },
+  legacy_status: {
+    current: "A legacy assessment less than a year old covers every legacy component of this application.",
+    stale: "The last assessment is still in date, but a legacy component it did not cover has appeared since.",
+    due: "The application has legacy components and no legacy assessment in date.",
+    not_needed: "Nothing in this application is past its vendor's standard support.",
+  },
   fast_lane: {
     eligible: "Low risk, follows adopted patterns and every deterministic check passes: the chair may declare it approved without area positions. Any area owner takes it out of the lane by recording a no or a conditional.",
     full: "The board's full policy applies: every touched area needs a position before the chair declares.",
@@ -260,6 +277,7 @@ const HERO_CONTEXT: { match: RegExp; tone: HeroTone; icon: React.ComponentType<a
   { match: /^\/boards/, tone: "magenta", icon: UserMultiple, motion: "pulse" },
   { match: /^\/sessions/, tone: "magenta", icon: EventSchedule, motion: "swing" },
   { match: /^\/conformance/, tone: "red", icon: Security, motion: "pulse" },
+  { match: /^\/legacy/, tone: "red", icon: Hourglass, motion: "swing" },
   { match: /^\/evidence/, tone: "green", icon: CertificateCheck, motion: "pop" },
   { match: /^\/audit/, tone: "green", icon: Report, motion: "rise" },
   { match: /^\/settings/, tone: "gray", icon: Settings, motion: "spin" },
