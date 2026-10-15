@@ -1,0 +1,129 @@
+#!/usr/bin/env bash
+# Archigov registers smoke test — criticality classification (derived from tags, set by a person with a reason, reset,
+# verified, read by rules as app.*), the business-service dependency map and the DORA register's criticality column,
+# end to end through the API of a LOCAL-mode seeded instance.
+#
+#   scripts/smoke-registers.sh [base_url]   default http://localhost:8080
+#
+# Run after smoke-work.sh on the same instance (before smoke-catalogue.sh). The default x-user ("smoke-registers") is
+# a platform admin ONLY and must be refused every classification change; authors act as the seeded cast. MUTATES the
+# tenant (a classification set and reset, a verification, a draft standard); reset with
+# `docker compose down -v && docker compose up -d`.
+set -u
+BASE="${1:-http://localhost:8080}"
+command -v python3 >/dev/null || { echo "python3 is required"; exit 2; }
+
+python3 - "$BASE" <<'PY'
+import json, sys
+import urllib.request, urllib.error
+
+BASE = sys.argv[1].rstrip("/") + "/api"
+ADMIN = "smoke-registers"
+
+def call(method, path, body=None, user=ADMIN, raw=False):
+    data = json.dumps(body).encode() if body is not None else None
+    req = urllib.request.Request(BASE + path, data=data, headers={"x-user": user, "Content-Type": "application/json"}, method=method)
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            b = r.read(); return r.status, (b.decode() if raw else (json.loads(b) if b else None))
+    except urllib.error.HTTPError as e:
+        b = e.read()
+        try: return e.code, json.loads(b) if b else None
+        except Exception: return e.code, b.decode(errors="replace")
+get = lambda p, user=ADMIN, raw=False: call("GET", p, None, user, raw)
+post = lambda p, b=None, user=ADMIN: call("POST", p, {} if b is None else b, user)
+put = lambda p, b, user=ADMIN: call("PUT", p, b, user)
+
+results, ctx, mutations = [], {}, []
+def step(label, fn):
+    try:
+        detail = fn() or ""
+        results.append((label, True)); print(f"PASS  {label}" + (f"  — {detail}" if detail else ""))
+    except AssertionError as e:
+        results.append((label, False)); print(f"FAIL  {label}  — {e}")
+    except Exception as e:
+        results.append((label, False)); print(f"FAIL  {label}  — {type(e).__name__}: {e}")
+
+def apps():
+    s, a = get("/applications"); assert s == 200, f"{s} {a}"; return {x["name"]: x for x in a}
+def cls(name):
+    s, a = get(f"/applications/{apps()[name]['id']}"); assert s == 200, f"{s} {a}"; return a["classification"]
+
+# ---------- a. derived from tags ----------
+def a():
+    A = apps(); assert all(x.get("classification") for x in A.values()), "every application carries a classification (possibly unclassified)"
+    pf = A["PatientFlow"]["classification"]
+    assert pf["criticality"] == "critical" and pf["regulated"] is True and pf["origin"] == "derived" and pf["verification"] == "verified", pf
+    assert A["Pharmacy"]["classification"]["criticality"] is None, A["Pharmacy"]["classification"]
+    d = cls("Appointments"); assert d["criticality"] == "important" and d["method"] == "tag:criticality" and d["evidence"], d
+    tiers = {}
+    for x in A.values(): tiers[x["classification"]["criticality"] or "unclassified"] = tiers.get(x["classification"]["criticality"] or "unclassified", 0) + 1
+    return ", ".join(f"{k} {v}" for k, v in sorted(tiers.items())) + "; PatientFlow critical (IBS, verified by the seed)"
+step("a  classification derived from tags, with method and evidence", a)
+
+# ---------- b. who may classify ----------
+BODY = {"criticality": "critical", "services": [{"name": "Dispense medicines", "kind": "cif"}], "reason": "Dispensing is a critical function under our DORA mapping."}
+def b():
+    pid = apps()["Pharmacy"]["id"]; ctx["pharmacy"] = pid
+    for u in (ADMIN, "a.uditor", "m.hughes"):
+        s, r = put(f"/applications/{pid}/classification", BODY, user=u); assert s == 403, f"{u}: {s} {r}"
+    s, r = put(f"/applications/{pid}/classification", {**BODY, "reason": "short"}, user="s.patel"); assert s == 400, f"reason: {s} {r}"
+    s, r = put(f"/applications/{pid}/classification", {**BODY, "criticality": "important"}, user="s.patel"); assert s == 400 and "critical" in json.dumps(r), f"regulated ⇒ critical: {s} {r}"
+    s, r = post(f"/applications/{pid}/classification/suggest", user="s.patel"); assert s == 409, f"AI off ⇒ 409: {s} {r}"
+    return "platform admin, auditor and a seat-only decision maker 403; short reason and regulated-but-important 400; AI suggestion 409 while off"
+step("b  classifying is an author's act, with a reason", b)
+
+# ---------- c. set by a person, survives re-evaluation ----------
+def c_():
+    s, r = put(f"/applications/{ctx['pharmacy']}/classification", BODY, user="s.patel"); assert s == 200, f"{s} {r}"
+    mutations.append("Pharmacy classified critical (CIF Dispense medicines)")
+    assert r["origin"] == "human" and r["verification"] == "verified" and r["set_by"] == "s.patel" and r["derived"]["criticality"] is None, r
+    s, run = post("/evaluate", user="s.patel"); assert s == 200, f"{s} {run}"
+    k = cls("Pharmacy"); assert k["origin"] == "human" and k["criticality"] == "critical", k
+    s, au = get(f"/audit?entity=applications&entity_id={ctx['pharmacy']}&action=classification:set"); assert s == 200 and au["rows"] and au["rows"][0]["actor"] == "s.patel", au
+    return "origin human, verified by the setter, audited; a conformance run keeps it"
+step("c  a person's classification is kept across evaluation", c_)
+
+# ---------- d. business services and the DORA register ----------
+def d():
+    s, bs = get("/business-services", user="a.uditor"); assert s == 200, f"{s} {bs}"
+    svc = next((x for x in bs["services"] if x["name"] == "Dispense medicines"), None)
+    assert svc and svc["kind"] == "cif" and svc["regulated"] and [x["name"] for x in svc["applications"]] == ["Pharmacy"], svc
+    assert not any(x["name"] == "Pharmacy" for x in bs["unclassified"]), bs["unclassified"]
+    admit = next(x for x in bs["services"] if x["name"] == "Admit and discharge patients"); assert admit["regions"] and admit["resources"] > 0, admit
+    s, csv = get("/exports/dora-roi.csv", user="a.uditor", raw=True); assert s == 200, s
+    rows = [l for l in csv.splitlines() if ctx["pharmacy"] in l]; assert rows and all("Dispense medicines" in l and "Critical or important" in l for l in rows), rows[:1]
+    return f"{len(bs['services'])} service(s), {bs['counts']['critical']} critical app(s); Pharmacy now behind CIF 'Dispense medicines' and critical in the DORA register"
+step("d  the service map and the DORA register follow the classification", d)
+
+# ---------- e. rules read app.* ----------
+def e():
+    rule = {"scope": "resource", "match": {"type": "Microsoft.Storage/storageAccounts", "where": [{"path": "app.criticality", "op": "eq", "value": "critical"}]},
+            "assert": {"path": "props.publicAccess", "op": "eq", "value": False}}
+    s, r = post("/artefacts", {"kind": "standard", "title": "Smoke registers: critical applications keep storage private", "category": "Security", "statement": "Storage behind a critical application is never public.", "severity": "high", "rule": rule}, user="s.patel")
+    assert s == 200 and r["lifecycle"] == "draft", f"{s} {r}"; mutations.append(f"standard {r['code']} (draft)")
+    s, dr = get(f"/artefacts/{r['id']}/dry-run", user="s.patel"); assert s == 200, f"{s} {dr}"
+    hit = sorted({f["application_name"] for f in dr["findings"]})
+    assert "Pharmacy" in hit and "Referral API" in hit, hit
+    crit = {n for n, x in apps().items() if x["classification"]["criticality"] == "critical"}
+    assert set(hit) <= crit, f"only critical applications are matched: {hit} vs {crit}"
+    return f"{r['code']} dry run flags public storage on {', '.join(hit)} — critical applications only"
+step("e  a rule matched on app.criticality", e)
+
+# ---------- f. reset and verify ----------
+def f():
+    s, r = post(f"/applications/{ctx['pharmacy']}/classification/reset", user="s.patel"); assert s == 200 and r["origin"] == "derived" and r["criticality"] is None and r["verification"] == "unverified", f"{s} {r}"
+    s, r2 = post(f"/applications/{ctx['pharmacy']}/classification/reset", user="s.patel"); assert s == 409, f"already derived: {s} {r2}"
+    iid = apps()["Intranet"]["id"]
+    s, v = post(f"/applications/{iid}/classification/verify", {}, user="a.okafor"); assert s == 200 and v["verification"] == "verified" and v["verified_by"] == "a.okafor", f"{s} {v}"
+    mutations.append("Intranet classification verified by a.okafor")
+    s, v2 = post(f"/applications/{iid}/classification/verify", {}, user="ops.admin"); assert s == 403, f"platform admin verifies nothing: {s}"
+    s, ch = get("/audit/verify"); assert ch["ok"] is True, ch
+    return f"reset hands Pharmacy back to the tags (unclassified, 409 on repeat); Intranet verified; audit chain intact over {ch['rows']} rows"
+step("f  reset to derived; verify; audit chain intact", f)
+
+passed = sum(1 for _, ok in results if ok); failed = len(results) - passed
+print(f"\n{passed} passed, {failed} failed  ({BASE})")
+if mutations: print("mutations made to the demo tenant: " + "; ".join(mutations))
+sys.exit(1 if failed else 0)
+PY

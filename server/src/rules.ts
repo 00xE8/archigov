@@ -1,5 +1,6 @@
 import { db, uid, nowIso, j, audit } from "./db.js";
-import { listElements, resourcesOf, hashOf, type Element } from "./model.js";
+import { listElements, resourcesOf, hashOf, getElement, type Element } from "./model.js";
+import { allClassifications, classificationOf, classificationView, refreshClassifications, type Classification } from "./classification.js";
 
 /**
  * Rule DSL. A standard's rule_json is one of:
@@ -15,6 +16,11 @@ import { listElements, resourcesOf, hashOf, type Element } from "./model.js";
  *                from Defender / Azure Policy instead of being rebuilt here.
  * AppAssert: { op: "hasDecision", topic: string, type?: string }  -- type narrows to applications that own a resource whose type starts with it
  *          | { op: "hasOwnerTag" } | { op: "maxResourcesOfType", type: string, max: number }
+ * An application rule may carry match.where (path assertions on the application: `name`, `app.*`).
+ *
+ * Both scopes see the owning application's classification as `app.criticality` (critical | important | standard |
+ * null), `app.regulated` (it supports an important business service, critical function or essential function),
+ * `app.services` and `app.service_kinds` (comma-joined), so a rule can apply to critical applications only.
  *
  * An unknown op or an invalid regex is a rule error: the standard is reported in the run's rule_errors and
  * never counts as passing.
@@ -50,17 +56,18 @@ function evalAssert(target: any, a: Assert): boolean {
   }
 }
 
-function matches(res: Element, m?: Rule["match"]): boolean {
+function matches(res: Element, m: Rule["match"] | undefined, view: any): boolean {
   if (!m) return true;
   const t = (res.subtype || "").toLowerCase();
   if (m.type && t !== m.type.toLowerCase()) return false;
   if (m.typeIn && !m.typeIn.map((x) => x.toLowerCase()).includes(t)) return false;
   if (m.typePrefix && !t.startsWith(m.typePrefix.toLowerCase())) return false;
-  if (m.where && !m.where.every((w) => evalAssert(resourceView(res), w))) return false;
+  if (m.where && !m.where.every((w) => evalAssert(view, w))) return false;
   return true;
 }
 
-const resourceView = (r: Element) => ({ name: r.name, type: r.subtype, location: r.props.location, tags: r.tags, props: r.props });
+const resourceView = (r: Element, app?: Classification | null) => ({ name: r.name, type: r.subtype, location: r.props.location, tags: r.tags, props: r.props, app: classificationView(app) });
+const applicationView = (a: { name: string }, c?: Classification | null) => ({ name: a.name, app: classificationView(c) });
 
 /** Validate the shape of a rule before running it, so a typo'd op is an error for that artefact, not a silent pass. */
 export function validateRule(rule: Rule) {
@@ -73,7 +80,10 @@ export function validateRule(rule: Rule) {
     else if (!RESOURCE_OPS.has(a.op)) throw new Error(`unknown assert op "${a.op}"`);
     else if (!a.path && a.op !== "exists" && a.op !== "missing") throw new Error(`assert op "${a.op}" needs a path`);
     for (const w of rule.match?.where || []) if (!RESOURCE_OPS.has(w.op)) throw new Error(`unknown match op "${w.op}"`);
-  } else if (!APP_OPS.has(a.op)) throw new Error(`unknown application assert op "${a.op}"`);
+  } else {
+    if (!APP_OPS.has(a.op)) throw new Error(`unknown application assert op "${a.op}"`);
+    for (const w of rule.match?.where || []) if (!RESOURCE_OPS.has(w.op)) throw new Error(`unknown match op "${w.op}"`);
+  }
 }
 
 export interface Finding { standard_id: string; element_id: string | null; application_id: string | null; decision_id: string | null; severity: string; message: string; evidence: any; }
@@ -93,7 +103,7 @@ function activeException(standardId: string, appId: string | null, elementId: st
 const evidenceStmt = () => db.prepare("SELECT * FROM evidence WHERE resource_id=? AND control=? AND (? IS NULL OR source=?) ORDER BY observed_at DESC LIMIT 1");
 
 /** Evaluate one resource-scoped assert. Returns null when conforming, otherwise the message + evidence for a finding. */
-function checkResource(r: Element, a: Assert, s: any, app: Element | null): { message: string; evidence: any; decision_id: string | null; severity: string } | null | "skip" {
+function checkResource(r: Element, a: Assert, s: any, app: Element | null, view: any): { message: string; evidence: any; decision_id: string | null; severity: string } | null | "skip" {
   if (a.op === "decisionConstraint") {
     if (!app) return "skip";
     const d = acceptedDecision(app.id, a.topic!);
@@ -113,21 +123,21 @@ function checkResource(r: Element, a: Assert, s: any, app: Element | null): { me
         evidence: { control: a.control, source: ev.source, state: ev.state, observed_at: ev.observed_at, imported_severity: ev.severity, detail: j(ev.detail_json, {}), resource: r.source_ref } };
     return null;
   }
-  if (!evalAssert(resourceView(r), a)) {
-    const actual = a.path ? getPath(resourceView(r), a.path) : undefined;
+  if (!evalAssert(view, a)) {
+    const actual = a.path ? getPath(view, a.path) : undefined;
     return { message: `${r.name}: ${s.title}`, severity: s.severity, decision_id: null, evidence: { path: a.path, expected: { op: a.op, value: a.value }, actual: actual ?? null, resource: r.source_ref } };
   }
   return null;
 }
 
 /** The slice of the derived model an evaluation runs over, built once per run (and once per dry run). */
-export interface ModelContext { apps: Element[]; appOf: Map<string, Element>; appResources: Map<string, Element[]>; allResources: Element[] }
+export interface ModelContext { apps: Element[]; appOf: Map<string, Element>; appResources: Map<string, Element[]>; allResources: Element[]; cls: Map<string, Classification> }
 export function modelContext(): ModelContext {
   const apps = listElements("application");
   const appOf = new Map<string, Element>();
   const appResources = new Map<string, Element[]>();
   for (const app of apps) { const rs = resourcesOf(app.id); appResources.set(app.id, rs); rs.forEach((r) => appOf.set(r.id, app)); }
-  return { apps, appOf, appResources, allResources: listElements("resource") };
+  return { apps, appOf, appResources, allResources: listElements("resource"), cls: allClassifications() };
 }
 
 /** Only adopted artefacts (of any kind) on the active side of the radar are evaluated: a draft, a retired artefact or one still being assessed never produces a finding. */
@@ -139,13 +149,15 @@ export function evaluateArtefact(s: any, rule: Rule, ctx: ModelContext): Finding
   validateRule(rule);
   if (rule.scope === "resource") {
     for (const r of ctx.allResources) {
-      if (!matches(r, rule.match)) continue;
       const app = ctx.appOf.get(r.id) || null;
-      const res = checkResource(r, rule.assert, s, app);
+      const view = resourceView(r, app ? ctx.cls.get(app.id) : null);
+      if (!matches(r, rule.match, view)) continue;
+      const res = checkResource(r, rule.assert, s, app, view);
       if (res && res !== "skip") findings.push({ standard_id: s.id, element_id: r.id, application_id: app?.id || null, decision_id: res.decision_id, severity: res.severity, message: res.message, evidence: res.evidence });
     }
   } else {
     for (const app of ctx.apps) {
+      if (rule.match?.where && !rule.match.where.every((w) => evalAssert(applicationView(app, ctx.cls.get(app.id)), w))) continue;
       const a = rule.assert;
       const rs = ctx.appResources.get(app.id) || [];
       if (a.op === "hasDecision") {
@@ -174,6 +186,8 @@ export function evaluateAll(actor = "system") {
   db.prepare("INSERT INTO runs(id,kind,started_at) VALUES (?,?,?)").run(runId, "evaluate", started);
 
   const standards = db.prepare(EVALUABLE_SQL).all() as any[];
+  // classification follows the tags the last collection brought in, before any rule reads `app.*`
+  refreshClassifications();
   const ctx = modelContext();
   const { apps, allResources } = ctx;
 
@@ -249,16 +263,20 @@ export function dryRunForApplication(appId: string): { standard: any; message: s
   const standards = db.prepare(EVALUABLE_SQL).all() as any[];
   const rs = resourcesOf(appId);
   const app = { id: appId } as Element;
+  const cls = classificationOf(appId);
   for (const s of standards) {
     const rule: Rule = j(s.rule_json); if (!rule) continue;
     try {
       validateRule(rule);
       if (rule.scope === "resource") {
         for (const r of rs) {
-          if (!matches(r, rule.match)) continue;
-          const res = checkResource(r, rule.assert, s, app);
+          const view = resourceView(r, cls);
+          if (!matches(r, rule.match, view)) continue;
+          const res = checkResource(r, rule.assert, s, app, view);
           if (res && res !== "skip") out.push({ standard: s, message: res.message, evidence: res.evidence });
         }
+      } else if (rule.match?.where && !rule.match.where.every((w) => evalAssert(applicationView({ name: getElement(appId)?.name ?? "" }, cls), w))) {
+        continue;
       } else if (rule.assert.op === "hasDecision") {
         const relevant = !rule.assert.type || rs.some((r) => (r.subtype || "").toLowerCase().startsWith(rule.assert.type!.toLowerCase()));
         if (relevant && !acceptedDecision(appId, rule.assert.topic!)) out.push({ standard: s, message: `No accepted decision on "${rule.assert.topic}"`, evidence: { topic: rule.assert.topic } });

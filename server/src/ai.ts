@@ -4,6 +4,7 @@ import { getElement, resourcesOf } from "./model.js";
 import { dryRunForApplication, validateRule, evaluateArtefact, modelContext } from "./rules.js";
 import { encryptSecret, decryptSecret, isEncrypted } from "./secrets.js";
 import { ASSESSMENT_TYPES } from "./boards/assessments.js";
+import { classificationOf, allClassifications, CRITICALITIES, SERVICE_KINDS, REGULATED_KINDS } from "./classification.js";
 
 /**
  * AI gateway. Providers are configured by the platform admin (Settings · AI); keys live in the settings table
@@ -32,6 +33,7 @@ export const AI_FEATURES = [
   { id: "draft_assessment", label: "Assessment Drafting", description: "Prefills an assessment summary from the review content under the type's template headings. The assessor or submitter edits and records it as their own." },
   { id: "draft_minutes", label: "Session Notes Drafting", description: "Drafts the secretary's narrative notes from the session's own records. The minutes stay derived; only the notes are authored." },
   { id: "suggest_evidence_mapping", label: "Evidence Mapping", description: "Suggests control ids for unmapped Defender and Azure Policy keys. The admin pins accepted mappings into the control map; evaluation never calls a model." },
+  { id: "suggest_classification", label: "Classification Suggestion", description: "Suggests how critical an unclassified application is and which business services or regulated functions depend on it, from its name, resources, tags and decisions. Prefills the Classify form only; a person saves it with their own reason, and rules never read a suggestion." },
   { id: "review_decision", label: "Decision Review", description: "A critical assessment of a proposed decision's argument before submission — unsupported claims, options not genuinely compared, risks left unstated — with a tightened version the author may apply. Advisory; the author decides what to submit." },
 ] as const;
 export type AiFeatureId = (typeof AI_FEATURES)[number]["id"];
@@ -416,4 +418,36 @@ Respond JSON: {"verdict":"sound"|"needs_work","assessment_md":string (the critic
       .filter((s: any) => s && (ASSESSMENT_TYPES as readonly string[]).includes(s.type) && s.reason)
       .slice(0, 3).map((s: any) => ({ type: String(s.type), title: String(s.title || "").slice(0, 120) || null, reason: String(s.reason).slice(0, 300) })),
   };
+}
+
+/**
+ * Suggest a criticality classification for an application the tags leave open — suggest→confirm: nothing is stored,
+ * the Classify form is prefilled and a person saves it with their own reason. The output is normalised to the same
+ * invariants a person's classification must meet (known tiers and kinds; a regulated service means critical).
+ */
+export async function suggestClassification(appId: string) {
+  const app = getElement(appId);
+  if (!app || app.type !== "application") throw Object.assign(new Error("not found"), { status: 404 });
+  if (!featureResolved("suggest_classification")) throw new Error("AI is not enabled for suggest_classification");
+  const resources = resourcesOf(appId).slice(0, 60).map((r) => ({ name: r.name, type: r.subtype, location: r.props.location || null, tags: r.tags || {} }));
+  const decisions = (db.prepare("SELECT code, title, status FROM decisions WHERE application_ids_json LIKE ? ORDER BY code").all(`%${appId}%`) as any[]).slice(0, 20);
+  const changes = (db.prepare("SELECT title FROM work_items WHERE application_id=? AND COALESCE(state,'') <> 'Removed' LIMIT 20").all(appId) as any[]).map((w) => w.title);
+  // service names the estate already uses, so a suggestion joins an existing service instead of coining a near-duplicate
+  const known = [...new Map([...allClassifications().values()].flatMap((c) => c.services).map((x) => [`${x.kind}|${x.name}`, x])).values()].slice(0, 40);
+  const { text, model, provider } = await chatFor("suggest_classification", [
+    { role: "system", content: `Suggest an operational-resilience classification for one application in an IT estate.
+criticality: "critical" (its failure would cause intolerable harm to customers, patients, market integrity or the firm's viability), "important" (material disruption, tolerable for a while), "standard" (neither), or null when the facts given do not support a call.
+services: the business services or functions that depend on it, each {"name": short verb phrase like "Take card payments", "kind": "ibs" (important business service, PRA SS1/21 / FCA SYSC 15A) | "cif" (critical or important function, DORA) | "essential_function" (NCSC CAF / NIS) | "business_service"}. Reuse a known service name when one fits. Name a regulated kind (ibs, cif, essential_function) only when the facts plainly support it — a regulated service makes the application critical.
+Base everything on the facts given; never invent facts. Say in the rationale which facts led to the call and what a person should confirm.
+Respond JSON: {"criticality": string|null, "services": [{"name": string, "kind": string}], "rationale": string (2-4 sentences)}.` },
+    { role: "user", content: JSON.stringify({ application: { name: app.name, current: classificationOf(appId)?.derived ?? null }, resources, decisions, planned_changes: changes, known_services: known }) },
+  ]);
+  const p = parseJsonLoose(text);
+  const services = (Array.isArray(p.services) ? p.services : [])
+    .filter((x: any) => x && typeof x.name === "string" && x.name.trim() && (SERVICE_KINDS as readonly string[]).includes(x.kind))
+    .slice(0, 5).map((x: any) => ({ name: String(x.name).trim().slice(0, 120), kind: x.kind as (typeof SERVICE_KINDS)[number] }));
+  let criticality: string | null = (CRITICALITIES as readonly string[]).includes(p.criticality) ? p.criticality : null;
+  const regulated = services.some((x: any) => REGULATED_KINDS.includes(x.kind));
+  if (regulated) criticality = "critical";
+  return { origin: "ai" as const, provider, model, criticality, services, rationale: String(p.rationale || "").slice(0, 800) };
 }

@@ -14,6 +14,6 @@ The flip side is a public commitment (see [README · Licensing](README.md#licens
 
 ## The delivery process
 
-Every change follows the process in [CLAUDE.md](CLAUDE.md) ("Delivery process"): a branch and PR per change, conventional commits, a feature page under `docs/features/` plus a CHANGELOG entry for features, and the quality gate before merge — `tsc` clean in `server/` and `web/`, `npm test` green, the eight smoke scripts green on fresh instances, an accessibility pass on touched UI, lockfiles in sync (`npm ci --dry-run`).
+Every change follows the process in [CLAUDE.md](CLAUDE.md) ("Delivery process"): a branch and PR per change, conventional commits, a feature page under `docs/features/` plus a CHANGELOG entry for features, and the quality gate before merge — `tsc` clean in `server/` and `web/`, `npm test` green, the nine smoke scripts green on fresh instances, an accessibility pass on touched UI, lockfiles in sync (`npm ci --dry-run`).
 
 Two product rules that are not negotiable in review: nothing asserts compliance (the product shows evidence and who stands behind it), and AI output never transitions state (it drafts; a named human's audited act promotes).

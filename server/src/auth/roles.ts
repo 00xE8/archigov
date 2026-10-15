@@ -204,6 +204,8 @@ export const ROUTE_RULES: RouteRule[] = [
   { method: "POST", pattern: /^\/decisions\/[^/]+\/verify$/, capability: "verify" },
   { method: "POST", pattern: /^\/(elements|standards|artefacts)\/[^/]+\/verify$/, capability: "verify" },
   { method: "POST", pattern: /^\/applications\/[^/]+\/verify-all$/, capability: "verify" },
+  // classifying an application (criticality, the services it supports) is content a person stands behind: the verify right
+  { method: "*", pattern: /^\/applications\/[^/]+\/classification(\/(reset|verify|suggest))?$/, capability: "verify" },
   // design annotations: commentary beside the generated views — authors and acting seats; the handler locks edit/delete to the author
   { method: "POST", pattern: /^\/applications\/[^/]+\/annotations$/, capability: "comment" },
   { method: "*", pattern: /^\/annotations\/[^/]+$/, capability: "comment" },
