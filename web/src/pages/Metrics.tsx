@@ -69,6 +69,14 @@ export default function Metrics() {
             <Figure label="Exit Plans" value={of(m.coverage.exit_plans.current, m.coverage.exit_plans.needed)} sub={<RLink to="/third-parties">in date</RLink>} />
           </div>
         </section>
+        {m.risks && <section className="ag-section"><h2>Risks and Debt</h2>
+          <div className="ag-figures">
+            <Figure label="Open Risks" value={m.risks.open} sub={<RLink to="/risks">{m.risks.accepted} accepted · {m.risks.proposed} proposed</RLink>} />
+            <Figure label="High or Critical" value={m.risks.high_or_critical} sub="open, accepted or proposed" />
+            <Figure label="Review Overdue" value={m.risks.review_overdue} sub={`${m.risks.from_exceptions} from exceptions`} />
+            <Figure label="Architecture Debt" value={Object.values(m.debt || {}).reduce((n: number, x: any) => n + (Number(x) || 0), 0)} sub={<RLink to="/risks?tab=debt">items derived from the records</RLink>} />
+          </div>
+        </section>}
         <React.Suspense fallback={<SkeletonText paragraph lineCount={6} />}><MetricsCharts m={m} /></React.Suspense>
       </>}
 

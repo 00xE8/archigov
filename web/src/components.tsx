@@ -2,7 +2,7 @@ import React from "react";
 import { useLocation } from "react-router-dom";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import { Tag, Button, InlineLoading, InlineNotification, ActionableNotification, Tile, DefinitionTooltip, Tooltip, Link as CarbonLink, Breadcrumb, BreadcrumbItem, DatePicker, DatePickerInput, SkeletonText, MenuButton, MenuItem, Accordion, AccordionItem, Theme } from "@carbon/react";
-import { Checkmark, Renew, CheckmarkFilled, CheckmarkOutline, ErrorFilled, WarningFilled, WarningAlt, WarningAltFilled, Information, Pending, InProgress, Time, CloseFilled, CloseOutline, Undefined, Unknown, User, MachineLearningModel, Rule, Cloud, Idea, Template, Upload, Calendar, Send, Dashboard, Application, Roadmap, Catalog, DecisionTree, TaskApproved, UserMultiple, EventSchedule, Security, CertificateCheck, Report, Settings, BusinessProcesses, Flash, Hourglass, Partnership, Timeline, ChartLineData, Stamp } from "@carbon/icons-react";
+import { Checkmark, Renew, CheckmarkFilled, CheckmarkOutline, ErrorFilled, WarningFilled, WarningAlt, WarningAltFilled, Information, Pending, InProgress, Time, CloseFilled, CloseOutline, Undefined, Unknown, User, MachineLearningModel, Rule, Cloud, Idea, Template, Upload, Calendar, Send, Dashboard, Application, Roadmap, Catalog, DecisionTree, TaskApproved, UserMultiple, EventSchedule, Security, CertificateCheck, Report, Settings, BusinessProcesses, Flash, Hourglass, Partnership, Timeline, ChartLineData, Stamp, Debug } from "@carbon/icons-react";
 import { marked } from "marked";
 import { get, post, labelFor, fmtDateTime, shortType, sentence, download, slug, areaLabel } from "./api";
 import { Gated, useCan } from "./auth";
@@ -115,6 +115,7 @@ STATUS.lifecycle_state = { supported: { type: "green", icon: CheckmarkFilled }, 
 STATUS.roadmap_status = { realised: { type: "green", icon: CheckmarkFilled }, in_progress: { type: "blue", icon: InProgress }, not_started: { type: "gray", icon: Pending }, not_checkable: { type: "outline", icon: Unknown },
   proposed: { type: "cyan", icon: Pending }, active: { type: "blue", icon: InProgress }, new: { type: "gray", icon: Pending }, closed: { type: "green", icon: CheckmarkOutline }, open: { type: "blue", icon: Time },
   overdue: { type: "red", icon: WarningFilled }, met: { type: "green", icon: CheckmarkFilled }, end_of_life: { type: "red", icon: ErrorFilled }, extended: { type: "magenta", icon: WarningAltFilled }, ending: { type: "teal", icon: Time }, excepted: { type: "teal", icon: CheckmarkOutline } };
+STATUS.risk_status = { open: { type: "red", icon: WarningFilled }, accepted: { type: "magenta", icon: WarningAltFilled }, mitigated: { type: "teal", icon: CheckmarkOutline }, closed: { type: "green", icon: CheckmarkFilled }, proposed: { type: "cyan", icon: Pending }, withdrawn: { type: "gray", icon: Undefined } };
 STATUS.signoff_status = { current: { type: "green", icon: CheckmarkFilled }, due_soon: { type: "teal", icon: Time }, overdue: { type: "red", icon: WarningFilled } };
 STATUS.signoff_outcome = { reaffirmed: { type: "green", icon: CheckmarkOutline }, revision_needed: { type: "magenta", icon: WarningAltFilled } };
 STATUS.exit_status = { current: { type: "green", icon: CheckmarkFilled }, due: { type: "red", icon: WarningFilled }, not_needed: { type: "gray", icon: Undefined } };
@@ -145,6 +146,19 @@ const EXPLAIN: Record<string, Record<string, string>> = {
     extended: "Past standard support, inside a paid extended-support window that ends on the date shown.",
     ending: "The vendor's support ends on the date shown.",
     excepted: "An approved exception covers this finding until it expires; the remediation is due by then.",
+  },
+  risk_status: {
+    open: "Identified and not yet accepted, mitigated or closed by its owner.",
+    accepted: "Accepted knowingly — by a decision, an exception or its owner — and kept under review.",
+    mitigated: "Its owner recorded how the risk was reduced; it stays on the register until closed.",
+    closed: "Its owner closed it with a note saying how.",
+    proposed: "Accepted by a decision that is still proposed; it becomes accepted if the decision is.",
+    withdrawn: "The decision that accepted it was rejected, superseded or deprecated.",
+  },
+  risk_source: {
+    decision: "A risk a decision accepts; its standing follows the decision.",
+    exception: "An active exception: a finding knowingly accepted until its expiry.",
+    manual: "An architecture risk an author logged on its own.",
   },
   signoff_status: {
     current: "The next review date is more than 30 days away.",
@@ -321,6 +335,7 @@ const HERO_CONTEXT: { match: RegExp; tone: HeroTone; icon: React.ComponentType<a
   { match: /^\/conformance/, tone: "red", icon: Security, motion: "pulse" },
   { match: /^\/legacy/, tone: "red", icon: Hourglass, motion: "swing" },
   { match: /^\/third-parties/, tone: "red", icon: Partnership, motion: "pop" },
+  { match: /^\/risks/, tone: "red", icon: Debug, motion: "pulse" },
   { match: /^\/evidence/, tone: "green", icon: CertificateCheck, motion: "pop" },
   { match: /^\/(metrics|board-packs)/, tone: "green", icon: ChartLineData, motion: "rise" },
   { match: /^\/audit/, tone: "green", icon: Report, motion: "rise" },

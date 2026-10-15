@@ -54,6 +54,12 @@ server/src/lifecycle.ts        legacy register: lifecycle snapshot (lifecycle/sn
                                latest SP assumed and said), stateOfCycle (supported/ending/extended/end_of_life; unknown), lifecycle_overrides
                                (m017, a person's correction), legacyOf()/recordLegacyAssessment() (register_assessments, kind legacy, 12-month
                                validity, stale when a new legacy component appears), legacyRegister(). Routes in routes/registers.ts
+server/src/risks.ts            risk register (m021 risks, RSK-nnnn): sources decision (standing follows the decision: proposed / withdrawn when
+                               rejected·superseded·deprecated, else the stored status), manual, and active exceptions read live (never copied,
+                               not editable here); open|accepted|mitigated|closed, owner-or-logger edits, a note to mitigate/close, review overdue.
+                               architectureDebt(): derived kinds aged_finding (> debt.finding_days, 90), drift, condition_overdue,
+                               exception_expired (still failing), end_of_life, legacy_assessment_due, exit_plan_due. Routes in routes/risks.ts:
+                               GET/POST /risks, PUT /risks/:id, GET /debt, POST /decisions/:id/suggest-risks (AI)
 server/src/signoffs.ts         review dates and sign-offs: subjects = adopted artefacts + accepted decisions; owning board = routeBoard of their
                                review type; next due = latest sign_offs.next_due (m020) else adopted_at/decided_at + review.artefact_months (12) /
                                review.decision_months (24); status overdue|due_soon (≤30 d)|current; signOff() — owning chair only, reaffirmed (+cadence)
@@ -77,7 +83,7 @@ server/src/suppliers.ts        third parties: providersOf() (platform from the t
                                ≥50% of the critical estate, exit plans). Routes in routes/registers.ts
 server/src/rules.ts            rule DSL + validateRule + evaluateAll() (findings, exceptions, conditions, per-run changes_json)
 server/src/ai.ts               AI gateway: AI_PROVIDERS (openai/anthropic/mistral/ollama — two adapters: OpenAI chat-completions and the
-                               Anthropic Messages API) and AI_FEATURES — ten, each enabled separately with its own provider+model (settings
+                               Anthropic Messages API) and AI_FEATURES — eleven, each enabled separately with its own provider+model (settings
                                ai.providers / ai.features; GET /ai/features is the open per-feature flag read the UI's Draft buttons key on;
                                legacy LLM_* env still drives unconfigured features): pre_review, draft_decision, draft_rule (generate→verify:
                                validateRule + live dry run travel with the draft; POST /artefacts/draft-rule, manage_artefacts),
@@ -87,7 +93,8 @@ server/src/ai.ts               AI gateway: AI_PROVIDERS (openai/anthropic/mistra
                                filtered to keys the instance has seen), review_decision (POST /decisions/review-draft, create_decision: a
                                critical assessment of a decision draft's argument — unsupported claims, strawman options, unstated risks,
                                contradictions citing adopted codes — plus a tightened version the author may apply; the form's
-                               "Review Argument with AI"), draft_board_narrative (POST /board-packs/draft-narrative, chair/secretary:
+                               "Review Argument with AI"), suggest_risks (POST /decisions/:id/suggest-risks, create_decision: the risks a
+                               decision's text accepts, for the author to log as ai_assisted), draft_board_narrative (POST /board-packs/draft-narrative, chair/secretary:
                                the board pack narrative from its figures only), suggest_classification (POST /applications/:id/classification/suggest, verify:
                                tier + services for an application the tags leave open, normalised to the classification invariants, shown in
                                the Classify form to apply). Draft endpoints store nothing and answer 409 when off.
@@ -126,7 +133,7 @@ scripts/smoke*.sh              smoke.sh (governance flow), smoke-auth.sh (two-le
                                positions, sessions, delegation, dependencies, circulation, minutes, assessments), smoke-work.sh (/me/work by role, pipeline,
                                decisions 409, per-area findings, audit item codes), smoke-registers.sh (classification: derived, set/reset/verify,
                                business services, DORA column, app.* rules; legacy register, corrections, legacy assessment; third parties,
-                               exit plans into the DORA register; the roadmap; metrics and a signed board pack; sign-offs), smoke-catalogue.sh (kinds/lifecycle/import),
+                               exit plans into the DORA register; the roadmap; metrics and a signed board pack; sign-offs; risks and debt), smoke-catalogue.sh (kinds/lifecycle/import),
                                smoke-integrations.sh (fixtures), smoke-empty.sh (first run)
 web/src/App.tsx                Carbon shell: grouped nav (Model / Governance / Evidence / Risk; the Settings item, help-panel link and Overview
                                "Open Settings" render only with manage_platform — Settings is operations, so only the platform admin carries
@@ -140,7 +147,9 @@ web/src/charts.tsx             Overview charts (lazy chunk), forms by the data's
                                gauges — neutral blue, no thresholds: a pass-rate judgment would assert compliance — and a reviews-by-stage donut
                                whose slice hues echo the stage tags), then severity bars, findings-over-time stacked area by severity (line
                                fallback for older servers), evidence by source (emphasis form), open findings by application
-web/src/pages/*                SignOffs (/sign-offs, Governance group after Board Sessions: sortable table — item, owning board, last sign-off,
+web/src/pages/*                RiskRegister (/risks, Risk group: tabs Risks — filterable table, Log Risk and Update via components/RiskModal.tsx
+                               — and Architecture Debt — expandable by application); DecisionDetail gains Accepted Risks (Add Risk, Suggest
+                               from Consequences), SignOffs (/sign-offs, Governance group after Board Sessions: sortable table — item, owning board, last sign-off,
                                next review, status — Sign Off modal for the owning chair), Metrics (/metrics, Evidence group: period select, figure tiles, charts lazy in metricsCharts.tsx — decided per month,
                                median lead time per month, findings trend, exception ageing — Board Packs list + Prepare Board Pack modal for chairs
                                and secretaries with Draft with AI), BoardPack (/board-packs/:hash: printable document, verification re-checked on

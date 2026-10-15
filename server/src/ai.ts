@@ -37,6 +37,7 @@ export const AI_FEATURES = [
   { id: "suggest_evidence_mapping", label: "Evidence Mapping", description: "Suggests control ids for unmapped Defender and Azure Policy keys. The admin pins accepted mappings into the control map; evaluation never calls a model." },
   { id: "suggest_classification", label: "Classification Suggestion", description: "Suggests how critical an unclassified application is and which business services or regulated functions depend on it, from its name, resources, tags and decisions. Prefills the Classify form only; a person saves it with their own reason, and rules never read a suggestion." },
   { id: "draft_board_narrative", label: "Board Pack Narrative", description: "Drafts the executive narrative of a board pack from its figures: what moved, what is overdue, what needs the board's attention, every statement tied to a number in the pack. The chair or secretary edits it and submits it as their own; the pack records that it was AI-assisted." },
+  { id: "suggest_risks", label: "Risk Extraction", description: "Suggests the risks a decision accepts, read from its context, justification and consequences, each with a severity. The author saves the ones that hold to the risk register as their own; nothing is stored by the suggestion." },
   { id: "review_decision", label: "Decision Review", description: "A critical assessment of a proposed decision's argument before submission — unsupported claims, options not genuinely compared, risks left unstated — with a tightened version the author may apply. Advisory; the author decides what to submit." },
 ] as const;
 export type AiFeatureId = (typeof AI_FEATURES)[number]["id"];
@@ -505,5 +506,21 @@ export async function draftBoardNarrative(metrics: any) {
   const p = parseJsonLoose(text);
   if (!p.narrative_md || typeof p.narrative_md !== "string") throw new Error("model returned no narrative_md");
   return { origin: "ai" as const, provider, model, narrative_md: p.narrative_md };
+}
+
+/** Suggest the risks a decision accepts, from its own text; suggest→confirm — the author saves the ones that hold. */
+export async function suggestDecisionRisks(decisionId: string) {
+  const d = db.prepare("SELECT code, title, topic, context_md, decision_md, justification_md, consequences_md FROM decisions WHERE id=?").get(decisionId) as any;
+  if (!d) throw Object.assign(new Error("not found"), { status: 404 });
+  if (!featureResolved("suggest_risks")) throw new Error("AI is not enabled for suggest_risks");
+  const existing = (db.prepare("SELECT title FROM risks WHERE decision_id=?").all(decisionId) as any[]).map((r) => r.title);
+  const { text, model, provider } = await chatFor("suggest_risks", [
+    { role: "system", content: `List the risks an architecture decision accepts, as its own text states or plainly implies them (especially in Consequences). Each risk: a short title naming what could go wrong, a one-sentence description, and a severity (low, medium, high, critical) the text supports. Do not invent risks the text does not support, and leave out ones already registered. At most 5. Respond JSON: {"risks":[{"title":string,"description":string,"severity":string}]}.` },
+    { role: "user", content: JSON.stringify({ decision: d, already_registered: existing }) },
+  ]);
+  const p = parseJsonLoose(text);
+  const risks = (Array.isArray(p.risks) ? p.risks : []).filter((r: any) => r && typeof r.title === "string" && r.title.trim().length >= 5 && ["low", "medium", "high", "critical"].includes(r.severity))
+    .slice(0, 5).map((r: any) => ({ title: String(r.title).trim().slice(0, 200), description: String(r.description || "").slice(0, 600), severity: r.severity }));
+  return { origin: "ai" as const, provider, model, risks };
 }
 
