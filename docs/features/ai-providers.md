@@ -15,7 +15,7 @@ Seven features, each an instance of the heuristics/AI boundary (AI proposes, a n
 | Assessment Drafting | derive → narrate | Prefills the type's template headings from the review; gaps say "To be confirmed" |
 | Session Notes Drafting | derive → narrate | Secretary's narrative from the session records; the minutes stay derived |
 | Evidence Mapping | suggest → pin | Control ids for unmapped `defender:`/`policy:` keys into the control-map editor; the admin saves to pin |
-| Decision Review | verify the human | Critical assessment of a decision draft's argument (unsupported claims, strawman options, unstated risks, contradictions with adopted artefacts by code) + a tightened version to apply; suggests the assessments that would evidence unevidenced critical claims — one click saves the draft decision and triggers them, tracked (`decision_id`) onto the eventual review as "On the Decision". `POST /decisions/review-draft`, `create_decision`; a personal AI Assistant toggle in the form sits on top of the admin flag |
+| Decision Review | verify the human | Critical assessment of a decision draft's argument (unsupported claims, strawman options, unstated risks, contradictions with adopted artefacts by code) + a tightened version to apply; suggests the assessments that would evidence unevidenced critical claims — one click saves the draft decision and triggers them, tracked (`decision_id`) onto the eventual review as "On the Decision". `POST /decisions/review-draft`, `create_decision`; the form's button is always visible and greys out with an explanatory tooltip when the admin has not enabled the feature |
 
 ## Why
 

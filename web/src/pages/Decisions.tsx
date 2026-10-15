@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { DataTable, Table, TableHead, TableRow, TableHeader, TableBody, TableCell, TableContainer, TableToolbar, TableToolbarContent, TableToolbarSearch, DataTableSkeleton, Button, Modal, TextInput, TextArea, Select, SelectItem, MultiSelect, InlineLoading, Toggle } from "@carbon/react";
+import { DataTable, Table, TableHead, TableRow, TableHeader, TableBody, TableCell, TableContainer, TableToolbar, TableToolbarContent, TableToolbarSearch, DataTableSkeleton, Button, Modal, TextInput, TextArea, Select, SelectItem, MultiSelect, InlineLoading } from "@carbon/react";
 import { Add, MachineLearningModel } from "@carbon/icons-react";
 import { get, post, fmtDate, labelFor } from "../api";
 import { PageIntro, useLoad, useAiFeatures, VerificationTag, LoadError, RLink, StatusTag, KindTag, Markdown, EmptyState, useDocTitle } from "../components";
@@ -13,11 +13,10 @@ const n = (x: any) => (Array.isArray(x) ? x.length : typeof x === "number" ? x :
 const TOPICS = ["general", "hosting", "data-store", "integration", "ai-system", "security", "identity", "resilience"];
 
 export function DecisionForm({ value, onChange, apps, onTriggerAssessment, triggerLabel }: { value: any; onChange: (v: any) => void; apps: any[]; onTriggerAssessment?: (s: { type: string; title: string | null; reason: string }) => void; triggerLabel?: string }) {
-  // AI critical review of the argument: the admin enables the feature; the author also keeps a personal switch
-  // (localStorage — a per-viewer convenience) to work without the assistant entirely.
+  // AI critical review of the argument: a button the author presses. It is always on the form — live when the
+  // platform admin has enabled the Decision Review feature, greyed with the reason when not (disabled pattern:
+  // the tooltip says how to enable it).
   const aiOn = useAiFeatures();
-  const [assist, setAssist] = React.useState<boolean>(() => { try { return localStorage.getItem("ag-ai-decide") !== "off"; } catch { return true; } });
-  const toggleAssist = (on: boolean) => { setAssist(on); setReview(null); try { localStorage.setItem("ag-ai-decide", on ? "on" : "off"); } catch { /* private windows */ } };
   const [review, setReview] = React.useState<any>(null);
   const [aiBusy, setAiBusy] = React.useState(false);
   const [aiErr, setAiErr] = React.useState<string | null>(null);
@@ -41,12 +40,16 @@ export function DecisionForm({ value, onChange, apps, onTriggerAssessment, trigg
       <TextArea id="jus" labelText="Justification" helperText="Why this option wins against the alternatives — the argument the board will test." value={value.justification_md || ""} onChange={(e) => onChange({ ...value, justification_md: e.target.value })} rows={3} />
       <TextArea id="con" labelText="Consequences" helperText="What accepting this decision means: what becomes mandatory or excluded, and which risks are explicitly accepted." value={value.consequences_md} onChange={(e) => onChange({ ...value, consequences_md: e.target.value })} rows={3} />
       <TextInput id="constraint" labelText="Checkable constraint: allowed resource types (comma separated, optional)" helperText="Deployed resources outside this set will be reported as drift against this decision." placeholder="e.g. Microsoft.DBforPostgreSQL/flexibleServers" value={value.allowedTypes} onChange={(e) => onChange({ ...value, allowedTypes: e.target.value })} />
-      {aiOn.review_decision && <div className="ag-row snug">
-        <Toggle id="ai-assist" size="sm" labelText="AI Assistant" hideLabel labelA="AI Assistant off" labelB="AI Assistant on" toggled={assist} onToggle={toggleAssist} />
-        {assist && !!value.title.trim() && !!(value.decision_md || "").trim() && (aiBusy ? <InlineLoading description="Testing the argument" /> : <Button size="sm" kind="ghost" renderIcon={MachineLearningModel} onClick={runReview}>Review Argument with AI</Button>)}
-        {assist && aiErr && <span className="ag-muted ag-label">{aiErr}</span>}
-      </div>}
-      {assist && review && <div className="ag-ai-review">
+      <div className="ag-row snug">
+        {aiBusy ? <InlineLoading description="Testing the argument" /> : (
+          <Gated cap="create_decision"
+            allowed={aiOn.review_decision === true && !!value.title.trim() && !!(value.decision_md || "").trim()}
+            reason={aiOn.review_decision !== true ? "AI Decision Review is not enabled for this instance — a platform admin can switch it on under Settings · AI" : "Add a Title and a Recommended Option first"}>
+            <Button size="sm" kind="ghost" renderIcon={MachineLearningModel} onClick={runReview}>Review Argument with AI</Button>
+          </Gated>)}
+        {aiErr && <span className="ag-muted ag-label">{aiErr}</span>}
+      </div>
+      {review && <div className="ag-ai-review">
         <div className="ag-row snug">
           <StatusTag kind="recommendation" value={review.verdict === "sound" ? "proceed" : "request_changes"} label={review.verdict === "sound" ? "Argument holds" : "Argument needs work"} />
           <span className="ag-muted ag-label">AI review ({review.model}) — advisory; nothing is stored, you decide what to submit.</span>
