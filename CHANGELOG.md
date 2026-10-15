@@ -4,6 +4,17 @@ All notable changes to Archigov are documented here. The format follows [Keep a 
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-10-15
+
+The decision-centric release. Architecture decisions are argued in three parts and tested before they reach the board, linked to what they rest on, decided by the right board, and kept true over their lifecycle. This release adds:
+
+- the registers regulated estates are asked for: criticality and business services, the legacy register, third parties and exit plans, risks and architecture debt;
+- a roadmap, governance metrics and signed board packs, all built from the records;
+- periodic reaffirmations;
+- a fast lane for low-risk designs;
+- eleven AI features, each with its own provider;
+- licensing by folder: a DCO for every contribution, and the CLA only for the AGPL core.
+
 ### Added
 
 - **Risk register and architecture debt** ([docs](docs/features/risk-register.md)): a **Risk Register** in the Risk group holds the risks decisions accept (their standing follows the decision), every active exception as an accepted risk, and risks authors log — each with an owner, a severity and a review date; only the owner or whoever logged it changes it, and closing needs a note. **Architecture Debt** is derived from the records, never logged: findings open over 90 days, drift from decisions, overdue conditions, end-of-life components, expired exceptions still failing, assessments and exit plans due. The decision page gains **Accepted Risks**; an eleventh AI feature, **Risk Extraction** (off by default), suggests a decision's risks from its text for the author to log. Risks reach the evidence pack, the board pack and Governance Metrics (migration m021).
@@ -80,4 +91,5 @@ First public release: the consolidation of the governance platform built to date
 - **Access model**: system roles (author, auditor, service) separate from the operational platform-admin flag; governance rights only from board seats; local dev mode with persona switching; Microsoft Entra ID (OIDC + PKCE) wired, fixture-verified.
 - **UI**: IBM Carbon (g100 shell, g10 content), Title Case labels, every tag and legend entry self-explaining on hover, header notifications of assigned work, tables for tabular facts, accessibility checked with axe on every touched page.
 
+[0.2.0]: https://github.com/00xE8/archigov/releases/tag/v0.2.0
 [0.1.0]: https://github.com/00xE8/archigov/releases/tag/v0.1.0
