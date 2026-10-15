@@ -4,7 +4,7 @@
 # the legacy register (lifecycle states, a person's version correction, the yearly legacy assessment); third parties
 # (providers, concentration on a designated critical third party, exit plans into the DORA register); the roadmap
 # built from records (decision realisation, lanes, per-application view); governance metrics and a signed board
-# pack (prepared by a secretary, verified like the evidence pack); review dates and periodic sign-offs; the risk
+# pack (prepared by a secretary, verified like the evidence pack); reaffirmations (periodic sign-offs); the risk
 # register and the derived architecture debt, end to end
 # through the API of a LOCAL-mode seeded instance.
 #
@@ -208,7 +208,7 @@ def k_():
     return f"metrics over {m['period_days']} days ({m['reviews']['decided']} reviews decided, lead time median {m['reviews']['lead_time_days']['median']} d); board pack {r['hash'][:12]}… signed, chained and verified; narrative draft 409 while AI is off"
 step("k  governance metrics and a signed board pack", k_)
 
-# ---------- l. review dates and sign-offs ----------
+# ---------- l. reaffirmations (sign-offs) ----------
 def l_():
     s, so = get("/sign-offs", user="j.duduka"); assert s == 200, f"{s} {so}"
     by = {x["subject"]["code"]: x for x in so["items"]}
@@ -222,8 +222,12 @@ def l_():
     mutations.append("STD-005 reaffirmed by j.duduka")
     s, w = get("/me/work", user="j.duduka"); assert not any(x["subject"]["code"] == "STD-005" for x in w["sign_offs"]), "signed off, off the queue"
     s, au = get(f"/audit?entity=standards&entity_id={by['STD-005']['subject']['id']}&action=signoff:reaffirmed"); assert au["rows"], au
-    return f"{sum(1 for x in so['items'] if x['status'] != 'current')} due or overdue; STD-005 reaffirmed by the DA chair (403 platform admin, decision maker, PCB chair), off the queue, audited"
-step("l  review dates and sign-offs: the owning chair's act", l_)
+    # the record carries it: the item's own reaffirmation with its history, the Decision Log's per-row standing
+    s, a = get(f"/artefacts/{by['STD-005']['subject']['id']}", user="a.uditor"); ra = a["reaffirmation"]
+    assert ra["status"] == "current" and ra["history"][0]["outcome"] == "reaffirmed" and not ra["can_sign"], ra
+    s, dl = get("/decisions", user="a.uditor"); assert all((d["reaffirmation"] is not None) == (d["status"] == "accepted") for d in dl), [(d["code"], d["status"], d["reaffirmation"]) for d in dl]
+    return f"{sum(1 for x in so['items'] if x['status'] != 'current')} due or overdue; STD-005 reaffirmed by the DA chair (403 platform admin, decision maker, PCB chair), off the queue, audited, its history on the item; the Decision Log carries a reaffirm-by date for every accepted decision"
+step("l  reaffirmations: the owning chair's act, on the record", l_)
 
 # ---------- m. the risk register and architecture debt ----------
 def m_():

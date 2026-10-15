@@ -60,11 +60,13 @@ server/src/risks.ts            risk register (m021 risks, RSK-nnnn): sources dec
                                architectureDebt(): derived kinds aged_finding (> debt.finding_days, 90), drift, condition_overdue,
                                exception_expired (still failing), end_of_life, legacy_assessment_due, exit_plan_due. Routes in routes/risks.ts:
                                GET/POST /risks, PUT /risks/:id, GET /debt, POST /decisions/:id/suggest-risks (AI)
-server/src/signoffs.ts         review dates and sign-offs: subjects = adopted artefacts + accepted decisions; owning board = routeBoard of their
-                               review type; next due = latest sign_offs.next_due (m020) else adopted_at/decided_at + review.artefact_months (12) /
+server/src/signoffs.ts         reaffirmations (the UI's word; the record of one is a sign-off, so API, table, audit and /me/work keep
+                               "sign_off"): subjects = adopted artefacts + accepted decisions; owning board = routeBoard of their review type;
+                               due = latest sign_offs.next_due (m020) else adopted_at/decided_at + review.artefact_months (12) /
                                review.decision_months (24); status overdue|due_soon (≤30 d)|current; signOff() — owning chair only, reaffirmed (+cadence)
-                               or revision_needed (note ≥10, +3 months), audited signoff:<outcome>; signOffsDueFor() feeds /me/work.sign_offs.
-                               Routes in routes/signoffs.ts: GET/POST /sign-offs
+                               or revision_needed (note ≥10, +3 months), audited signoff:<outcome>; signOffsDueFor() feeds /me/work.sign_offs;
+                               reaffirmationOf() (standing + history + can_sign) rides on GET /decisions/:id and /artefacts/:id as `reaffirmation`,
+                               standingsByKind() on the list rows. Routes in routes/signoffs.ts: GET/POST /sign-offs
 server/src/metrics.ts          governanceMetrics({days}): reviews (lead time median/p90 overall+by type, recycle rate, fast-lane approvals, position
                                latency, open/oldest, 6 monthly points), decisions (accepted, lead time, realisation from the roadmap), conditions,
                                exception ageing buckets, conformance (trend = last run per day, opened/resolved, time to fix), coverage; nulls never
@@ -133,14 +135,14 @@ scripts/smoke*.sh              smoke.sh (governance flow), smoke-auth.sh (two-le
                                positions, sessions, delegation, dependencies, circulation, minutes, assessments), smoke-work.sh (/me/work by role, pipeline,
                                decisions 409, per-area findings, audit item codes), smoke-registers.sh (classification: derived, set/reset/verify,
                                business services, DORA column, app.* rules; legacy register, corrections, legacy assessment; third parties,
-                               exit plans into the DORA register; the roadmap; metrics and a signed board pack; sign-offs; risks and debt), smoke-catalogue.sh (kinds/lifecycle/import),
+                               exit plans into the DORA register; the roadmap; metrics and a signed board pack; reaffirmations on the record; risks and debt), smoke-catalogue.sh (kinds/lifecycle/import),
                                smoke-integrations.sh (fixtures), smoke-empty.sh (first run)
 web/src/App.tsx                Carbon shell: grouped nav (Model / Governance / Evidence / Risk; the Settings item, help-panel link and Overview
                                "Open Settings" render only with manage_platform — Settings is operations, so only the platform admin carries
                                it; the /settings route stays open for the Catalogue's ArchiMate-import deep link, and the evidence signing
                                key is republished on the Audit Log page for auditors), header search, help, account, and a notification bell:
                                /me/work polled every minute and on navigation, a numbered badge of what is ASSIGNED (positions, declarations,
-                               conditionals to resolve, assessments, owned conditions, circulations, resubmissions, sign-offs due), a panel of linked rows,
+                               conditionals to resolve, assessments, owned conditions, circulations, resubmissions, reaffirmations due — linked to the record), a panel of linked rows,
                                and a localStorage seen-set that only drives the per-item "New" tag (never the badge)
 web/src/auth.tsx               AuthProvider, useCan(), Gated, SignIn page, account panel / switch user
 web/src/charts.tsx             Overview charts (lazy chunk), forms by the data's job: at-a-glance row (evidence-passing and human-verification
@@ -149,8 +151,10 @@ web/src/charts.tsx             Overview charts (lazy chunk), forms by the data's
                                fallback for older servers), evidence by source (emphasis form), open findings by application
 web/src/pages/*                RiskRegister (/risks, Risk group: tabs Risks — filterable table, Log Risk and Update via components/RiskModal.tsx
                                — and Architecture Debt — expandable by application); DecisionDetail gains Accepted Risks (Add Risk, Suggest
-                               from Consequences), SignOffs (/sign-offs, Governance group after Board Sessions: sortable table — item, owning board, last sign-off,
-                               next review, status — Sign Off modal for the owning chair), Metrics (/metrics, Evidence group: period select, figure tiles, charts lazy in metricsCharts.tsx — decided per month,
+                               from Consequences) and a Reaffirmation section, Reaffirmations (/reaffirmations, /sign-offs redirects; Governance group after
+                               Board Sessions: sortable table — item, owning board, last outcome, reaffirm by, status — and the shared
+                               components/Reaffirmation.tsx: ReaffirmModal for the owning chair + ReaffirmationPanel on the decision page and in the
+                               catalogue item, which steps aside for the modal — modals never nest; Decision Log Reaffirm By column), Metrics (/metrics, Evidence group: period select, figure tiles, charts lazy in metricsCharts.tsx — decided per month,
                                median lead time per month, findings trend, exception ageing — Board Packs list + Prepare Board Pack modal for chairs
                                and secretaries with Draft with AI), BoardPack (/board-packs/:hash: printable document, verification re-checked on
                                open, narrative with origin, figure tables; print hides .ag-no-print — the header and side nav), Roadmap (/roadmap, Governance group after Decision Log: hero lane counts, application/kind filters, four lanes of
@@ -193,7 +197,8 @@ web/src/pages/*                RiskRegister (/risks, Risk group: tabs Risks — 
                                backups, signing_public_key and evidence_control_map — POST validates the map as string→string).
                                Display labels are explicit where the noun alone is ambiguous: Planned Changes (the delivery-backlog feed —
                                named for its architectural meaning, not the source's artifact, so the tool never reads as a work tracker;
-                               Oct 2026 founder decision), Decision Log (the authored ADR register: what was decided), Board Sessions,
+                               Oct 2026 founder decision), Decision Log (the authored ADR register: what was decided), Reaffirmations (the owning chair's periodic statement that an
+                               adopted item or accepted decision still holds — never "sign-off", which reads as approval; Oct 2026 founder decision), Board Sessions,
                                Imported Evidence, Governance Catalogue, Run History (file and route names keep the short form: /backlog).
                                Planned changes can also be logged BY HAND (projects/initiatives no backlog tool knows yet): POST/PUT
                                /work-items, capability log_change (authors only — content, so auditor AND platform admin get 403), PC-xxxx

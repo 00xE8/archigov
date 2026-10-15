@@ -161,13 +161,13 @@ const EXPLAIN: Record<string, Record<string, string>> = {
     manual: "An architecture risk an author logged on its own.",
   },
   signoff_status: {
-    current: "The next review date is more than 30 days away.",
-    due_soon: "The next review date is within 30 days: the owning board's chair should reaffirm it or ask for a revision.",
-    overdue: "The review date has passed without a sign-off.",
+    current: "The reaffirm-by date is more than 30 days away.",
+    due_soon: "The reaffirm-by date is within 30 days: the owning board's chair should reaffirm it or say it needs revising.",
+    overdue: "The reaffirm-by date has passed and the owning board's chair has not reaffirmed it.",
   },
   signoff_outcome: {
-    reaffirmed: "The owning board's chair stated it still holds; the next review is a full cadence away.",
-    revision_needed: "The owning board's chair stated it needs revising; it comes back for sign-off in three months.",
+    reaffirmed: "The owning board's chair stated it still holds; the next reaffirmation is a full cadence away.",
+    revision_needed: "The owning board's chair stated it needs revising; it comes back for reaffirmation in three months.",
   },
   exit_status: {
     current: "An exit plan less than a year old covers this application's reliance on this provider.",
@@ -331,7 +331,7 @@ const HERO_CONTEXT: { match: RegExp; tone: HeroTone; icon: React.ComponentType<a
   { match: /^\/reviews/, tone: "cyan", icon: TaskApproved, motion: "pop" },
   { match: /^\/boards/, tone: "magenta", icon: UserMultiple, motion: "pulse" },
   { match: /^\/sessions/, tone: "magenta", icon: EventSchedule, motion: "swing" },
-  { match: /^\/sign-offs/, tone: "magenta", icon: Stamp, motion: "pop" },
+  { match: /^\/reaffirmations/, tone: "magenta", icon: Stamp, motion: "pop" },
   { match: /^\/conformance/, tone: "red", icon: Security, motion: "pulse" },
   { match: /^\/legacy/, tone: "red", icon: Hourglass, motion: "swing" },
   { match: /^\/third-parties/, tone: "red", icon: Partnership, motion: "pop" },

@@ -9,6 +9,7 @@ import { reviewInFlightFor } from "../boards/work.js";
 import { reviewDecisionDraft } from "../ai.js";
 import { assessmentsOfDecision, withAssessmentNames, requestDecisionAssessment, provideDecisionAssessment } from "../boards/assessments.js";
 import { currentPrincipal } from "../auth/context.js";
+import { reaffirmationOf, standingsByKind } from "../signoffs.js";
 
 export const decisions = new Hono();
 /** How many links a decision carries each way: decisions it depends on, reviews that depend on it. */
@@ -25,8 +26,10 @@ const linksOf = (id: string) => ({
 
 decisions.get("/decisions", (c) => {
   const apps = new Map(listElements("application").map((a) => [a.id, a.name]));
-  // `review` is the review in flight that will decide the decision when declared; `links` the dependency edges each way
-  return c.json(db.prepare("SELECT * FROM decisions ORDER BY code DESC").all().map(dec).map((d: any) => ({ ...d, applications: d.application_ids.map((id: string) => ({ id, name: apps.get(id) })), review: reviewInFlightFor(d.id), links: linkCounts(d.id) })));
+  // `review` is the review in flight that will decide the decision when declared; `links` the dependency edges each way;
+  // `reaffirmation` the reaffirm-by date and status of an accepted one (null otherwise)
+  const standing = standingsByKind("decision");
+  return c.json(db.prepare("SELECT * FROM decisions ORDER BY code DESC").all().map(dec).map((d: any) => ({ ...d, applications: d.application_ids.map((id: string) => ({ id, name: apps.get(id) })), review: reviewInFlightFor(d.id), links: linkCounts(d.id), reaffirmation: standing.get(d.id) ?? null })));
 });
 decisions.get("/decisions/:id", (c) => {
   const d = db.prepare("SELECT * FROM decisions WHERE id=?").get(c.req.param("id")); if (!d) return c.json({ error: "not found" }, 404);
@@ -36,7 +39,7 @@ decisions.get("/decisions/:id", (c) => {
   const standards = db.prepare(`SELECT code,title,id FROM standards WHERE id IN (${x.standard_ids.map(() => "?").join(",") || "''"})`).all(...x.standard_ids);
   const reviews = db.prepare("SELECT code,title,stage,id FROM reviews WHERE decision_id=?").all(x.id);
   const workItems = db.prepare("SELECT * FROM work_items WHERE decision_id=?").all(x.id).map(wi);
-  return c.json({ ...x, applications: x.application_ids.map((id: string) => ({ id, name: apps.get(id) })), findings, standards, reviews, workItems, assessments: assessmentsOfDecision(x.id).map(withAssessmentNames), ...linksOf(x.id), links: linkCounts(x.id), review_in_flight: reviewInFlightFor(x.id), audit: db.prepare("SELECT * FROM audit_log WHERE entity='decisions' AND entity_id=? ORDER BY at DESC").all(x.id) });
+  return c.json({ ...x, applications: x.application_ids.map((id: string) => ({ id, name: apps.get(id) })), findings, standards, reviews, workItems, assessments: assessmentsOfDecision(x.id).map(withAssessmentNames), ...linksOf(x.id), links: linkCounts(x.id), review_in_flight: reviewInFlightFor(x.id), reaffirmation: reaffirmationOf(currentPrincipal(), "decision", x.id), audit: db.prepare("SELECT * FROM audit_log WHERE entity='decisions' AND entity_id=? ORDER BY at DESC").all(x.id) });
 });
 const DecisionIn = z.object({ title: z.string(), topic: z.string().default("general"), status: z.string().default("proposed"), context_md: z.string().optional(), options: z.array(z.any()).default([]), decision_md: z.string().optional(), justification_md: z.string().optional(), consequences_md: z.string().optional(), constraint: z.any().nullable().optional(), application_ids: z.array(z.string()).default([]), standard_ids: z.array(z.string()).default([]), work_item_id: z.string().optional(), origin: z.string().optional() });
 // Evidence on a proposed decision: the author triggers an assessment (requested, completed by its assessor) or

@@ -5,7 +5,9 @@ import { Edit, CheckmarkOutline, CloseOutline, Send, Add, Checkmark, ChevronDown
 import { get, post, put, fmtDate, shortType, labelFor, ASSESSMENT_RESULTS } from "../api";
 import { PageHeader, useLoad, VerificationTag, VerifyButton, Markdown, SeverityTag, Empty, LoadError, RLink, Crumbs, StatusTag, VerifiedBy, DateField, artefactLink, useDocTitle, useAiFeatures, OriginTag } from "../components";
 import { LogRiskModal } from "../components/RiskModal";
+import { ReaffirmationPanel, ReaffirmModal } from "../components/Reaffirmation";
 import { DecisionForm, parseOptions } from "./Decisions";
+import { actionLabel } from "./Audit";
 import { Gated, useAuth } from "../auth";
 
 // Status changes are consequential (acceptance starts continuous conformance checks), so each one confirms and names the object.
@@ -33,6 +35,7 @@ export default function DecisionDetail() {
   const [busy, setBusy] = React.useState<string | null>(null);
   // A review the server named in a 409: the decision is being decided through it, so the page defers to it the same way.
   const [blocked, setBlocked] = React.useState<any>(null);
+  const [reaffirm, setReaffirm] = React.useState(false);
   useDocTitle(d ? d.code : null);
   if (err) return <LoadError what="this decision" err={err} onRetry={reload} />;
   if (!d) return <SkeletonText paragraph lineCount={8} />;
@@ -95,6 +98,8 @@ export default function DecisionDetail() {
               <Table size="sm"><TableHead><TableRow><TableHeader>Severity</TableHeader><TableHeader>Element</TableHeader><TableHeader>Finding</TableHeader></TableRow></TableHead>
                 <TableBody>{d.findings.map((f: any) => <TableRow key={f.id}><TableCell><SeverityTag s={f.severity} /></TableCell><TableCell>{f.element_name}</TableCell><TableCell>{f.message}</TableCell></TableRow>)}</TableBody></Table>)}
           </section>
+          {/* An accepted decision is reaffirmed by its owning board's chair on a cadence (absent on an older server). */}
+          {d.reaffirmation && <ReaffirmationPanel r={d.reaffirmation} onReaffirm={() => setReaffirm(true)} />}
           <section className="ag-section"><h2>Linked Items</h2>
             <dl className="ag-kv">
               <dt>Catalogue items</dt><dd className="ag-row tight">{d.standards.length ? d.standards.map((s: any) => <RLink key={s.id} to={artefactLink(s.id)}>{s.code}</RLink>) : "—"}</dd>
@@ -108,10 +113,12 @@ export default function DecisionDetail() {
           <section className="ag-section"><h2>Audit Trail</h2>
             {d.audit.length === 0
               ? <p className="ag-muted ag-body">No audit entries yet. Seeded decisions start without a trail; every status change, edit and verification from now on is recorded here and in the <RLink inline to={`/audit?entity=decision&entity_id=${d.id}`}>audit log</RLink>.</p>
-              : <ul className="ag-timeline">{d.audit.map((a: any) => <li key={a.id}><div className="meta">{fmtDate(a.at)} · {a.actor}</div><div className="ag-body">{a.action}</div></li>)}</ul>}
+              : <ul className="ag-timeline">{d.audit.map((a: any) => <li key={a.id}><div className="meta">{fmtDate(a.at)} · {a.actor}</div><div className="ag-body">{actionLabel(a.action)}</div></li>)}</ul>}
           </section>
         </div>
       </div>
+
+      {reaffirm && d.reaffirmation && <ReaffirmModal x={d.reaffirmation} months={d.reaffirmation.cadence_months} onClose={() => setReaffirm(false)} onDone={() => { setReaffirm(false); reload(); }} />}
 
       <Modal open={!!c} danger={!!c?.danger} modalHeading={c ? c.heading(d.code) : ""} primaryButtonText={c?.button || ""} secondaryButtonText="Cancel" onRequestClose={() => setConfirm(null)} onRequestSubmit={() => confirm && setStatus(confirm)}>
         <p className="ag-body">{c?.body}</p>
