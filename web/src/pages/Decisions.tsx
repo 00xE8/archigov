@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { DataTable, Table, TableHead, TableRow, TableHeader, TableBody, TableCell, TableContainer, TableToolbar, TableToolbarContent, TableToolbarSearch, DataTableSkeleton, Button, Modal, TextInput, TextArea, Select, SelectItem, MultiSelect, InlineLoading } from "@carbon/react";
 import { Add, MachineLearningModel } from "@carbon/icons-react";
 import { get, post, fmtDate, labelFor } from "../api";
-import { PageIntro, useLoad, useAiFeatures, VerificationTag, LoadError, RLink, StatusTag, KindTag, Markdown, EmptyState, useDocTitle } from "../components";
+import { PageIntro, useLoad, useAiFeatures, AboutTip, VerificationTag, LoadError, RLink, StatusTag, KindTag, Markdown, EmptyState, useDocTitle } from "../components";
 import { Gated } from "../auth";
 
 // A log is chronological: the date sits beside the id, and rows arrive newest first (sortable as ever).
@@ -46,7 +46,9 @@ export function DecisionForm({ value, onChange, apps, onTriggerAssessment, trigg
       </div>
       <div className="ag-ai-panel">
         <div className="ag-row between">
-          <span className="ag-colhead">AI Review</span>
+          <span className="ag-row tight"><span className="ag-colhead">AI Review</span>
+            <AboutTip label="What the AI review does and does not do" about="A critical test of the argument before you submit; nothing is stored. Apply Tightened Argument rewrites the wording only — it never changes your recommendation, and it cannot supply missing evidence. Flaws in the reasoning are listed for you to decide; missing evidence appears as suggested assessments you can trigger. Whatever you apply becomes your own statement when you submit." />
+          </span>
           {aiBusy ? <InlineLoading description="Testing the argument" /> : (
             <Gated cap="create_decision"
               allowed={aiOn.review_decision === true && !!value.title.trim() && !!(value.decision_md || "").trim()}
@@ -68,7 +70,7 @@ export function DecisionForm({ value, onChange, apps, onTriggerAssessment, trigg
             <div className="ag-label ag-muted">Evidence the Argument Is Missing</div>
             <ul className="ag-suggest">{review.suggested_assessments.map((s: any, k: number) => <li key={k}><KindTag kind="assessment_type" value={s.type} /><span className="ag-body">{s.title ? <span className="ag-strong">{s.title} · </span> : null}{s.reason}</span>{onTriggerAssessment && <Button size="sm" kind="ghost" renderIcon={Add} onClick={() => onTriggerAssessment(s)}>{triggerLabel || "Trigger Assessment"}</Button>}</li>)}</ul>
           </div>}
-          {review.tightened && <Button size="sm" kind="tertiary" renderIcon={MachineLearningModel} onClick={() => { onChange({ ...value, decision_md: review.tightened.decision_md || value.decision_md, justification_md: review.tightened.justification_md || value.justification_md, consequences_md: review.tightened.consequences_md || value.consequences_md }); setReview(null); }}>Apply Tightened Argument</Button>}
+          {review.tightened && <Button size="sm" kind="tertiary" renderIcon={MachineLearningModel} title="Rewrites the wording only — your recommendation stays yours, and evidence gaps are closed by assessments, not phrasing. Review the text before you submit it as your own." onClick={() => { onChange({ ...value, decision_md: review.tightened.decision_md || value.decision_md, justification_md: review.tightened.justification_md || value.justification_md, consequences_md: review.tightened.consequences_md || value.consequences_md }); setReview(null); }}>Apply Tightened Argument</Button>}
         </div>}
       </div>
     </div>
