@@ -219,6 +219,8 @@ export const LABELS: Record<string, Record<string, string>> = {
   service_kind: { ibs: "Important business service", cif: "Critical or important function", essential_function: "Essential function", business_service: "Business service" },
   lifecycle_state: { supported: "Supported", ending: "Support ending", extended: "Extended support", end_of_life: "End of life", unknown: "Unknown" },
   legacy_status: { current: "Assessed", stale: "Assessment stale", due: "Assessment due", not_needed: "Not needed" },
+  roadmap_kind: { decision: "Decision", change: "Planned change", condition: "Condition", lifecycle: "End of support", exception: "Exception" },
+  roadmap_status: { realised: "Realised", in_progress: "In progress", not_started: "Not started", not_checkable: "Not checkable", proposed: "Proposed", active: "Active", new: "New", proposed_change: "Proposed", closed: "Closed", open: "Open", overdue: "Overdue", met: "Met", end_of_life: "End of life", extended: "Extended support", ending: "Support ending", excepted: "Excepted" },
   exit_status: { current: "Plan in date", due: "Plan due", not_needed: "Not needed" },
   substitutability: { not_substitutable: "Not substitutable", highly_complex: "Highly complex", medium_complexity: "Medium complexity", easily_substitutable: "Easily substitutable" },
   provider_kind: { platform: "Cloud platform", supplier: "Named supplier" },

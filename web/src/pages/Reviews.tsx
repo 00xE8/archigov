@@ -89,7 +89,7 @@ export default function Reviews() {
                   {/* "2/3 areas" at a glance; which areas still hold the item up is one hover away. */}
                   <TableCell>{x.progress ? <span className="ag-label ag-nowrap" title={progressText(x.progress)}>{progressShort(x.progress) || progressText(x.progress)}</span> : <span className="ag-muted">—</span>}</TableCell>
                   {/* "Awaiting you" is a notification, not a problem: the same filled-blue tag as My work, never the red attention tag. */}
-                  <TableCell><div className="ag-row tight"><StatusTag kind="stage" value={x.stage} />{x.progress?.via_fast_lane && <StatusTag kind="fast_lane" value="eligible" size="sm" label="Fast Lane" />}{x.awaiting_me && <StatusTag kind="position" value="mine" label="Awaiting you" />}</div></TableCell>
+                  <TableCell><div className="ag-row tight"><StatusTag kind="stage" value={x.stage} />{x.progress?.via_fast_lane && <StatusTag kind="fast_lane" value="eligible" label="Fast Lane" />}{x.awaiting_me && <StatusTag kind="position" value="mine" label="Awaiting you" />}</div></TableCell>
                   <TableCell>{x.open_conditions ? (x.overdue_conditions ? <StatusTag kind="condition" value="overdue" label={`${x.open_conditions} open · ${x.overdue_conditions} overdue`} /> : <StatusTag kind="condition" value="open" label={`${x.open_conditions} open`} />) : null}</TableCell>
                 </TableRow>); })}</TableBody>
             </Table>

@@ -218,7 +218,7 @@ export function BoardDetail() {
           <section className="ag-section"><div className="ag-row between"><h2>Reviews in Flight ({(b.reviews_in_flight || []).length})</h2>
             {fastLane.length > 0 && mySeat === "chair" && <Button size="sm" kind="tertiary" renderIcon={Checkmark} onClick={() => setFastDeclare({ rationale: "" })}>Declare Fast Lane ({fastLane.length})</Button>}</div>
             {(b.reviews_in_flight || []).length === 0 ? <Empty>Nothing waiting on this board.</Empty> : b.reviews_in_flight.map((r: any) => (
-              <div className="ag-finding" key={r.id}><div className="ag-row snug"><RLink to={`/reviews/${r.id}`} className="title">{r.code} · {r.title}</RLink><KindTag kind="review_type" value={r.type} /><StatusTag kind="stage" value={r.stage} />{r.progress?.via_fast_lane && <StatusTag kind="fast_lane" value="eligible" size="sm" label="Fast Lane" />}</div>{r.progress && <div className="detail ag-muted">{progressText(r.progress)}</div>}</div>))}
+              <div className="ag-finding" key={r.id}><div className="ag-row snug"><RLink to={`/reviews/${r.id}`} className="title">{r.code} · {r.title}</RLink><KindTag kind="review_type" value={r.type} /><StatusTag kind="stage" value={r.stage} />{r.progress?.via_fast_lane && <StatusTag kind="fast_lane" value="eligible" label="Fast Lane" />}</div>{r.progress && <div className="detail ag-muted">{progressText(r.progress)}</div>}</div>))}
           </section>
       </div>
 
@@ -244,7 +244,7 @@ export function BoardDetail() {
                   ? <div className="ag-row tight">{rules.map((r: any, i: number) => <span key={i} className="ag-label">{r.kind ? labelFor("kind", r.kind) : "any kind"}{r.category ? ` · ${r.category}` : ""} <span className="ag-muted">· priority {r.priority ?? 0}</span></span>)}</div>
                   : <span className="ag-muted">Not routed here</span>}</TableCell>
                 <TableCell>{steps
-                  ? <div className="ag-row tight"><span className="ag-label">{steps.map((s: any) => s.name || labelFor("step", s.kind)).join(" → ") || "No steps"}</span>{policies[t]?.fast_lane?.enabled && <StatusTag kind="fast_lane" value="eligible" size="sm" label={policies[t].fast_lane.require_pattern ? "Fast Lane · Pattern Required" : "Fast Lane"} />}</div>
+                  ? <div className="ag-row tight"><span className="ag-label">{steps.map((s: any) => s.name || labelFor("step", s.kind)).join(" → ") || "No steps"}</span>{policies[t]?.fast_lane?.enabled && <StatusTag kind="fast_lane" value="eligible" label={policies[t].fast_lane.require_pattern ? "Fast Lane · Pattern Required" : "Fast Lane"} />}</div>
                   : <span className={rules.length ? "" : "ag-muted"}>{rules.length ? <StatusTag kind="attention" value="decision" size="sm" label="No workflow — chair declares at once" /> : <span className="ag-muted">—</span>}</span>}</TableCell>
                 <TableCell><div className="ag-actions">
                   {steps && <Button size="sm" kind="ghost" renderIcon={Flow} onClick={() => setViewFlow({ types: [t], steps })}>View Flow</Button>}

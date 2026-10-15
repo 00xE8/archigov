@@ -54,6 +54,10 @@ server/src/lifecycle.ts        legacy register: lifecycle snapshot (lifecycle/sn
                                latest SP assumed and said), stateOfCycle (supported/ending/extended/end_of_life; unknown), lifecycle_overrides
                                (m017, a person's correction), legacyOf()/recordLegacyAssessment() (register_assessments, kind legacy, 12-month
                                validity, stale when a new legacy component appears), legacyRegister(). Routes in routes/registers.ts
+server/src/roadmap.ts          roadmap(): decisions (realisation = conforming resources of allowedTypes vs open drift findings with decision_id:
+                               realised/in_progress/not_started; no constraint → not_checkable; proposed), planned changes (nested under their
+                               decision when linked), conditions, legacy-register deadlines, expiring exceptions → lanes now/next/later/done by
+                               fixed rules (≤90 days now, ≤180 next, done = realised or closed in 90 days). Read-only; GET /roadmap in routes/roadmap.ts
 server/src/suppliers.ts        third parties: providersOf() (platform from the type namespace, suppliers from supplier/vendor/provider/
                                third-party/saas tags), ctpList() (DEFAULT_CTP: SI 2026/777, four entities; setting suppliers.ctp replaces it,
                                PUT /third-parties/ctp, platform admin), reliancesOf() + exit plans (register_assessments kind exit_plan,
@@ -109,7 +113,7 @@ scripts/smoke*.sh              smoke.sh (governance flow), smoke-auth.sh (two-le
                                positions, sessions, delegation, dependencies, circulation, minutes, assessments), smoke-work.sh (/me/work by role, pipeline,
                                decisions 409, per-area findings, audit item codes), smoke-registers.sh (classification: derived, set/reset/verify,
                                business services, DORA column, app.* rules; legacy register, corrections, legacy assessment; third parties,
-                               exit plans into the DORA register), smoke-catalogue.sh (kinds/lifecycle/import),
+                               exit plans into the DORA register; the roadmap), smoke-catalogue.sh (kinds/lifecycle/import),
                                smoke-integrations.sh (fixtures), smoke-empty.sh (first run)
 web/src/App.tsx                Carbon shell: grouped nav (Model / Governance / Evidence / Risk; the Settings item, help-panel link and Overview
                                "Open Settings" render only with manage_platform — Settings is operations, so only the platform admin carries
@@ -123,7 +127,8 @@ web/src/charts.tsx             Overview charts (lazy chunk), forms by the data's
                                gauges — neutral blue, no thresholds: a pass-rate judgment would assert compliance — and a reviews-by-stage donut
                                whose slice hues echo the stage tags), then severity bars, findings-over-time stacked area by severity (line
                                fallback for older servers), evidence by source (emphasis form), open findings by application
-web/src/pages/*                ThirdParties (/third-parties, Risk group: counts, concentration warning, Providers table with the Designated
+web/src/pages/*                Roadmap (/roadmap, Governance group after Decision Log: hero lane counts, application/kind filters, four lanes of
+                               Carbon Tiles — kind + status tags, linked title, due date, a Realisation ProgressBar, nested changes), ThirdParties (/third-parties, Risk group: counts, concentration warning, Providers table with the Designated
                                tag, Exit Plans table + Record Exit Plan modal with Draft with AI, designations footer), LegacyRegister (/legacy, Risk group: counts by state, Legacy Assessments table + Record Assessment modal with
                                Draft with AI, Components expandable table with Correct, Version Unknown with Set Version, data footer with
                                Refresh for the platform admin), Overview, Applications (Criticality column + ?criticality= filter), BusinessServices (/services, Model group:
