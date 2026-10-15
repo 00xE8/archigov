@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: The Archigov Authors
 /**
  * Recorded-shape Azure responses for fixture mode (ARCHIGOV_FIXTURES=1). They are shaped exactly like the REST
  * responses the collectors parse — ARM property names, paging tokens, nextLinks, the assessment catalogue — so the

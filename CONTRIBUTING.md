@@ -1,19 +1,86 @@
 # Contributing to Archigov
 
-Contributions are welcome — connectors, packs, fixes, docs. Two things to know before your first PR.
+Contributions are welcome: packs, templates, connectors, importers, fixes and docs. Read this before your first pull request. Contributing is quick, and where your work lands decides how much paperwork it needs.
 
-## The CLA, and why it exists
+## Where contributions help most
 
-Archigov's core is AGPL-3.0-only, and the project also sells commercial licences for the same code to organisations whose policy bans AGPL. That dual licensing only works if the project can license the whole codebase under both terms — which means every contribution needs a [contributor licence agreement](docs/CLA.md): you keep the copyright to your contribution and license it to the project broadly enough to be offered under the AGPL *and* under commercial terms.
+The contributions that compound are the ones carrying domain knowledge from other architects:
 
-To agree, add this line to the description of your first pull request:
+- policy packs;
+- assessment templates;
+- connectors to the systems an estate is collected from;
+- import adapters for the repositories organisations already keep.
 
-> I have read and agree to the Archigov CLA (docs/CLA.md) for this and all my future contributions.
+These folders are licensed **Apache-2.0**. A contribution to them needs only a DCO sign-off on each commit, and **no CLA**:
 
-The flip side is a public commitment (see [README · Licensing](README.md#licensing)): the open-source licence will never move to something more restrictive than AGPL-3.0. Your contribution cannot end up under a BSL or SSPL.
+| Folder | What goes there |
+|---|---|
+| `server/src/packs/` | Policy packs. A pack is one file exporting a `StandardsPack`, plus one line in `index.ts`. It holds statements, control **references** (never a framework's own text), and rules that pass `validateRule`. Each item's code is unique and carries its kind's prefix (`STD-`, `PRN-`, `PAT-`, `POL-`). `server/test/packs.test.ts` checks every pack automatically. Packs import as drafts for a board to review. |
+| `server/src/templates/` | Assessment templates: the headings a competent assessment result answers. Improving one is Apache-only. A *new* assessment type also needs a label in `web/src/api.ts` (core); the maintainer can add that line. |
+| `server/src/azure/`, `server/src/ado/` | Connectors: Azure Resource Graph, Defender for Cloud, Azure Policy, Azure DevOps. Follow their pattern: recorded fixtures for `ARCHIGOV_FIXTURES=1`, parsed by the real code, and never evidence a real tenant cannot produce. |
+| `server/src/importers/` | Import adapters: CSV and ArchiMate. An import is a source with provenance, not an editor. |
+
+Keep a pull request inside these folders and it stays CLA-free: the maintainer adds the CHANGELOG line and any documentation. The exact list lives in [.github/licensing.json](.github/licensing.json), and every file in those folders starts with an `SPDX-License-Identifier: Apache-2.0` header (`server/test/licensing.test.ts` checks both).
+
+## Every commit: sign off (DCO)
+
+Every commit carries a sign-off: a `Signed-off-by:` line with the same email as the commit's author. With it you certify the [Developer Certificate of Origin](DCO): that you wrote the change or otherwise have the right to submit it under the project's licence. It is a statement, not a form. The Linux kernel, GitLab and NetBox work the same way.
+
+```bash
+git commit -s -m "feat(packs): NCSC CAF architecture outcomes"
+# adds: Signed-off-by: Your Name <you@example.com>
+```
+
+Forgot? Sign off every commit on your branch and push again:
+
+```bash
+git rebase --signoff origin/main && git push --force-with-lease
+```
+
+The **DCO** check on the pull request lists any commit without a matching sign-off.
+
+## Changes to the core: the CLA, once
+
+Everything outside the Apache-2.0 folders is the core, licensed **AGPL-3.0-only**. If your commits change a core file, the **Archigov CLA** check asks you, once, to agree to the [contributor licence agreement](docs/CLA.md) by commenting on the pull request:
+
+> I have read the Archigov CLA and I agree to it for this and all my future contributions.
+
+Your agreement is recorded on the `cla-signatures` branch, with your GitHub login and account id, the date and a link to your comment. The check turns green, and you are never asked again. Comment `recheck cla` to run the check again, for example after re-authoring commits.
+
+**What it is.** A licence grant on the Apache ICLA model. You keep the copyright in your work and grant the project a licence broad enough to offer it under the AGPL and under the commercial licence. It is not a copyright assignment.
+
+**Why it exists.** The project offers a commercial licence, covering the same code, to organisations whose policies do not allow the AGPL. That only works if the project can license the whole core under both terms. The Apache-2.0 folders do not need the CLA, because Apache-2.0 already allows that.
+
+**What protects you.** The project's public commitments in [README · Licensing](README.md#licensing):
+
+- the core never moves to a licence more restrictive than the AGPL-3.0: no BSL, no SSPL;
+- the commercial licence is not a way to hold features back from the open-source release.
+
+**Commit emails.** The check matches commits to GitHub accounts by email. If a commit's email is not linked to your account, add it in your GitHub email settings, or re-author the commit, then comment `recheck cla`.
 
 ## The delivery process
 
-Every change follows the process in [CLAUDE.md](CLAUDE.md) ("Delivery process"): a branch and PR per change, conventional commits, a feature page under `docs/features/` plus a CHANGELOG entry for features, and the quality gate before merge — `tsc` clean in `server/` and `web/`, `npm test` green, the nine smoke scripts green on fresh instances, an accessibility pass on touched UI, lockfiles in sync (`npm ci --dry-run`).
+Every change follows the process in [CLAUDE.md](CLAUDE.md) ("Delivery process"):
 
-Two product rules that are not negotiable in review: nothing asserts compliance (the product shows evidence and who stands behind it), and AI output never transitions state (it drafts; a named human's audited act promotes).
+- a branch and pull request per change, with conventional commits (`feat(packs): …`, `fix(azure): …`);
+- for features, a page under `docs/features/` and a CHANGELOG entry;
+- before merge, the quality gate:
+  - `tsc` clean in `server/` and `web/`;
+  - `npm test` green;
+  - the nine smoke scripts green on fresh instances;
+  - an accessibility pass on touched UI;
+  - lockfiles in sync (`npm ci --dry-run`).
+
+As a contributor, run `npm test` and `tsc` in `server/` (and `web/` if you touched it). The maintainer runs the full gate.
+
+Two product rules are not negotiable in review:
+
+- nothing asserts compliance: the product shows evidence and who stands behind it;
+- AI output never transitions state: it drafts, and a named person's audited act promotes it.
+
+## For maintainers
+
+- **Exemptions.** The repository owner's commits and bots are exempt from both checks, because the owner is the licensor.
+- **Branch protection.** Make **DCO** and **Archigov CLA** required status checks on `main`.
+- **The signature record.** `cla-signatures` is an orphan branch holding `signatures.json`, written only by the CLA workflow. Protect it from deletion and force-pushes. Correct a record only with a commit that says why.
+- **Moving the licence boundary.** Changing what is Apache-2.0 means changing `.github/licensing.json`, the SPDX headers, and this file and README · Licensing together. Code moved *into* an Apache-2.0 folder is relicensed. Code moved *out* of one stays available under Apache-2.0 in every version already published.

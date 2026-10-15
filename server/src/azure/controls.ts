@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: The Archigov Authors
 import { getSetting } from "../db.js";
 import { slug } from "./client.js";
 

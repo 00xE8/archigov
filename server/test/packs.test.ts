@@ -12,8 +12,12 @@ const { evaluateAll, validateRule } = await import("../src/rules.js");
 
 const PREFIX: Record<string, string> = { standard: "STD", principle: "PRN", pattern: "PAT", policy: "POL" };
 
-test("packs: five packs, unique codes per kind, references only, kind requirements met", () => {
-  assert.deepEqual(PACKS.map((p) => p.id), ["archigov-core", "archigov-governance-starter", "azure-waf-architecture", "dora-ict-architecture", "ai-act-annex-iv-design"]);
+// Every pack in server/src/packs/ is checked here without being named, so a contributed pack needs no edit to this
+// (AGPL) file to be covered — its contribution stays inside the Apache-2.0 folder.
+test("packs: the shipped packs first, unique ids and codes, references only, kind requirements met", () => {
+  const ids = PACKS.map((p) => p.id);
+  assert.equal(new Set(ids).size, ids.length, "pack ids are unique");
+  assert.deepEqual(ids.slice(0, 5), ["archigov-core", "archigov-governance-starter", "azure-waf-architecture", "dora-ict-architecture", "ai-act-annex-iv-design"]);
   const codes = PACKS.flatMap((p) => p.standards.map((s) => s.code));
   assert.equal(new Set(codes).size, codes.length, "codes are unique across packs");
   assert.equal(PACKS[0].lifecycle_on_import, "adopted", "the core pack must be effective at once on a first run");
@@ -36,7 +40,7 @@ test("packs: five packs, unique codes per kind, references only, kind requiremen
   const starter = PACKS[1];
   assert.deepEqual(starter.standards.map((s) => s.kind), ["principle", "principle", "principle", "pattern", "pattern", "policy", "policy"]);
   assert.ok(starter.standards.filter((s) => s.kind === "pattern").some((s) => s.rule) && starter.standards.filter((s) => s.kind === "policy").some((s) => s.rule), "at least one checkable pattern and policy");
-  const listed = listPacks(); assert.equal(listed.length, 5);
+  const listed = listPacks(); assert.equal(listed.length, PACKS.length);
   assert.deepEqual(listed[1].kinds, { principle: 3, pattern: 2, policy: 2 }); assert.equal(listed[1].lifecycle_on_import, "draft");
 });
 
