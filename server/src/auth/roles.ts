@@ -159,6 +159,9 @@ export const ROUTE_RULES: RouteRule[] = [
   { method: "POST", pattern: /^\/auth\/roles$/, capability: "manage_platform" },
   { method: "*", pattern: /^\/hooks(\/|$)/, capability: "exempt" },
   { method: "GET", pattern: /^\/(evidence-pack|exports)(\/|$)/, capability: "export_evidence" },
+  // board packs are read like the evidence pack; a chair or secretary prepares one (the handler checks the seat)
+  { method: "GET", pattern: /^\/board-packs(\/|$)/, capability: "export_evidence" },
+  { method: "POST", pattern: /^\/board-packs(\/draft-narrative)?$/, capability: ["manage_board", "decide_review"] },
   { method: "GET", pattern: /.*/, capability: "read" },
   { method: "POST", pattern: /^\/users$/, capability: "manage_platform" },
   { method: "PUT", pattern: /^\/users\/[^/]+$/, capability: "manage_platform" },

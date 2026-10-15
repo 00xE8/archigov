@@ -36,6 +36,7 @@ export const AI_FEATURES = [
   { id: "draft_minutes", label: "Session Notes Drafting", description: "Drafts the secretary's narrative notes from the session's own records. The minutes stay derived; only the notes are authored." },
   { id: "suggest_evidence_mapping", label: "Evidence Mapping", description: "Suggests control ids for unmapped Defender and Azure Policy keys. The admin pins accepted mappings into the control map; evaluation never calls a model." },
   { id: "suggest_classification", label: "Classification Suggestion", description: "Suggests how critical an unclassified application is and which business services or regulated functions depend on it, from its name, resources, tags and decisions. Prefills the Classify form only; a person saves it with their own reason, and rules never read a suggestion." },
+  { id: "draft_board_narrative", label: "Board Pack Narrative", description: "Drafts the executive narrative of a board pack from its figures: what moved, what is overdue, what needs the board's attention, every statement tied to a number in the pack. The chair or secretary edits it and submits it as their own; the pack records that it was AI-assisted." },
   { id: "review_decision", label: "Decision Review", description: "A critical assessment of a proposed decision's argument before submission — unsupported claims, options not genuinely compared, risks left unstated — with a tightened version the author may apply. Advisory; the author decides what to submit." },
 ] as const;
 export type AiFeatureId = (typeof AI_FEATURES)[number]["id"];
@@ -490,5 +491,19 @@ export async function draftExitPlan(appId: string, provider: string) {
   const parsed = parseJsonLoose(text);
   if (!parsed.summary_md || typeof parsed.summary_md !== "string") throw new Error("model returned no summary_md");
   return { origin: "ai" as const, provider: p, model, summary_md: parsed.summary_md };
+}
+
+/** Draft a board pack's narrative from its figures; derive→narrate — the person who creates the pack submits it as their own. */
+export async function draftBoardNarrative(metrics: any) {
+  if (!featureResolved("draft_board_narrative")) throw new Error("AI is not enabled for draft_board_narrative");
+  const { trend, ...conformance } = metrics.conformance || {};
+  const facts = { ...metrics, conformance: { ...conformance, trend_first: trend?.[0] ?? null, trend_last: trend?.[trend.length - 1] ?? null } };
+  const { text, model, provider } = await chatFor("draft_board_narrative", [
+    { role: "system", content: `Draft the executive narrative of an architecture board pack for the period given (markdown, no top-level heading, at most about 300 words). Cover: what moved (reviews and decisions decided, lead times, how far decisions were realised), what is overdue or ageing (conditions, exceptions, legacy assessments, exit plans), conformance (open findings and the trend, time to fix), and concentration on a single provider. Every statement must rest on a figure in the facts and quote it; where a figure is missing or null, say it is not available — never estimate. Do not judge figures as good, bad, compliant or non-compliant; the board decides. Respond JSON: {"narrative_md": string}.` },
+    { role: "user", content: JSON.stringify(facts) },
+  ]);
+  const p = parseJsonLoose(text);
+  if (!p.narrative_md || typeof p.narrative_md !== "string") throw new Error("model returned no narrative_md");
+  return { origin: "ai" as const, provider, model, narrative_md: p.narrative_md };
 }
 
