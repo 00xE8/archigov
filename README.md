@@ -212,7 +212,7 @@ cd server && npm install && npm run dev    # terminal 1: the API on :8080, demo 
 cd web && npm install && npm run dev       # terminal 2, from the repo root: the UI on :5173
 ```
 
-Open http://localhost:5173; the **View as** menu in the header switches between the demo users (author, chair, decision maker, auditor…). Before you push, run `npm test` and `npm run build` (which type-checks) in `server/`, and `npm run build` in `web/` if you touched it. Commit with `git commit -s`.
+Open http://localhost:5173; the **View as** menu in the header switches between the demo users (author, chair, decision maker, auditor…). Before you push, run `npm test` and `npm run typecheck` in `server/`, and `npm run typecheck` in `web/` if you touched it. Commit with `git commit -s`.
 
 - **Sign off every commit.** `-s` adds `Signed-off-by:`, certifying the [Developer Certificate of Origin](DCO); the **DCO** check verifies it.
 - **The CLA is only for the core.** If your commits change core files, the **Archigov CLA** check asks you, once, to agree by commenting one sentence on the pull request. It is a licence grant on the Apache model, and you keep your copyright.
@@ -222,6 +222,25 @@ Open http://localhost:5173; the **View as** menu in the header switches between 
   - AI output never changes state: it drafts, and a named person's audited act promotes it.
 
 [CONTRIBUTING.md](CONTRIBUTING.md) has the details: what each folder expects, fixing a missed sign-off, and how the CLA is recorded.
+
+### With an AI coding agent
+
+Agent-assisted contributions are welcome. [AGENTS.md](AGENTS.md) is the brief your agent should read first: the product rules, the licence boundary, the commands and a definition of done. [docs/agents/](docs/agents/) has ready-made prompts for a policy pack, an assessment template, a connector or importer, and a core change.
+
+A starting prompt:
+
+```text
+Read AGENTS.md and CONTRIBUTING.md in this repository and follow them.
+Then follow docs/agents/new-policy-pack.md to add a pack for <framework>.
+Stay inside the folder it names and run the tests. Never add a sign-off: I will
+review the diff and sign off myself.
+```
+
+You remain the contributor:
+- review the diff;
+- sign off yourself;
+- agree to the CLA yourself if a core change needs it;
+- mark agent-written commits with an `Assisted-by:` trailer.
 
 ## Licensing
 
