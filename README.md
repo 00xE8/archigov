@@ -110,15 +110,27 @@ scripts/             smoke scripts
 
 ## Licensing
 
-The core — everything in this repository — is **AGPL-3.0-only** ([LICENSE](LICENSE)). In practice:
+Two licences, by folder. The core is copyleft. The content architects most want to share is permissive, and so is the code that connects Archigov to other systems:
 
-- **Run it yourself, even modified, for your own organisation**: no obligations. AGPL's network clause (section 13) applies only when you offer the software as a service to third parties; your own employees are not third parties.
-- **Host a modified version for others**: you must offer them your modified source. That is the point — nobody can take this product, bolt on closed features and sell access to it without contributing those features back.
+| Part | Licence | To contribute |
+|---|---|---|
+| **The core:** the derived model, the rules engine, boards and reviews, evidence and audit, exporters, the web UI. Everything not listed below | **AGPL-3.0-only** ([LICENSE](LICENSE)) | A [DCO](DCO) sign-off on each commit, and the [CLA](docs/CLA.md) once |
+| **Policy packs** `server/src/packs/` · **assessment templates** `server/src/templates/` · **connectors** `server/src/azure/`, `server/src/ado/` · **importers** `server/src/importers/` | **Apache-2.0** ([LICENSE-APACHE](LICENSE-APACHE)) | A DCO sign-off only |
+
+The folder list is kept in [.github/licensing.json](.github/licensing.json), and every file in those folders carries an `SPDX-License-Identifier: Apache-2.0` header. The policy SDK (the rule DSL and its validator as a package) will join the Apache-2.0 side when it is split out. [CONTRIBUTING.md](CONTRIBUTING.md) explains the DCO and the CLA.
+
+What the AGPL means in practice:
+
+- **Run it yourself, even modified, for your own organisation**: no obligations. The AGPL's network clause (section 13) applies only when you offer the software as a service to third parties; your own employees are not third parties.
+- **Host a modified version for others**: you must offer them your modified source. That is the point: nobody can take this product, bolt on closed features and sell access to it without contributing those features back.
 - **Host an unmodified copy for clients**: allowed. Consultancies running Archigov for customers are distribution, not a threat.
-- **Your organisation bans AGPL**: a commercial licence for the same code is available — contact the maintainer. Contributions are accepted under a [contributor licence agreement](docs/CLA.md) precisely so this dual licensing stays possible.
-- Connectors, templates and the policy-pack SDK will be published under **Apache-2.0** as they are split out of the core, so integrating *with* Archigov never requires touching AGPL code.
+- **Your organisation bans the AGPL**: a commercial licence for the same code is available; contact the maintainer.
 
-**Commitment: this project will never move to a licence more restrictive than AGPL-3.0.** No BSL, no SSPL, no rug-pull. Decided on day one, stated publicly here.
+**Commitments, stated publicly:**
+
+- **This project will never move to a licence more restrictive than AGPL-3.0.** No BSL, no SSPL, no rug-pull. Decided on day one.
+- **The commercial licence covers the same code as the open-source release.** It exists for organisations whose policies do not allow the AGPL. It is not a way to hold features back from the open-source edition.
+- **The CLA is a licence grant, not a copyright assignment.** Contributors keep their copyright, and it is only needed for the AGPL core, where the commercial licence depends on it.
 
 ## Not in this release
 

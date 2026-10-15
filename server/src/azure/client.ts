@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: The Archigov Authors
 /**
  * Shared Azure Resource Manager plumbing for the collectors and evidence importers: credential, token,
  * a fetch with bounded retry that honours ARM throttling headers, nextLink paging, and the fixture switch.

@@ -44,6 +44,8 @@ COPY --chown=node:node --from=server /src/server/node_modules ./node_modules
 COPY --chown=node:node --from=server /src/server/package.json ./package.json
 COPY --chown=node:node --from=web /src/web/dist ./public
 COPY docker/entrypoint.sh /entrypoint.sh
+# the licence texts travel with every copy of the image: AGPL-3.0 for the core, Apache-2.0 for packs, templates, connectors, importers
+COPY LICENSE LICENSE-APACHE ./
 RUN chmod +x /entrypoint.sh && mkdir -p /data && chown node:node /data /app
 USER node
 VOLUME ["/data"]

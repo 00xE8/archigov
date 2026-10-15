@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: The Archigov Authors
 import { ARM, armGetAll, armToken, fixturesEnabled, configuredSubscriptions } from "./client.js";
 import { controlForDefender } from "./controls.js";
 import { importEvidence, type EvidenceItemIn, type EvidenceState } from "../evidence.js";

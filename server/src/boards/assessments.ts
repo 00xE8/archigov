@@ -5,6 +5,7 @@ import { boardAreas } from "./areas.js";
 import { addEvent } from "./declare.js";
 import { getUser } from "../auth/users.js";
 import { userName } from "../reviews.js";
+import { ASSESSMENT_TYPES, type AssessmentType } from "../templates/assessments.js";
 
 /**
  * Assessments: due diligence a board seat requests on a review before it will decide — a DPIA, a security or
@@ -14,26 +15,10 @@ import { userName } from "../reviews.js";
  * review's chair waives it with a recorded reason. Results carry an external reference only — a pointer, never
  * the document — and are marked stale by a resubmission, never deleted.
  */
-export const ASSESSMENT_TYPES = ["dpia", "security", "supplier", "clinical-safety", "ai-impact", "accessibility", "impact", "scope", "other"] as const;
-export type AssessmentType = (typeof ASSESSMENT_TYPES)[number];
+export { ASSESSMENT_TYPES, ASSESSMENT_TEMPLATES, type AssessmentType } from "../templates/assessments.js";
 export const ASSESSMENT_RESULTS = ["satisfactory", "satisfactory_with_remarks", "unsatisfactory", "not_applicable"] as const;
 export type AssessmentResult = (typeof ASSESSMENT_RESULTS)[number];
 
-/**
- * One template per type: the headings a competent result answers, inserted as the summary's skeleton in the UI.
- * Prompts for human content only — references point at frameworks, no regulation text is reproduced.
- */
-export const ASSESSMENT_TEMPLATES: Record<AssessmentType, string> = {
-  dpia: "## Processing and purpose\n\n\n## Data categories and subjects\n\n\n## Lawful basis\n\n\n## Risks to individuals\n\n\n## Mitigations and residual risk\n\n\n## DPO consultation and outcome\n",
-  security: "## Scope and assets\n\n\n## Threats considered\n\n\n## Controls in place and gaps\n\n\n## Residual risk and actions\n",
-  supplier: "## Service and criticality\n\n\n## Due diligence performed\n\nFinancial standing, security posture, data locations.\n\n## Contractual controls\n\nExit, SLAs, audit rights, sub-processors.\n\n## Residual risk\n",
-  "clinical-safety": "## Intended use and users\n\n\n## Hazards identified\n\nHazard log reference.\n\n## Mitigations\n\n\n## DCB0129/DCB0160 artefacts and clinical safety officer sign-off\n",
-  "ai-impact": "## System purpose and the role of AI\n\n\n## Data and model provenance\n\n\n## Human oversight design\n\n\n## Risks and mitigations\n\nBias, robustness, transparency.\n\n## Monitoring plan\n",
-  accessibility: "## Standard assessed against\n\ne.g. WCAG 2.2 AA.\n\n## Method\n\nAudit, tooling, assistive-technology testing.\n\n## Findings and severity\n\n\n## Remediation plan\n",
-  impact: "## What changes\n\n\n## Who and what is affected\n\nServices, users, data, downstream systems.\n\n## Transition and rollback\n\n\n## Residual risk\n",
-  scope: "## In scope\n\n\n## Out of scope\n\n\n## Assumptions\n\n\n## Dependencies and constraints\n",
-  other: "## Purpose\n\n\n## Method\n\n\n## Findings\n\n\n## Conclusion\n",
-};
 /** Stages in which assessments are requested and recorded: open, or sent back (the board lines work up for the resubmission). */
 const ACTIVE_STAGES = [...OPEN_STAGES, "changes_requested"];
 
