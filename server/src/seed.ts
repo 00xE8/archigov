@@ -209,5 +209,10 @@ export function seedDemo(actor = "seed") {
   setSetting("demo.loaded", now);
   audit(actor, "seed", "tenant", null, stats);
   const ev = evaluateAll(actor);
+  // the demo's chief architect stands behind the classification of the two applications whose services the regulator names first
+  for (const name of ["PatientFlow", "Identity Platform"]) {
+    const a = listElements("application").find((x) => x.name === name);
+    if (a) db.prepare("UPDATE app_classifications SET verification='verified', verified_by='j.duduka', verified_at=?, verified_hash=content_hash WHERE application_id=?").run(daysAgo(7), a.id);
+  }
   return { skipped: false, ingest: stats, evaluate: ev };
 }

@@ -2,7 +2,7 @@ import React from "react";
 import { useLocation } from "react-router-dom";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import { Tag, Button, InlineLoading, InlineNotification, ActionableNotification, Tile, DefinitionTooltip, Tooltip, Link as CarbonLink, Breadcrumb, BreadcrumbItem, DatePicker, DatePickerInput, SkeletonText, MenuButton, MenuItem, Accordion, AccordionItem, Theme } from "@carbon/react";
-import { Checkmark, Renew, CheckmarkFilled, CheckmarkOutline, ErrorFilled, WarningFilled, WarningAlt, WarningAltFilled, Information, Pending, InProgress, Time, CloseFilled, CloseOutline, Undefined, Unknown, User, MachineLearningModel, Rule, Cloud, Idea, Template, Upload, Calendar, Send, Dashboard, Application, Roadmap, Catalog, DecisionTree, TaskApproved, UserMultiple, EventSchedule, Security, CertificateCheck, Report, Settings } from "@carbon/icons-react";
+import { Checkmark, Renew, CheckmarkFilled, CheckmarkOutline, ErrorFilled, WarningFilled, WarningAlt, WarningAltFilled, Information, Pending, InProgress, Time, CloseFilled, CloseOutline, Undefined, Unknown, User, MachineLearningModel, Rule, Cloud, Idea, Template, Upload, Calendar, Send, Dashboard, Application, Roadmap, Catalog, DecisionTree, TaskApproved, UserMultiple, EventSchedule, Security, CertificateCheck, Report, Settings, BusinessProcesses } from "@carbon/icons-react";
 import { marked } from "marked";
 import { get, post, labelFor, fmtDateTime, shortType, sentence, download, slug, areaLabel } from "./api";
 import { Gated, useCan } from "./auth";
@@ -102,6 +102,8 @@ const EXPLAIN_KIND: Record<string, string> = {
   enforcement: "Whether this policy is mandatory or recommended.",
   resolution: "How the chair resolved a conditional position, with a recorded explanation.",
   citation: "What the pre-review cited; citations must resolve to a real item or they are discarded.",
+  criticality: "How critical this application is, derived from resource tags or set by a person with a reason.",
+  service_kind: "A service this application supports; regulated services make it critical.",
 };
 const EXPLAIN: Record<string, Record<string, string>> = {
   origin: {
@@ -156,6 +158,17 @@ const EXPLAIN: Record<string, Record<string, string>> = {
     decision: "An open epic with no linked architecture decision.",
     changed: "The backlog item changed materially after its review was approved.",
     region: "Deployed outside the home regions set under Settings · General; advisory — findings come only from adopted rules.",
+  },
+  criticality: {
+    critical: "Critical: supports an important business service, a critical or important function or an essential function, or is tagged as top tier.",
+    important: "Important to the business, but no regulated service depends on it.",
+    standard: "Standard: neither critical nor important.",
+  },
+  service_kind: {
+    ibs: "Important business service (PRA SS1/21, FCA SYSC 15A): an application supporting one is critical.",
+    cif: "Critical or important function (DORA Art. 8): an application supporting one is critical.",
+    essential_function: "Essential function (NCSC CAF A3): an application supporting one is critical.",
+    business_service: "A business service named for mapping; not a regulated designation on its own.",
   },
   kind: {
     standard: "A standard: a human statement with control references and, optionally, a machine-checkable rule.",
@@ -233,6 +246,7 @@ const HERO_CONTEXT: { match: RegExp; tone: HeroTone; icon: React.ComponentType<a
   { match: /^\/$/, tone: "blue", icon: Dashboard, motion: "pop" },
   { match: /^\/applications/, tone: "teal", icon: Application, motion: "rise" },
   { match: /^\/backlog/, tone: "teal", icon: Roadmap, motion: "swing" },
+  { match: /^\/services/, tone: "teal", icon: BusinessProcesses, motion: "rise" },
   { match: /^\/(governance|standards)/, tone: "purple", icon: Catalog, motion: "rise" },
   { match: /^\/decisions/, tone: "purple", icon: DecisionTree, motion: "swing" },
   { match: /^\/reviews/, tone: "cyan", icon: TaskApproved, motion: "pop" },
@@ -374,6 +388,16 @@ export function AreaPositionTag({ area, state, label, boardAreas, size = "md", m
 }
 
 /** A resource id shown as its last two path segments, the whole id on hover; the copy button carries the full value. */
+/** An application's criticality: a classification, so a gray tag with the word (never a status colour); "Unclassified" when nobody and no tag says. */
+export function CriticalityTag({ value, size = "sm" }: { value?: string | null; size?: "sm" | "md" }) {
+  if (!value) return <Tag size={size} type="outline"><span title="Unclassified: no tag says how critical this application is and nobody has classified it.">Unclassified</span></Tag>;
+  return <Tag size={size} type={value === "critical" ? "high-contrast" : "gray"}><span title={explainTag("criticality", value)}>{labelFor("criticality", value)}</span></Tag>;
+}
+/** A service an application supports, kind first ("IBS · Take payments"); the kind explains itself on hover. */
+export function ServiceTag({ s, size = "sm" }: { s: { name: string; kind: string }; size?: "sm" | "md" }) {
+  return <Tag size={size} type="gray"><span title={`${labelFor("service_kind", s.kind)}. ${explainTag("service_kind", s.kind) || ""}`}>{labelFor("service_kind_short", s.kind)} · {s.name}</span></Tag>;
+}
+
 export function ShortId({ id }: { id?: string | null }) {
   if (!id) return <span className="ag-muted">—</span>;
   const parts = String(id).split("/").filter(Boolean);

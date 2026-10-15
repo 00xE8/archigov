@@ -38,7 +38,7 @@ const asJson = (o: any) => ({ choices: [{ message: { content: JSON.stringify(o) 
 test("every draft endpoint answers 409 when its feature is off, and /ai/features is readable by the auditor", async () => {
   const flags = await call("GET", "/ai/features", "a.uditor");
   assert.equal(flags.status, 200);
-  assert.deepEqual(Object.values(flags.body), Array(8).fill(false));
+  assert.deepEqual(Object.values(flags.body), Array(9).fill(false));
   assert.equal((await call("POST", "/decisions/review-draft", "s.patel", { title: "t", decision_md: "d" })).status, 409);
   assert.equal((await call("POST", "/artefacts/draft-rule", "s.patel", { title: "t", statement: "s" })).status, 409);
   assert.equal((await call("POST", "/artefacts/suggest-references", "s.patel", { title: "t", statement: "s" })).status, 409);
@@ -47,10 +47,12 @@ test("every draft endpoint answers 409 when its feature is off, and /ai/features
   const ses = (db.prepare("SELECT id FROM board_sessions LIMIT 1").get() as any).id;
   assert.equal((await call("POST", `/sessions/${ses}/draft-notes`, "j.duduka")).status, 409);
   assert.equal((await call("POST", "/evidence/suggest-mapping", "ops.admin")).status, 409);
+  const app = (db.prepare("SELECT id FROM elements WHERE type='application' AND name='Pharmacy'").get() as any).id;
+  assert.equal((await call("POST", `/applications/${app}/classification/suggest`, "s.patel")).status, 409);
 });
 
 test("keys are ciphertext at rest; legacy plaintext re-encrypts on first read", async () => {
-  const on = Object.fromEntries(["draft_rule", "suggest_references", "draft_assessment", "draft_minutes", "suggest_evidence_mapping", "review_decision"].map((f) => [f, { enabled: true, provider: "mistral", model: "m" }]));
+  const on = Object.fromEntries(["draft_rule", "suggest_references", "draft_assessment", "draft_minutes", "suggest_evidence_mapping", "review_decision", "suggest_classification"].map((f) => [f, { enabled: true, provider: "mistral", model: "m" }]));
   const r = await call("POST", "/settings", "ops.admin", { ai_providers: { mistral: { api_key: FAKE_KEY } }, ai_features: on });
   assert.equal(r.status, 200, JSON.stringify(r.body));
   const stored = JSON.parse(getSetting("ai.providers")!);
@@ -172,6 +174,26 @@ test("decision review: a critical assessment with a tightened argument; the auth
     assert.ok(r.body.tightened.consequences_md.includes("we accept the risk"));
     assert.equal((db.prepare("SELECT count(*) c FROM decisions").get() as any).c, before, "a review stores nothing");
   } finally { restoreFetch(); }
+});
+
+test("classification suggestion: normalised to the classification invariants, the author's capability, nothing stored", async () => {
+  const app = (db.prepare("SELECT id FROM elements WHERE type='application' AND name='Pharmacy'").get() as any).id;
+  for (const u of ["ops.admin", "a.uditor"]) assert.equal((await call("POST", `/applications/${app}/classification/suggest`, u)).status, 403, u);
+  calls = []; mockFetch(() => asJson({ criticality: "important", rationale: "Dispensing stops if it fails.", services: [
+    { name: "Dispense medicines", kind: "cif" }, { name: "Order stock", kind: "kpi" }, { name: "  ", kind: "business_service" },
+  ] }));
+  try {
+    const before = db.prepare("SELECT * FROM app_classifications WHERE application_id=?").get(app);
+    const r = await call("POST", `/applications/${app}/classification/suggest`, "s.patel");
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.equal(r.body.origin, "ai");
+    assert.deepEqual(r.body.services, [{ name: "Dispense medicines", kind: "cif" }], "unknown kinds and blank names are dropped");
+    assert.equal(r.body.criticality, "critical", "a regulated service makes the suggestion critical, as it would a person's");
+    const sent = JSON.parse(calls[0].init.body).messages[1].content;
+    assert.ok(sent.includes("stpharmacyfiles") || sent.includes("Pharmacy"), "the model sees the application's own resources");
+    assert.deepEqual(db.prepare("SELECT * FROM app_classifications WHERE application_id=?").get(app), before, "a suggestion stores nothing");
+  } finally { restoreFetch(); }
+  assert.equal((await call("POST", "/applications/not-an-app/classification/suggest", "s.patel")).status, 404);
 });
 
 test("a decision argues in three parts: justification round-trips through create, read and update", async () => {

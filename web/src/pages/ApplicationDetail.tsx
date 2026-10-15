@@ -6,6 +6,7 @@ import { get, post, fmtDate, shortType, labelFor } from "../api";
 import { PageHeader, useLoad, VerificationTag, VerifyButton, SeverityTag, Empty, OriginTag, LoadError, RLink, Crumbs, StatusTag, FindingEvidence, useTabParam, ExportMenu, VerifiedBy, KindTag, artefactLink, ShortId, useDocTitle } from "../components";
 import { Gated } from "../auth";
 import { DesignPanel } from "../components/ArchimateView";
+import { ClassificationLine } from "../components/ClassificationPanel";
 
 const TABS = ["resources", "design", "findings", "decisions", "reviews", "backlog", "exceptions"];
 
@@ -27,7 +28,8 @@ export default function ApplicationDetail() {
     <>
       <PageHeader breadcrumb={<Crumbs items={[{ to: "/applications", label: "Applications" }, { label: a.name }]} />} title={a.name}
         subtitle={<span>Inferred by <span className="ag-mono ag-nowrap">{(a.provenance.methods || []).join(", ")}</span> from {a.resources.length} resources · confidence {Math.round(a.confidence * 100)}% · owners: {owners.join(", ") || "none"}</span>}
-        about="Derived from the connected estate, never typed in: the resources that make the application up (with why each one belongs here), the evidence imported for them, and the findings, decisions, reviews and backlog that cover it. Verifying records that a person stands behind the derivation; a human reassignment is never overridden by collectors."
+        about="Derived from the connected estate, never typed in: the resources that make the application up (with why each one belongs here), the evidence imported for them, and the findings, decisions, reviews and backlog that cover it. Verifying records that a person stands behind the derivation; a human reassignment is never overridden by collectors. The classification line says how critical the application is and which business services or regulated functions depend on it — derived from tags, or set by a person with a reason."
+        extra={<ClassificationLine appId={a.id} c={a.classification} onChange={reload} />}
         actions={<>
           <VerificationTag state={a.verification} origin={a.origin} by={a.verified_by} at={a.verified_at} size="md" />
           {a.verification === "verified" && <VerifiedBy by={a.verified_by} at={a.verified_at} />}

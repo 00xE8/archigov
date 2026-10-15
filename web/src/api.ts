@@ -107,6 +107,15 @@ export const OUTCOME_HELP: Record<string, string> = {
 /** Outcomes that need a written reason before they can be declared. */
 export const OUTCOMES_NEEDING_REASON = ["changes_requested", "deferred", "referred", "rejected"];
 
+/**
+ * Criticality classification of applications: how critical each one is, and the services it supports — an important
+ * business service (PRA/FCA), a critical or important function (DORA), an essential function (NCSC CAF) or a plain
+ * business service. Supporting one of the first three makes an application critical.
+ */
+export const CRITICALITIES = ["critical", "important", "standard"];
+export const SERVICE_KINDS = ["ibs", "cif", "essential_function", "business_service"];
+export const REGULATED_KINDS = ["ibs", "cif", "essential_function"];
+
 /** Assessments: due diligence a board seat requests on a review; the named assessor records the result themselves. */
 export const ASSESSMENT_TYPES = ["dpia", "security", "supplier", "clinical-safety", "ai-impact", "accessibility", "impact", "scope", "other"];
 export const ASSESSMENT_RESULTS = ["satisfactory", "satisfactory_with_remarks", "unsatisfactory", "not_applicable"];
@@ -206,6 +215,9 @@ export const LABELS: Record<string, Record<string, string>> = {
   assessment_status: { requested: "Requested", completed: "Completed", waived: "Waived" },
   assessment_result: { satisfactory: "Satisfactory", satisfactory_with_remarks: "Satisfactory with remarks", unsatisfactory: "Unsatisfactory", not_applicable: "Not applicable" },
   impact: { minor: "Minor change", major: "Major change" },
+  criticality: { critical: "Critical", important: "Important", standard: "Standard" },
+  service_kind: { ibs: "Important business service", cif: "Critical or important function", essential_function: "Essential function", business_service: "Business service" },
+  service_kind_short: { ibs: "IBS", cif: "CIF", essential_function: "Essential function", business_service: "Business service" },
   approval: { approve: "Approved", request_changes: "Changes requested" },
   step: { pre_review: "Pre-review", approvals: "Approvals", decision: "Decision" },
   user_type: { ...LEGACY_USER_TYPE_LABELS, ...USER_TYPE_LABELS },
