@@ -2,7 +2,7 @@ import React from "react";
 import { useLocation } from "react-router-dom";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import { Tag, Button, InlineLoading, InlineNotification, ActionableNotification, Tile, DefinitionTooltip, Tooltip, Link as CarbonLink, Breadcrumb, BreadcrumbItem, DatePicker, DatePickerInput, SkeletonText, MenuButton, MenuItem, Accordion, AccordionItem, Theme } from "@carbon/react";
-import { Checkmark, Renew, CheckmarkFilled, CheckmarkOutline, ErrorFilled, WarningFilled, WarningAlt, WarningAltFilled, Information, Pending, InProgress, Time, CloseFilled, CloseOutline, Undefined, Unknown, User, MachineLearningModel, Rule, Cloud, Idea, Template, Upload, Calendar, Send, Dashboard, Application, Roadmap, Catalog, DecisionTree, TaskApproved, UserMultiple, EventSchedule, Security, CertificateCheck, Report, Settings, BusinessProcesses, Flash, Hourglass } from "@carbon/icons-react";
+import { Checkmark, Renew, CheckmarkFilled, CheckmarkOutline, ErrorFilled, WarningFilled, WarningAlt, WarningAltFilled, Information, Pending, InProgress, Time, CloseFilled, CloseOutline, Undefined, Unknown, User, MachineLearningModel, Rule, Cloud, Idea, Template, Upload, Calendar, Send, Dashboard, Application, Roadmap, Catalog, DecisionTree, TaskApproved, UserMultiple, EventSchedule, Security, CertificateCheck, Report, Settings, BusinessProcesses, Flash, Hourglass, Partnership } from "@carbon/icons-react";
 import { marked } from "marked";
 import { get, post, labelFor, fmtDateTime, shortType, sentence, download, slug, areaLabel } from "./api";
 import { Gated, useCan } from "./auth";
@@ -111,6 +111,7 @@ STATUS.fast_lane = { eligible: { type: "teal", icon: Flash }, full: { type: "gra
 // Lifecycle of a component against its vendor's support dates, worst last; unknown is the outline tag (nothing to go on).
 STATUS.lifecycle_state = { supported: { type: "green", icon: CheckmarkFilled }, ending: { type: "teal", icon: Time }, extended: { type: "magenta", icon: WarningAltFilled }, end_of_life: { type: "red", icon: ErrorFilled }, unknown: { type: "outline", icon: Unknown } };
 // A legacy assessment's standing for an application (DORA Art. 8(7)).
+STATUS.exit_status = { current: { type: "green", icon: CheckmarkFilled }, due: { type: "red", icon: WarningFilled }, not_needed: { type: "gray", icon: Undefined } };
 STATUS.legacy_status = { current: { type: "green", icon: CheckmarkFilled }, stale: { type: "magenta", icon: WarningAltFilled }, due: { type: "red", icon: WarningFilled }, not_needed: { type: "gray", icon: Undefined } };
 const EXPLAIN: Record<string, Record<string, string>> = {
   lifecycle_state: {
@@ -119,6 +120,11 @@ const EXPLAIN: Record<string, Record<string, string>> = {
     extended: "Past the vendor's standard support, inside a paid extended-support window: legacy, assessed yearly.",
     end_of_life: "The vendor no longer issues security fixes for this version: legacy, and nothing patches it.",
     unknown: "No version fact was collected, or the version is not in the lifecycle data; a person can set it.",
+  },
+  exit_status: {
+    current: "An exit plan less than a year old covers this application's reliance on this provider.",
+    due: "The application is critical or important and has no exit plan in date for this provider.",
+    not_needed: "The application is neither critical nor important, so no exit plan is required.",
   },
   legacy_status: {
     current: "A legacy assessment less than a year old covers every legacy component of this application.",
@@ -278,6 +284,7 @@ const HERO_CONTEXT: { match: RegExp; tone: HeroTone; icon: React.ComponentType<a
   { match: /^\/sessions/, tone: "magenta", icon: EventSchedule, motion: "swing" },
   { match: /^\/conformance/, tone: "red", icon: Security, motion: "pulse" },
   { match: /^\/legacy/, tone: "red", icon: Hourglass, motion: "swing" },
+  { match: /^\/third-parties/, tone: "red", icon: Partnership, motion: "pop" },
   { match: /^\/evidence/, tone: "green", icon: CertificateCheck, motion: "pop" },
   { match: /^\/audit/, tone: "green", icon: Report, motion: "rise" },
   { match: /^\/settings/, tone: "gray", icon: Settings, motion: "spin" },

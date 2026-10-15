@@ -6,6 +6,9 @@ import { evidenceFor } from "../evidence.js";
 import { std, fnd } from "../http.js";
 import { buildArchimate, archimateXml } from "../exporters/archimate.js";
 import { allClassifications, REGULATED_KINDS } from "../classification.js";
+import { reliancesOf } from "../suppliers.js";
+// B_07.01 substitutability, in the ITS vocabulary, from the latest exit plan for that application and provider
+const SUBST_CELL: Record<string, string> = { not_substitutable: "Not substitutable", highly_complex: "Highly complex substitutability", medium_complexity: "Medium complexity in terms of substitutability", easily_substitutable: "Easily substitutable" };
 
 /**
  * Machine-readable exports for the people who have to take evidence away:
@@ -137,7 +140,7 @@ exportsRoutes.get("/exports/dora-roi.csv", (c) => {
   const apps = listElements("application");
   const cls = allClassifications();
   const lines = [
-    `# Simplified register of information derived from the Archigov model on ${nowIso()} for tenant ${getSetting("tenant.name", "Local tenant")}. Columns approximate ESAs ITS templates B_06.01 (functions), B_05.01 (ICT third-party service providers), B_02.02 (contractual arrangements, specific) and B_07.01 (assessments); the template.column code is in each header. This is NOT the official ITS/DPM layout (Commission Implementing Regulation (EU) 2024/2956). Function names and B_06.01.0050 criticality come from each application's classification in Archigov (blank where nobody has classified it). Function identifiers are generated; provider identification codes, contract references, Annex III service-type codes, sensitiveness, reliance and substitutability are left blank for the entity to complete, never inferred. Evidence, not assurance.`,
+    `# Simplified register of information derived from the Archigov model on ${nowIso()} for tenant ${getSetting("tenant.name", "Local tenant")}. Columns approximate ESAs ITS templates B_06.01 (functions), B_05.01 (ICT third-party service providers), B_02.02 (contractual arrangements, specific) and B_07.01 (assessments); the template.column code is in each header. This is NOT the official ITS/DPM layout (Commission Implementing Regulation (EU) 2024/2956). Function names and B_06.01.0050 criticality come from each application's classification in Archigov (blank where nobody has classified it, and for the important tier). B_07.01 substitutability comes from the latest exit plan recorded in Archigov for that application and provider (blank where there is none); suppliers named on resource tags get rows of their own. Function identifiers are generated; provider identification codes, contract references, Annex III service-type codes, sensitiveness and reliance are left blank for the entity to complete, never inferred. Evidence, not assurance.`,
     DORA_COLUMNS.join(","),
   ];
   apps.forEach((a, i) => {
@@ -155,16 +158,26 @@ exportsRoutes.get("/exports/dora-roi.csv", (c) => {
       g.criticality = (k?.criticality && CRIT_CELL[k.criticality]) || "";
       groups.set(key, g);
     }
+    const rels = reliancesOf(a, k ?? null);
+    const subst = (provider: string) => SUBST_CELL[rels.find((r) => r.provider === provider)?.exit.last?.details?.substitutability ?? ""] ?? "";
     for (const g of groups.values()) {
       const country = g.location in COUNTRY ? COUNTRY[g.location] : "";
       lines.push([
         `F${i + 1}`, functionName, g.criticality,
         "Microsoft", "", "", "",
         "", "", country, g.storesData ? "Yes" : "", g.storesData ? country : "", country, "", "",
-        "",
+        subst("microsoft"),
         a.id, g.family, g.location, g.n, a.origin, a.verification,
       ].map(csvCell).join(","));
     }
+    // suppliers named on the resources' tags are ICT third-party providers of their own; where and how they serve is the entity's to fill
+    for (const r of rels.filter((x) => x.kind === "supplier")) lines.push([
+      `F${i + 1}`, functionName, (k?.criticality && CRIT_CELL[k.criticality]) || "",
+      r.name, "", "", "",
+      "", "", "", "", "", "", "", "",
+      subst(r.provider),
+      a.id, "Third-party ICT service (named on resource tags)", "", r.resources, "derived", "unverified",
+    ].map(csvCell).join(","));
   });
   c.header("Content-Type", "text/csv; charset=utf-8");
   c.header("Content-Disposition", `attachment; filename="archigov-dora-register-of-information.csv"`);

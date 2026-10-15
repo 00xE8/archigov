@@ -6,6 +6,7 @@ import { encryptSecret, decryptSecret, isEncrypted } from "./secrets.js";
 import { ASSESSMENT_TYPES } from "./boards/assessments.js";
 import { classificationOf, allClassifications, CRITICALITIES, SERVICE_KINDS, REGULATED_KINDS } from "./classification.js";
 import { legacyOf, LEGACY_TEMPLATE } from "./lifecycle.js";
+import { reliancesOf, EXIT_TEMPLATE } from "./suppliers.js";
 
 /**
  * AI gateway. Providers are configured by the platform admin (Settings · AI); keys live in the settings table
@@ -469,5 +470,25 @@ export async function draftLegacyAssessment(appId: string) {
   const p = parseJsonLoose(text);
   if (!p.summary_md || typeof p.summary_md !== "string") throw new Error("model returned no summary_md");
   return { origin: "ai" as const, provider, model, summary_md: p.summary_md };
+}
+
+/** Prefill an exit plan for one provider from what the model knows about the reliance; derive→narrate, the author records it as their own. */
+export async function draftExitPlan(appId: string, provider: string) {
+  const app = getElement(appId);
+  if (!app || app.type !== "application") throw Object.assign(new Error("not found"), { status: 404 });
+  const rel = reliancesOf(app).find((r) => r.provider === provider);
+  if (!rel) throw Object.assign(new Error(`${app.name} does not rely on "${provider}"`), { status: 400 });
+  if (!featureResolved("draft_assessment")) throw new Error("AI is not enabled for draft_assessment");
+  const c = classificationOf(app.id);
+  const resources = resourcesOf(app.id).map((r) => ({ name: r.name, type: r.subtype, region: r.props.location || null }));
+  const facts = { application: app.name, criticality: c?.criticality ?? null, services: c?.services ?? [], provider: { name: rel.name, designated_critical_third_party: rel.ctp?.entity ?? null, resources: rel.resources }, resources,
+    previous: rel.exit.last ? { assessed_at: rel.exit.last.assessed_at, substitutability: rel.exit.last.details?.substitutability ?? null, summary: String(rel.exit.last.summary_md).slice(0, 2000) } : null };
+  const { text, model, provider: p } = await chatFor("draft_assessment", [
+    { role: "system", content: `Draft an exit plan for one ICT provider an application relies on (DORA Art. 28(8), PRA SS2/21 ch. 10). Fill the given markdown template headings from the facts only: name the resources and regions involved. Where the facts do not answer a heading (alternatives, timelines, costs, owners, test results), write "To be confirmed: ..." naming what the author must add — never invent providers, timelines, costs or test results. Keep each section to a few sentences. Respond JSON: {"summary_md": string}.` },
+    { role: "user", content: JSON.stringify({ template: EXIT_TEMPLATE, facts }) },
+  ]);
+  const parsed = parseJsonLoose(text);
+  if (!parsed.summary_md || typeof parsed.summary_md !== "string") throw new Error("model returned no summary_md");
+  return { origin: "ai" as const, provider: p, model, summary_md: parsed.summary_md };
 }
 

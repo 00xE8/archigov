@@ -44,6 +44,7 @@ export const KEEP_PROPS: Record<string, string[]> = {
   "microsoft.sql/servers": ["minimalTlsVersion", "publicNetworkAccess", "version"],
   "microsoft.sql/servers/databases": ["zoneRedundant", "currentSku.name"],
   "microsoft.dbforpostgresql/flexibleservers": ["version", "highAvailability.mode", "backup.geoRedundantBackup", "network.publicNetworkAccess"],
+  "microsoft.dbformysql/flexibleservers": ["version", "highAvailability.mode", "backup.geoRedundantBackup", "network.publicNetworkAccess"],
   "microsoft.documentdb/databaseaccounts": ["publicNetworkAccess", "minimalTlsVersion", "backupPolicy.type"],
   "microsoft.compute/virtualmachines": ["storageProfile.imageReference.sku", "storageProfile.imageReference.offer", "hardwareProfile.vmSize"],
   "microsoft.keyvault/vaults": ["enableSoftDelete", "enablePurgeProtection", "publicNetworkAccess"],

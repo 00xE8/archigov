@@ -7,6 +7,7 @@ import { evidenceFor } from "./evidence.js";
 import { std, dec, fnd, DECISIONS_FOR_APP } from "./http.js";
 import { classificationOf } from "./classification.js";
 import { legacyOf } from "./lifecycle.js";
+import { reliancesOf } from "./suppliers.js";
 
 /**
  * The evidence pack: what the derived model, the imported compliance evidence, the decision log and the review
@@ -96,6 +97,7 @@ export function buildEvidencePack(appId: string | null): Record<string, any> | n
       return {
         id: a.id, name: a.name, verification: a.verification, verified_by: a.verified_by, verified_at: a.verified_at, provenance: a.provenance,
         classification: (({ criticality, services, origin, method, reason, set_by, set_at, verification, verified_by, verified_at }) => ({ criticality, services, origin, method, reason, set_by, set_at, verification, verified_by, verified_at }))(classificationOf(a.id)!),
+        third_parties: reliancesOf(a).map((r) => ({ provider: r.provider, name: r.name, kind: r.kind, designated_ctp: r.ctp?.entity ?? null, resources: r.resources, exit_plan: r.exit.status === "not_needed" ? null : { status: r.exit.status, result: r.exit.last?.result ?? null, substitutability: r.exit.last?.details?.substitutability ?? null, tested_at: r.exit.last?.details?.tested_at ?? null, assessed_by: r.exit.last?.assessed_by ?? null, valid_until: r.exit.last?.valid_until ?? null } })),
         legacy: (({ status, legacy, last }) => ({ status, components: legacy, assessment: last ? { result: last.result, assessed_by: last.assessed_by, assessed_at: last.assessed_at, valid_until: last.valid_until, reference: last.reference, covers: last.components } : null }))(legacyOf(a)),
         resources: resources.map((r) => ({ ref: r.source_ref, name: r.name, type: r.subtype, location: r.props.location, verification: r.verification, verified_by: r.verified_by, content_hash: r.content_hash,
           evidence: evidenceFor(r.id).map((e) => ({ source: e.source, control: e.control, state: e.state, severity: e.severity, observed_at: e.observed_at })) })),

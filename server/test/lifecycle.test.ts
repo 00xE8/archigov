@@ -158,3 +158,10 @@ test("the AI draft is optional, stores nothing, and the evidence pack carries ea
   assert.equal(erp.legacy.status, "current"); assert.equal(erp.legacy.assessment.result, "satisfactory_with_remarks");
   assert.ok(pack.body.applications.find((a: any) => a.name === "Referral API").legacy.components.includes("dotnet:6"));
 });
+
+test("collection keeps the version facts matching reads: a MySQL flexible server from Resource Graph is matched", async () => {
+  const { normaliseResource } = await import("../src/azure/resourceGraph.js");
+  const n = normaliseResource({ id: "/subscriptions/s/resourceGroups/rg/providers/Microsoft.DBforMySQL/flexibleServers/my1", name: "my1", type: "Microsoft.DBforMySQL/flexibleServers", location: "uksouth", properties: { version: "8.0.21", network: { publicNetworkAccess: "Disabled" } } });
+  assert.equal(n.props.version, "8.0.21"); assert.equal(n.props.publicAccess, false);
+  assert.deepEqual(matchComponents(el(n.props, n.type)).map((x) => `${x.product}:${x.key}`), ["mysql:8.0"]);
+});

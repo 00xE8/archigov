@@ -2,7 +2,8 @@ import { Hono } from "hono";
 import { getElement } from "../model.js";
 import { actorOf } from "../http.js";
 import { legacyRegister, productCatalogue, refreshSnapshot, setResourceLifecycle, resetResourceLifecycle, legacyOf, assessmentsOfApp, recordLegacyAssessment, lifecycleOf, LEGACY_TEMPLATE, LEGACY_RESULTS } from "../lifecycle.js";
-import { draftLegacyAssessment } from "../ai.js";
+import { draftLegacyAssessment, draftExitPlan } from "../ai.js";
+import { thirdParties, reliancesOf, recordExitPlan, setCtpList, SUBSTITUTABILITY, EXIT_TEMPLATE } from "../suppliers.js";
 
 /**
  * Registers derived from the model. The legacy register: lifecycle-tracked components (OS images, runtimes,
@@ -36,4 +37,22 @@ registers.post("/applications/:id/legacy-assessments", async (c) => {
 registers.post("/applications/:id/legacy-assessments/draft", async (c) => {
   try { return c.json(await draftLegacyAssessment(c.req.param("id"))); }
   catch (e: any) { return e?.status === 404 ? c.json({ error: "not found" }, 404) : c.json({ error: String(e.message || e).slice(0, 300) }, /not enabled/i.test(String(e.message)) ? 409 : e.status || 502); }
+});
+
+/** Third parties: providers derived from the estate, concentration of critical reliance, exit plans (DORA Art. 28(8)). */
+registers.get("/third-parties", (c) => c.json({ ...thirdParties(), substitutability: SUBSTITUTABILITY }));
+// the designations are reference data with a legal source: the platform admin keeps them current (default rule for an unlisted mutation)
+registers.put("/third-parties/ctp", async (c) => { try { return c.json(setCtpList(await c.req.json().catch(() => null), actorOf(c))); } catch (e) { return fail(c, e); } });
+registers.get("/applications/:id/third-parties", (c) => {
+  const a = getElement(c.req.param("id")); if (!a || a.type !== "application") return c.json({ error: "not found" }, 404);
+  return c.json({ providers: reliancesOf(a), template: EXIT_TEMPLATE, results: LEGACY_RESULTS, substitutability: SUBSTITUTABILITY });
+});
+registers.post("/applications/:id/exit-plans", async (c) => {
+  const b = await c.req.json().catch(() => ({}));
+  try { return c.json(recordExitPlan(c.req.param("id"), { provider: String(b.provider || ""), result: String(b.result || ""), summary_md: String(b.summary_md || ""), reference: b.reference ?? null, substitutability: String(b.substitutability || ""), tested_at: b.tested_at ?? null }, actorOf(c))); } catch (e) { return fail(c, e); }
+});
+registers.post("/applications/:id/exit-plans/draft", async (c) => {
+  const b = await c.req.json().catch(() => ({}));
+  try { return c.json(await draftExitPlan(c.req.param("id"), String(b.provider || ""))); }
+  catch (e: any) { return e?.status === 404 || e?.status === 400 ? c.json({ error: e.message }, e.status) : c.json({ error: String(e.message || e).slice(0, 300) }, /not enabled/i.test(String(e.message)) ? 409 : e.status || 502); }
 });

@@ -222,6 +222,14 @@ export function seedDemo(actor = "seed") {
     db.prepare("INSERT INTO register_assessments(id,kind,application_id,subject,result,summary_md,reference,components_json,assessed_by,assessed_at,valid_until,origin) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")
       .run(uid(), "legacy", erp.id, null, "satisfactory_with_remarks", ERP_LEGACY_ASSESSMENT, null, JSON.stringify(l.legacy), "s.patel", at.toISOString(), until.toISOString(), "human");
   }
+  // one exit plan on record (DORA Art. 28(8)): PatientFlow's reliance on Microsoft, tested in the summer; the rest are due
+  const pf = listElements("application").find((x) => x.name === "PatientFlow");
+  if (pf) {
+    const at = new Date(Date.now() - 60 * 86_400_000); const until = new Date(at); until.setUTCMonth(until.getUTCMonth() + 12);
+    db.prepare("INSERT INTO register_assessments(id,kind,application_id,subject,result,summary_md,reference,components_json,assessed_by,assessed_at,valid_until,origin,details_json) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)")
+      .run(uid(), "exit_plan", pf.id, "microsoft", "satisfactory_with_remarks", PATIENTFLOW_EXIT_PLAN, null, "[]", "j.duduka", at.toISOString(), until.toISOString(), "human",
+        JSON.stringify({ substitutability: "highly_complex", tested_at: new Date(Date.now() - 75 * 86_400_000).toISOString().slice(0, 10), provider_name: "Microsoft" }));
+  }
   return { skipped: false, ingest: stats, evaluate: ev };
 }
 
@@ -244,5 +252,30 @@ Upgrade to SQL Server 2022 with the ERP vendor's 2027 release; owner finance-it.
 ## Conclusion
 
 Acceptable until the upgrade, provided ESU stays in place.
+`;
+
+const PATIENTFLOW_EXIT_PLAN = `## Reliance
+
+Hosting, the PostgreSQL database, secrets and monitoring for admissions and discharges, all in UK South.
+
+## Exit triggers
+
+Sustained regional outage beyond the recovery time objective, a regulatory instruction, or the provider's withdrawal from the UK market.
+
+## Exit strategy
+
+Planned: rebuild on another provider from the infrastructure-as-code repository over two quarters. Stressed: fall back to the paper admissions process while the database is restored on the standby provider.
+
+## Data and portability
+
+Nightly PostgreSQL dumps to an independent store; configuration is code. Managed identity bindings do not port and are re-created.
+
+## Timeline and resources
+
+Six months planned, ten days stressed to a minimal service; led by the clinical-systems lead with the platform team.
+
+## Testing
+
+Restore of the database on the standby provider tested in August; the paper fallback was rehearsed with ward staff.
 `;
 
