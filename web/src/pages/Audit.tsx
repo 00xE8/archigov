@@ -66,6 +66,8 @@ export function actionLabel(action?: string | null): string {
   if (head === "dependency" && tail) return tail === "create" ? "Dependent decision created" : `Dependency: ${sentence(tail).toLowerCase()}`;
   if (head === "assessment" && tail) return ({ request: "Assessment requested", result: "Assessment result recorded", waive: "Assessment waived", reassign: "Assessment reassigned" } as Record<string, string>)[tail] || `Assessment: ${sentence(tail).toLowerCase()}`;
   if (head === "board" && tail) return tail === "areas" ? "Board areas changed" : `Board: ${sentence(tail).toLowerCase()}`;
+  // a sign-off is the record of a reaffirmation (the UI's word), so the log reads as the page does
+  if (head === "signoff" && tail) return tail === "reaffirmed" ? "Reaffirmed" : tail === "revision_needed" ? "Marked as needing revision" : `Reaffirmation: ${sentence(tail).toLowerCase()}`;
   if (head === "decision" && tail) return `Decision ${labelFor("decision", tail).toLowerCase()}`;
   if (tail) return `${sentence(head)}: ${sentence(tail).toLowerCase()}`;
   if (head.startsWith("lifecycle_")) return `Lifecycle: ${labelFor("lifecycle", head.slice("lifecycle_".length)).toLowerCase()}`;

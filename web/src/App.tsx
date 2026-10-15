@@ -10,7 +10,7 @@ import ThirdParties from "./pages/ThirdParties";
 import RoadmapPage from "./pages/Roadmap";
 import Metrics from "./pages/Metrics";
 import BoardPack from "./pages/BoardPack";
-import SignOffs from "./pages/SignOffs";
+import Reaffirmations from "./pages/Reaffirmations";
 import RiskRegister from "./pages/RiskRegister";
 import ApplicationDetail from "./pages/ApplicationDetail";
 import Catalogue from "./pages/Catalogue";
@@ -27,7 +27,7 @@ import Evidence from "./pages/Evidence";
 import Audit from "./pages/Audit";
 import SettingsPage from "./pages/Settings";
 import { get, shortType, fmtDate, labelFor } from "./api";
-import { useMedia, RLink } from "./components";
+import { useMedia, RLink, artefactLink } from "./components";
 import { AuthProvider, AccountPanel, SignIn, useAuth, useCan, PersonaSwitcher } from "./auth";
 
 type Item = { to: string; label: string; icon: React.ComponentType; end?: boolean };
@@ -49,7 +49,7 @@ const GROUPS: { title: string; icon: React.ComponentType; items: Item[] }[] = [
     { to: "/reviews", label: "Reviews", icon: Task },
     { to: "/boards", label: "Boards", icon: Group },
     { to: "/sessions", label: "Board Sessions", icon: Calendar },
-    { to: "/sign-offs", label: "Sign-offs", icon: Stamp },
+    { to: "/reaffirmations", label: "Reaffirmations", icon: Stamp },
   ] },
   { title: "Evidence", icon: Compare, items: [
     { to: "/conformance", label: "Conformance", icon: Compare },
@@ -169,7 +169,8 @@ function Shell() {
             <Route path="/roadmap" element={<RoadmapPage />} />
             <Route path="/metrics" element={<Metrics />} />
             <Route path="/board-packs/:hash" element={<BoardPack />} />
-            <Route path="/sign-offs" element={<SignOffs />} />
+            <Route path="/reaffirmations" element={<Reaffirmations />} />
+            <Route path="/sign-offs" element={<Navigate to="/reaffirmations" replace />} />
             <Route path="/risks" element={<RiskRegister />} />
             <Route path="/governance" element={<Catalogue />} />
             {/* The catalogue used to be /standards; deep links (?open=, ?q=) keep working. */}
@@ -205,7 +206,7 @@ function HelpPanel() {
         <dt>Model</dt><dd>What was collected and inferred: applications, their resources and criticality, the business services that depend on them, and the planned changes fed from the delivery backlog.</dd>
         <dt>Overview</dt><dd>Your work first: positions, declarations and sessions waiting on you, then the governance pipeline and the state of the estate.</dd>
         <dt>Governance</dt><dd>What people decided: the catalogue of standards, principles, patterns and policies, architecture decisions and the roadmap of how far the estate has realised them, reviews of all of them, the boards that approve them and the sessions they sit in.</dd>
-        <dt>Sign-offs</dt><dd>Every adopted catalogue item and accepted decision has a next review date; the chair of the board that owns it reaffirms it or asks for a revision.</dd>
+        <dt>Reaffirmations</dt><dd>Every adopted catalogue item and accepted decision has a reaffirm-by date: the chair of the board that owns it states it still holds, or that it needs revising. It never approves anything — approval is the board's review.</dd>
         <dt>Board Sessions</dt><dd>A board sits in sessions: decision makers record a position for each area of responsibility they own, or delegate their seat for the sitting, and the chair declares the outcome those positions allow.</dd>
         <dt>Evidence</dt><dd>Where the two meet: conformance findings and drift, governance metrics and the signed board packs prepared from them, imported assessments from Defender for Cloud and Azure Policy, and the audit log.</dd>
         <dt>Risk</dt><dd>Registers derived from the model: the legacy register of components past or near their vendor's end of support and the yearly legacy assessments that cover them, and the third parties the estate relies on — concentration on designated critical third parties and the exit plan for each critical reliance — and the risk register with the architecture debt derived from the records.</dd>
@@ -218,7 +219,8 @@ function HelpPanel() {
 type Hit = { to: string; text: string };
 /**
  * The header's notification feed: one row per thing /me/work says is assigned to this person — positions and
- * declarations awaited, assessments and conditions with due dates, circulations, resubmissions. The badge counts
+ * declarations awaited, assessments and conditions with due dates, circulations, resubmissions, reaffirmations due
+ * (linked to the record itself, where the chair reaffirms it). The badge counts
  * what is assigned (not "unread"); rows new since the panel was last opened carry a New tag (a per-viewer
  * convenience in localStorage, nothing more).
  */
@@ -233,7 +235,7 @@ function workItems(w: any): { key: string; to: string; label: string; text: stri
   for (const x of w.conditions || []) out.push({ key: `cnd:${x.id}`, to: `/reviews/${rv(x).id}`, label: "Condition you own", text: `${x.text ? `${String(x.text).slice(0, 80)} · ` : ""}${rv(x).code}`, detail: x.due_at ? `due ${fmtDate(x.due_at)}` : undefined });
   for (const x of w.circulations || []) out.push({ key: `cir:${x.id || rv(x).id}`, to: `/reviews/${rv(x).id}`, label: "Position due by circulation", text: `${rv(x).code} · ${rv(x).title}`, detail: x.due_at || x.circulation_due ? `due ${fmtDate(x.due_at || x.circulation_due)}` : undefined });
   for (const x of w.resubmit || []) out.push({ key: `rsb:${rv(x).id}`, to: `/reviews/${rv(x).id}`, label: "Changes requested on your review", text: `${rv(x).code} · ${rv(x).title}` });
-  for (const x of w.sign_offs || []) out.push({ key: `sgn:${x.subject?.id}:${x.due}`, to: "/sign-offs", label: x.status === "overdue" ? "Sign-off overdue" : "Sign-off due", text: `${x.subject?.code} · ${x.subject?.title}`, detail: `due ${fmtDate(x.due)}` });
+  for (const x of w.sign_offs || []) out.push({ key: `sgn:${x.subject?.id}:${x.due}`, to: x.subject?.kind === "decision" ? `/decisions/${x.subject.id}` : artefactLink(x.subject?.id), label: x.status === "overdue" ? "Reaffirmation overdue" : "Reaffirmation due", text: `${x.subject?.code} · ${x.subject?.title}`, detail: `due ${fmtDate(x.due)}` });
   return out;
 }
 const SEEN_KEY = "ag-notif-seen";
@@ -247,7 +249,7 @@ function NotificationsPanel({ items }: { items: { key: string; to: string; label
   return (
     <div className="ag-panel-body">
       <h3>Notifications</h3>
-      <p className="ag-muted ag-label ag-mb-03">Everything assigned to you right now — positions, declarations, assessments, conditions and resubmissions. The same queues live on the Overview.</p>
+      <p className="ag-muted ag-label ag-mb-03">Everything assigned to you right now — positions, declarations, assessments, conditions, resubmissions and reaffirmations. The same queues live on the Overview.</p>
       {items.length === 0 ? <p className="ag-muted ag-body">Nothing is assigned to you.</p> : (
         <ContainedList label={`Assigned to you (${items.length})`} kind="on-page" size="sm">
           {items.map((i) => (

@@ -7,7 +7,7 @@ import { PageIntro, useLoad, useAiFeatures, AboutTip, VerificationTag, LoadError
 import { Gated } from "../auth";
 
 // A log is chronological: the date sits beside the id, and rows arrive newest first (sortable as ever).
-const headers = [{ key: "code", header: "Code" }, { key: "decided_at", header: "Decided" }, { key: "title", header: "Decision" }, { key: "topic", header: "Topic" }, { key: "applications", header: "Applications" }, { key: "status", header: "Status" }, { key: "review", header: "Review" }, { key: "verification", header: "Verification" }];
+const headers = [{ key: "code", header: "Code" }, { key: "decided_at", header: "Decided" }, { key: "title", header: "Decision" }, { key: "topic", header: "Topic" }, { key: "applications", header: "Applications" }, { key: "status", header: "Status" }, { key: "reaffirm_by", header: "Reaffirm By" }, { key: "review", header: "Review" }, { key: "verification", header: "Verification" }];
 /** `links.depends_on` / `links.blocks` may arrive as counts or as lists. */
 const n = (x: any) => (Array.isArray(x) ? x.length : typeof x === "number" ? x : 0);
 const TOPICS = ["general", "hosting", "data-store", "integration", "ai-system", "security", "identity", "resilience"];
@@ -88,7 +88,7 @@ export default function Decisions() {
   if (err || appsErr) return <LoadError what="decisions" err={(err || appsErr)!} onRetry={reload} />;
   if (!list || !apps) return <DataTableSkeleton headers={headers} rowCount={6} showHeader={false} showToolbar />;
   const log = [...list].sort((a, b) => String(b.decided_at || b.created_at || "").localeCompare(String(a.decided_at || a.created_at || "")));
-  const rows = log.map((d) => ({ id: d.id, code: d.code, title: d.title, topic: labelFor("topic", d.topic), applications: d.applications.map((a: any) => a.name).join(", "), status: d.status, review: d.review?.code || "", decided_at: d.decided_at || "", verification: d.verification }));
+  const rows = log.map((d) => ({ id: d.id, code: d.code, title: d.title, topic: labelFor("topic", d.topic), applications: d.applications.map((a: any) => a.name).join(", "), status: d.status, reaffirm_by: d.reaffirmation?.due || "", review: d.review?.code || "", decided_at: d.decided_at || "", verification: d.verification }));
   return (
     <>
       <PageIntro title="Decision Log" lead="Architecture decision records: what was decided, the options considered, and whether the estate still conforms."
@@ -116,6 +116,8 @@ export default function Decisions() {
                   {/* Multi-word application names wrap: a separator between links, or the cell reads as one run of words. */}
                   <TableCell><div className="ag-row tight">{d.applications.length ? d.applications.map((a: any, i: number) => <React.Fragment key={a.id}>{i > 0 && <span className="ag-muted">·</span>}<RLink to={`/applications/${a.id}`}>{a.name}</RLink></React.Fragment>) : <span className="ag-muted">All applications</span>}</div></TableCell>
                   <TableCell><StatusTag kind="decision" value={d.status} /></TableCell>
+                  {/* Only an accepted decision is reaffirmed; the date shows alone while in date, with its status once due. */}
+                  <TableCell>{d.reaffirmation ? <>{fmtDate(d.reaffirmation.due)}{(d.reaffirmation.status !== "current" || d.reaffirmation.revision_needed) && <div className="ag-row tight">{d.reaffirmation.status !== "current" && <StatusTag kind="signoff_status" value={d.reaffirmation.status} />}{d.reaffirmation.revision_needed && <StatusTag kind="signoff_outcome" value="revision_needed" />}</div>}</> : <span className="ag-muted">—</span>}</TableCell>
                   {/* The review deciding it (if any): code, stage and the session it is listed on. */}
                   <TableCell>{d.review ? <div className="ag-row tight">{d.review.id ? <RLink to={`/reviews/${d.review.id}`}>{d.review.code}</RLink> : <span>{d.review.code}</span>}{d.review.stage && <StatusTag kind="stage" value={d.review.stage} size="sm" label={labelFor("stage", d.review.stage)} />}{d.review.session?.code && (d.review.session.id ? <RLink to={`/sessions/${d.review.session.id}`}>{d.review.session.code}</RLink> : <span className="ag-muted ag-label">{d.review.session.code}</span>)}</div> : <span className="ag-muted">—</span>}</TableCell>
                   <TableCell><VerificationTag state={d.verification} origin={d.origin} by={d.verified_by} at={d.verified_at} /></TableCell>
