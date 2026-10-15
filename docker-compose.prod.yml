@@ -1,0 +1,62 @@
+# Self-host production example: one container, one volume, the same image as the managed service.
+#   docker compose -f docker-compose.prod.yml up -d --build
+# Put secrets in an env file (`env_file: .env`) or your orchestrator's secret store, never in this file.
+# Full variable matrix: infra/README.md
+services:
+  archigov:
+    image: archigov:${ARCHIGOV_TAG:-local}
+    build: .
+    restart: unless-stopped
+    ports: ["8080:8080"]
+    volumes: ["archigov-data:/data"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    # env_file: .env
+    environment:
+      SEED_DEMO: "false"                      # a real tenant starts empty; the UI's Get started loads the demo on demand
+      APP_BASE_URL: "https://archigov.example.org"
+      # ---- sign-in (default: local "Acting as" mode; set entra for SSO) ----
+      # AUTH_MODE: entra
+      # ENTRA_TENANT_ID: ""
+      # ENTRA_CLIENT_ID: ""
+      # ENTRA_CLIENT_SECRET: ""              # omit for a public client with PKCE
+      # ---- Azure estate (Reader on the subscriptions; Resource Graph, Defender for Cloud, Azure Policy) ----
+      # AZURE_TENANT_ID: ""
+      # AZURE_CLIENT_ID: ""
+      # AZURE_CLIENT_SECRET: ""
+      # AZURE_SUBSCRIPTIONS: "sub-id-1,sub-id-2"
+      # ---- Azure DevOps feed ----
+      # ADO_ORG: ""
+      # ADO_PROJECT: ""
+      # ADO_PAT: ""                          # or rely on the Entra identity above
+      # ADO_HOOK_SECRET: ""                  # shared secret the service hook presents
+      # ADO_WIQL: ""                         # optional override of the backfill query
+      # ---- AI pre-review (any OpenAI-compatible endpoint; without it the pre-reviewer is deterministic) ----
+      # LLM_BASE_URL: ""
+      # LLM_API_KEY: ""
+      # LLM_MODEL: ""
+      # ---- continuous SQLite replication to S3 / R2 / MinIO ----
+      # LITESTREAM_URL: s3://archigov-backups/prod/app.db
+      # LITESTREAM_ACCESS_KEY_ID: ""
+      # LITESTREAM_SECRET_ACCESS_KEY: ""
+      # AWS_ENDPOINT: https://<account>.r2.cloudflarestorage.com   # or http://minio:9000
+      # AWS_REGION: auto                                            # MinIO: us-east-1
+    # depends_on: [minio]
+
+  # Optional: an S3-compatible replica target on the same host (development / small self-host).
+  # minio:
+  #   image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+  #   command: server /data --console-address ":9001"
+  #   environment:
+  #     MINIO_ROOT_USER: archigov
+  #     MINIO_ROOT_PASSWORD: change-me-please
+  #   volumes: ["minio-data:/data"]
+  #   ports: ["9000:9000", "9001:9001"]
+
+volumes:
+  archigov-data:
+  # minio-data:

@@ -1,0 +1,24 @@
+services:
+  archigov:
+    build: .
+    image: archigov:local
+    ports: ["8080:8080"]
+    volumes: ["archigov-data:/data"]
+    environment:
+      # Optional. Any OpenAI-compatible endpoint; without it the pre-reviewer is deterministic.
+      # LLM_BASE_URL: https://api.cloudflare.com/client/v4/accounts/<account>/ai/v1
+      # LLM_API_KEY: ""
+      # LLM_MODEL: "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+      # Optional. Read-only Azure access for the real collector (Reader on the subscriptions).
+      # AZURE_TENANT_ID: ""
+      # AZURE_CLIENT_ID: ""
+      # AZURE_CLIENT_SECRET: ""
+      # AZURE_SUBSCRIPTIONS: "sub-id-1,sub-id-2"
+      # Optional. Continuous SQLite replication (R2 / S3 / MinIO).
+      # LITESTREAM_URL: s3://bucket/archigov/app.db
+      # LITESTREAM_ACCESS_KEY_ID: ""
+      # LITESTREAM_SECRET_ACCESS_KEY: ""
+      # AWS_ENDPOINT: https://<account>.r2.cloudflarestorage.com
+      SEED_DEMO: "true"
+volumes:
+  archigov-data:

@@ -1,0 +1,378 @@
+// IBM Plex, bundled locally so the container works offline
+@use "@ibm/plex-sans/css/ibm-plex-sans-default.css";
+@use "@ibm/plex-mono/css/ibm-plex-mono-default.css";
+
+// Sass modules can only be configured on first load, and `themes` loads `config`, so configure
+// `config` and `theme` explicitly in dependency order, then load the rest of Carbon unconfigured.
+// 1. No CDN font-face declarations: we ship IBM Plex above.
+@use "@carbon/react/scss/config" with ($css--font-face: false, $font-path: "");
+// 2. Root theme is Gray 10 (content zone); the header applies Gray 100 itself. Setting it at the
+//    root means body, scroll overflow and anything outside <Content> share the same surface.
+@use "@carbon/react/scss/themes";
+@use "@carbon/react/scss/theme" with ($theme: themes.$g10);
+@use "@carbon/colors" as colors;
+@use "@carbon/react";
+@use "@carbon/react/scss/type" as type;
+@use "@carbon/react/scss/spacing" as sp;
+@use "@carbon/react/scss/breakpoint" as bp;
+
+// Emit the Gray 10 tokens on :root explicitly (after Carbon's own root emission, so they win).
+// This is what stops body / overscroll / the area under the rail falling back to the white theme.
+:root { @include theme.theme(themes.$g10); --font-sans: "IBM Plex Sans", system-ui, sans-serif; --font-mono: "IBM Plex Mono", Menlo, monospace; }
+html, body, #root { height: 100%; }
+html, body { background: var(--cds-background); }
+body { font-family: var(--font-sans); color: var(--cds-text-primary); margin: 0; }
+
+// UI shell: fixed 3rem header. At lg and up the side nav is expanded and fixed (Carbon's 16rem), so
+// content is offset by its full width and the nav never overlays a table; below lg it is a rail/overlay.
+.ag-shell { min-height: 100vh; background: var(--cds-background); }
+.ag-content { margin: sp.$spacing-09 0 0 16rem; padding: sp.$spacing-07 sp.$spacing-07 sp.$spacing-10; max-width: 1584px; min-height: calc(100vh - #{sp.$spacing-09}); background: var(--cds-background); }
+// Below lg the nav is a 3rem rail that overlays when expanded; the content clears the collapsed rail so nothing sits under it.
+@include bp.breakpoint-down("lg") { .ag-content { margin-left: 3rem; padding: sp.$spacing-06 sp.$spacing-05 sp.$spacing-09; } }
+
+// Header panels (search, help). Carbon's HeaderPanel supplies the surface, width and its own motion
+// tokens; we only lay out the content inside it.
+.ag-panel-body { height: calc(100vh - #{sp.$spacing-09}); overflow-y: auto; padding: sp.$spacing-05; color: var(--cds-text-primary); display: grid; gap: sp.$spacing-05; align-content: start; }
+.ag-panel-body h3 { @include type.type-style("heading-02"); margin: 0; }
+.ag-panel-body p { margin: 0; }
+
+// Page header
+.ag-page-header { margin-bottom: sp.$spacing-06; }
+.ag-page-header h1 { @include type.type-style("heading-04"); margin: sp.$spacing-02 0 sp.$spacing-03; }
+.ag-page-header .ag-subtitle { @include type.type-style("body-01"); color: var(--cds-text-secondary); max-width: 70ch; }
+.ag-crumbs { margin-bottom: sp.$spacing-02; }
+// "About this page": the paragraph that used to be the subtitle, folded into one small accordion under the header.
+.ag-about { max-width: 70ch; margin: calc(-1 * #{sp.$spacing-04}) 0 sp.$spacing-06; }
+.ag-about .ag-body { margin: 0; }
+.ag-about .ag-kv { margin-top: sp.$spacing-03; }
+
+// Layout helpers (all gaps on the 2px/8px scale)
+.ag-row { display: flex; gap: sp.$spacing-05; align-items: center; flex-wrap: wrap; }
+.ag-row.between { justify-content: space-between; }
+.ag-row.snug { gap: sp.$spacing-03; }
+.ag-row.tight { gap: sp.$spacing-02; }
+.ag-row.end { align-items: flex-end; }
+.ag-stack { display: grid; gap: sp.$spacing-05; }
+.ag-stack.tight { gap: sp.$spacing-02; }
+.ag-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: sp.$spacing-07; }
+@include bp.breakpoint-down("lg") { .ag-grid-2 { grid-template-columns: 1fr; } }
+// A grid column may shrink below its content's natural width (a native select sizes itself to its longest option,
+// which on a phone is wider than the screen); the content then wraps or scrolls inside the column instead of the page.
+.ag-grid-2 > *, .ag-grid-agenda > * { min-width: 0; }
+.ag-mt-02 { margin-top: sp.$spacing-02; }
+.ag-mt-03 { margin-top: sp.$spacing-03; }
+.ag-mt-05 { margin-top: sp.$spacing-05; }
+.ag-mt-06 { margin-top: sp.$spacing-06; }
+.ag-mt-07 { margin-top: sp.$spacing-07; }
+.ag-mb-03 { margin-bottom: sp.$spacing-03; }
+.ag-mb-05 { margin-bottom: sp.$spacing-05; }
+.ag-mb-07 { margin-bottom: sp.$spacing-07; }
+.ag-wrap { max-width: 66ch; }
+
+// Overview stat tiles (ClickableTile supplies surface, padding, hover and focus)
+.ag-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: sp.$spacing-01; margin-bottom: sp.$spacing-07; }
+@include bp.breakpoint-down("md") { .ag-tiles { grid-template-columns: 1fr 1fr; } }
+@include bp.breakpoint-down("sm") { .ag-tiles { grid-template-columns: 1fr; } }
+
+// My work (Overview): one contained list per queue, as many across as fit; each row is one line that wraps on a phone.
+.ag-work { display: grid; grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr)); gap: sp.$spacing-05 sp.$spacing-07; margin-bottom: sp.$spacing-07; }
+@include bp.breakpoint-down("md") { .ag-work { grid-template-columns: 1fr; } }
+.ag-work > * { min-width: 0; }
+.ag-work-row { display: flex; flex-wrap: wrap; gap: sp.$spacing-02 sp.$spacing-03; align-items: center; @include type.type-style("body-compact-01"); }
+.ag-work-row .ag-label { white-space: normal; }
+.ag-work-head { display: inline-flex; align-items: center; gap: sp.$spacing-03; }
+// Governance pipeline: stages as a tag row, boards as a small table, the rest as definitions.
+.ag-pipeline { display: grid; grid-template-columns: 1fr 1fr; gap: sp.$spacing-05 sp.$spacing-07; }
+@include bp.breakpoint-down("lg") { .ag-pipeline { grid-template-columns: 1fr; } }
+.ag-pipeline > * { min-width: 0; }
+
+// Get started (first run): three numbered steps, each a tile with its action pinned to the bottom
+.ag-start { display: grid; grid-template-columns: repeat(3, 1fr); gap: sp.$spacing-05; }
+@include bp.breakpoint-down("lg") { .ag-start { grid-template-columns: 1fr; } }
+.ag-start-tile { display: flex; flex-direction: column; gap: sp.$spacing-04; height: 100%; }
+.ag-start-tile h3 { @include type.type-style("heading-03"); margin: 0; }
+.ag-start-tile > :last-child { margin-top: auto; }
+
+// Guiding empty state: says what the list is for and offers the next action
+.ag-empty-state { max-width: 72ch; }
+.ag-empty-title { @include type.type-style("heading-02"); margin: 0 0 sp.$spacing-03; }
+.ag-tile { height: 100%; display: flex; flex-direction: column; justify-content: space-between; gap: sp.$spacing-03; }
+.ag-tile .label { @include type.type-style("label-01"); color: var(--cds-text-secondary); }
+.ag-tile .value { @include type.type-style("heading-05"); color: var(--cds-text-primary); }
+
+// Sections
+.ag-section { margin-bottom: sp.$spacing-07; }
+// A second h2 inside a section gets its own top gap; the first sits flush with the section.
+.ag-section h2 { @include type.type-style("heading-03"); margin: sp.$spacing-07 0 sp.$spacing-05; }
+.ag-section h2:first-child { margin-top: 0; }
+.ag-section h3 { @include type.type-style("heading-02"); margin: sp.$spacing-06 0 sp.$spacing-03; }
+
+// The review page's blocks: a facts strip under the header, a column label over each block, and the waiting-on line.
+.ag-facts { display: flex; flex-wrap: wrap; gap: sp.$spacing-02 sp.$spacing-07; margin: 0 0 sp.$spacing-06; @include type.type-style("body-compact-01"); }
+.ag-facts > div { display: flex; gap: sp.$spacing-03; min-width: 0; }
+.ag-facts dt { color: var(--cds-text-secondary); white-space: nowrap; }
+.ag-facts dd { margin: 0; }
+.ag-colhead { @include type.type-style("label-01"); text-transform: uppercase; letter-spacing: 0.32px; color: var(--cds-text-secondary); margin: 0 0 sp.$spacing-05; }
+.ag-waiting { @include type.type-style("body-compact-01"); border-left: 3px solid var(--cds-border-interactive); padding-left: sp.$spacing-04; margin: 0 0 sp.$spacing-07; }
+// A written result opened inside a table stays at table scale: its markdown headings read as field labels, not page sections.
+.ag-subrow .ag-md { @include type.type-style("body-compact-01"); }
+.ag-subrow .ag-md h1, .ag-subrow .ag-md h2, .ag-subrow .ag-md h3 { @include type.type-style("heading-compact-01"); margin: sp.$spacing-04 0 sp.$spacing-01; }
+.ag-subrow .ag-md h1:first-child, .ag-subrow .ag-md h2:first-child, .ag-subrow .ag-md h3:first-child { margin-top: 0; }
+.ag-subrow .ag-md p { margin: 0 0 sp.$spacing-03; }
+
+// Text
+.ag-kv { display: grid; grid-template-columns: max-content 1fr; gap: sp.$spacing-03 sp.$spacing-06; @include type.type-style("body-compact-01"); }
+.ag-kv dt { color: var(--cds-text-secondary); }
+.ag-kv dd { margin: 0; }
+.ag-mono { @include type.type-style("code-01"); word-break: break-all; }
+// .ag-mono breaks anywhere so long resource ids wrap; short tokens (tag:app, ADR-0006) must not.
+.ag-nowrap { white-space: nowrap; word-break: normal; }
+.ag-evidence { display: flex; flex-direction: column; gap: sp.$spacing-02; align-items: flex-start; max-width: 40ch; }
+.ag-muted { color: var(--cds-text-secondary); }
+.ag-label { @include type.type-style("label-01"); }
+.ag-body { @include type.type-style("body-compact-01"); }
+.ag-strong { font-weight: 600; }
+.ag-md { @include type.type-style("body-01"); max-width: 80ch; }
+.ag-md h2 { @include type.type-style("heading-02"); margin: sp.$spacing-06 0 sp.$spacing-03; }
+.ag-md h3 { @include type.type-style("heading-01"); margin: sp.$spacing-05 0 sp.$spacing-02; }
+.ag-md code { @include type.type-style("code-01"); }
+.ag-mono-field textarea { @include type.type-style("code-01"); }
+
+// Timeline
+.ag-timeline { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--cds-border-subtle-01); }
+.ag-timeline li { position: relative; padding: 0 0 sp.$spacing-06 sp.$spacing-06; }
+.ag-timeline li::before { content: ""; position: absolute; left: calc(-1 * (#{sp.$spacing-03} / 2) - 0.5px); top: sp.$spacing-02; width: sp.$spacing-03; height: sp.$spacing-03; background: var(--cds-interactive); }
+.ag-timeline li.ai::before { background: var(--cds-support-info); }
+.ag-timeline .meta { @include type.type-style("label-01"); color: var(--cds-text-secondary); margin-bottom: sp.$spacing-02; }
+.ag-prereview { background: var(--cds-layer-01); padding: sp.$spacing-04 sp.$spacing-05; margin-top: sp.$spacing-02; }
+
+// Findings / list items
+.ag-finding { border-top: 1px solid var(--cds-border-subtle-01); padding: sp.$spacing-04 0; }
+.ag-finding .title { @include type.type-style("heading-01"); }
+.ag-finding .detail { @include type.type-style("body-compact-01"); margin: sp.$spacing-02 0; }
+.ag-cites { display: flex; gap: sp.$spacing-04; flex-wrap: wrap; }
+.ag-cite { @include type.type-style("label-01"); }
+.ag-suggest { list-style: none; margin: sp.$spacing-03 0 0; padding: 0; display: grid; gap: sp.$spacing-02; }
+.ag-suggest li { display: flex; justify-content: space-between; align-items: center; gap: sp.$spacing-03; }
+
+// Forms
+.ag-form { display: grid; gap: sp.$spacing-05; max-width: 720px; }
+.ag-condition { display: grid; grid-template-columns: auto minmax(16rem, 2fr) 1fr 1fr; gap: sp.$spacing-05; align-items: end; margin-top: sp.$spacing-03; }
+@include bp.breakpoint-down("md") { .ag-condition { grid-template-columns: 1fr; } }
+.ag-notice { margin-bottom: sp.$spacing-05; }
+
+.ag-empty { color: var(--cds-text-secondary); }
+
+// Verification coverage: a static meter. Carbon's ProgressBar is a task indicator (its finished state always
+// renders a full bar with a check), so the measure gets a plain track + fill on semantic tokens instead.
+.ag-meter { display: grid; gap: sp.$spacing-02; }
+.ag-meter-track { block-size: 4px; background: var(--cds-layer-accent-01); }
+.ag-meter-fill { block-size: 100%; background: var(--cds-interactive); }
+// Row actions wrap onto further lines rather than widening the table past the viewport; each button keeps its label intact.
+.ag-actions { display: flex; align-items: center; flex-wrap: wrap; gap: sp.$spacing-02; }
+
+// Filter rows: each control keeps its natural width (Carbon form items otherwise flex to fill the row and
+// squeeze each other until a select's value clips), the row wraps as a group, baselines align.
+.ag-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: sp.$spacing-03 sp.$spacing-06; }
+.ag-filters > * { flex: 0 0 auto; max-width: 100%; }
+.ag-filter-search { width: 20rem; }
+// Inside a table toolbar (fixed 3rem height) the selects sit in one row at natural width and never wrap.
+.ag-toolbar-filters { display: flex; flex: 0 0 auto; flex-wrap: nowrap; align-items: center; gap: sp.$spacing-05; padding-inline-start: sp.$spacing-03; }
+.ag-toolbar-filters > * { flex: 0 0 auto; }
+
+// Control references: the list wraps between references; a reference longer than the column wraps at a
+// space (never mid-word) rather than forcing the table wider than the page.
+.ag-refs { display: flex; flex-wrap: wrap; gap: sp.$spacing-02 sp.$spacing-04; @include type.type-style("label-01"); }
+.ag-refs > * { min-width: 0; }
+// The references column needs real width or table auto-layout squeezes it to one word per line.
+.ag-col-refs { min-width: 14rem; }
+.ag-col-review { min-width: 16rem; }
+// The catalogue's Item column takes twice its old width so a title reads on one or two lines, not five; the code keeps its kind tag beside it.
+.ag-col-item { min-width: 22rem; }
+.ag-col-code { min-width: 9.5rem; }
+// A control-reference list cut to three with "+n": the rest sits in the title attribute.
+.ag-more { @include type.type-style("label-01"); color: var(--cds-text-secondary); cursor: default; }
+// Audit details as key: value chips, with the raw JSON one click away.
+.ag-chips { display: flex; flex-wrap: wrap; gap: sp.$spacing-02; align-items: center; }
+.ag-chips .cds--tag { margin: 0; max-width: 24rem; }
+// A finding list folded under an area row on the review page.
+.ag-area-findings { margin: sp.$spacing-02 0 0 0; padding: 0; list-style: none; display: grid; gap: sp.$spacing-02; }
+.ag-area-findings li { display: flex; flex-wrap: wrap; gap: sp.$spacing-02 sp.$spacing-03; align-items: center; @include type.type-style("body-compact-01"); }
+// Resource ids on the application page: the short path and its copy button on one line.
+.ag-id { display: inline-flex; align-items: center; gap: sp.$spacing-01; max-width: 100%; }
+.ag-id .cds--copy-btn { inline-size: 1.5rem; block-size: 1.5rem; min-inline-size: 1.5rem; }
+
+// Narrow containers (header panels): definitions stack instead of sitting in two cramped columns.
+.ag-kv.stacked { grid-template-columns: 1fr; gap: sp.$spacing-02; }
+.ag-kv.stacked dt { margin-top: sp.$spacing-03; }
+.ag-kv.stacked dt:first-child { margin-top: 0; }
+
+// Sign-in (Entra mode, or while /auth/me loads): one centred card on the g10 surface.
+.ag-signin { min-height: 100vh; display: grid; place-items: center; padding: sp.$spacing-07; }
+.ag-signin-card { max-width: 34rem; display: grid; gap: sp.$spacing-05; }
+.ag-signin-card h1 { @include type.type-style("heading-05"); margin: 0; }
+// "Not allowed" toasts sit under the header, above content, below modals.
+.ag-toasts { position: fixed; top: 3.5rem; right: sp.$spacing-05; z-index: 8000; }
+.ag-gated { display: inline-block; }
+
+// Charts: each chart is a tile; the muted values line under it is the direct-label layer, and the chart's
+// own toolbar keeps the table view one click away.
+.ag-charts { display: grid; grid-template-columns: 1fr 1fr; gap: sp.$spacing-05; margin-bottom: sp.$spacing-07; }
+// The at-a-glance row: two gauges and the stage donut, one line on a wide screen.
+.ag-charts-glance { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: sp.$spacing-05; margin-bottom: sp.$spacing-05; }
+@include bp.breakpoint-down("lg") { .ag-charts, .ag-charts-glance { grid-template-columns: 1fr; } }
+.ag-chart { padding: sp.$spacing-05; }
+.ag-values { @include type.type-style("label-01"); color: var(--cds-text-secondary); margin-top: sp.$spacing-03; }
+
+// Settings: one tile per source kind; a result area under each tile's actions.
+.ag-sources { display: grid; grid-template-columns: 1fr 1fr; gap: sp.$spacing-05; }
+@include bp.breakpoint-down("lg") { .ag-sources { grid-template-columns: 1fr; } }
+.ag-source { display: flex; flex-direction: column; gap: sp.$spacing-04; }
+.ag-source h3 { @include type.type-style("heading-02"); margin: 0; }
+.ag-source .ag-env { @include type.type-style("code-01"); }
+
+// Local (dev) mode: the header's View as dropdown — the persona the browser acts as, switchable in one click.
+// The field shows only the name; the menu opens wider (right-anchored) so each user's roles read in full.
+.ag-persona { inline-size: 12rem; align-self: center; margin-inline-end: sp.$spacing-04; }
+.ag-persona .cds--list-box__menu { min-inline-size: 26rem; inset-inline-start: auto; inset-inline-end: 0; }
+// Catalogue kind filter: a ContentSwitcher (a filter, not tabbed content), kept at a readable width.
+.ag-kind-switcher { max-width: 46rem; margin-bottom: sp.$spacing-05; }
+
+// "About this page": an info icon beside the page title; the explanation appears on hover or focus.
+.ag-title-row { display: flex; align-items: center; gap: sp.$spacing-02; }
+.ag-info-btn { display: inline-flex; align-items: center; justify-content: center; inline-size: 2rem; block-size: 2rem; border: none; background: transparent; color: var(--cds-icon-secondary); cursor: pointer; }
+.ag-info-btn:hover { color: var(--cds-icon-primary); background: var(--cds-layer-hover-01); }
+.ag-info-btn:focus-visible { outline: 2px solid var(--cds-focus); outline-offset: -2px; }
+.ag-about-tip .cds--popover-content { max-inline-size: 26rem; }
+
+// Board composition: chair → decision makers → advisory & support as centred tiers on a trunk connector,
+// with per-area ownership beneath. Display only; editing stays in the gated sections below.
+.ag-org { display: grid; justify-items: center; }
+.ag-tier { display: grid; justify-items: center; gap: sp.$spacing-03; }
+.ag-tier-label { @include type.type-style("label-01"); color: var(--cds-text-secondary); text-align: center; }
+.ag-tier-cards { display: flex; flex-wrap: wrap; gap: sp.$spacing-04; justify-content: center; }
+.ag-org-connector { inline-size: 1px; block-size: sp.$spacing-06; background: var(--cds-border-subtle-01); }
+.ag-person { border: 1px solid var(--cds-border-subtle-01); background: var(--cds-layer-01); padding: sp.$spacing-04 sp.$spacing-05; min-inline-size: 13rem; max-inline-size: 20rem; }
+.ag-person.chair { border-block-start: 3px solid var(--cds-interactive); }
+.ag-person.missing { border-style: dashed; color: var(--cds-text-secondary); display: flex; align-items: center; @include type.type-style("body-compact-01"); }
+.ag-coverage-grid { display: flex; flex-wrap: wrap; gap: sp.$spacing-03; }
+.ag-coverage-cell { border: 1px solid var(--cds-border-subtle-01); background: var(--cds-layer-01); padding: sp.$spacing-03 sp.$spacing-04; min-inline-size: 11rem; display: grid; gap: sp.$spacing-02; justify-items: start; }
+.ag-coverage-cell.uncovered { border-color: var(--cds-support-error); }
+
+// A subsection heading with its action on the right (Area ownership · Edit areas, Routing · Edit routing).
+.ag-subhead { display: flex; align-items: center; justify-content: space-between; gap: sp.$spacing-03; margin: sp.$spacing-06 0 sp.$spacing-03; }
+.ag-subhead h3 { margin: 0; }
+
+// Decision flow: a flow diagram in SVG on semantic tokens — layer-01 nodes with square corners, subtle borders,
+// bezier edges with arrowheads; the areas-mode approvals step fans out per decision maker. Scrolls sideways on a phone.
+.ag-diagram { overflow-x: auto; margin-top: sp.$spacing-04; }
+.ag-dg-cap { font-family: var(--font-sans); font-size: 0.75rem; letter-spacing: 0.32px; fill: var(--cds-text-secondary); }
+.ag-dg-edge { fill: none; stroke: var(--cds-border-strong-01); }
+.ag-dg-head { fill: var(--cds-border-strong-01); }
+.ag-dg-node { fill: var(--cds-layer-01); stroke: var(--cds-border-subtle-01); }
+.ag-dg-node.missing { stroke: var(--cds-support-error); stroke-dasharray: 4 3; }
+.ag-dg-accent { fill: var(--cds-interactive); }
+.ag-dg-body { block-size: 100%; padding: sp.$spacing-03 sp.$spacing-04; display: grid; gap: 2px; align-content: start; }
+.ag-dg-title { @include type.type-style("heading-compact-01"); color: var(--cds-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ag-dg-sub { @include type.type-style("label-01"); color: var(--cds-text-secondary); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+
+// ArchiMate design views (Design tab): archimate-renderer draws the notation with the Carbon palette already
+// inside the exchange XML; around it sit the brand book's chart anatomy — toolbar, interactive legend, tooltips —
+// plus the annotation layer. The hit layer is transparent rects over the rendered nodes.
+.ag-am-toolbar { display: flex; }
+.ag-am-stage { display: flex; gap: sp.$spacing-05; align-items: stretch; }
+.ag-am-canvas { flex: 1; min-width: 0; border: 1px solid var(--cds-border-subtle-01); background: var(--cds-layer-02);
+  svg { display: block; inline-size: 100%; block-size: auto; max-block-size: 38rem; cursor: grab; touch-action: none; }
+  svg:active { cursor: grabbing; }
+}
+.ag-am-hit { fill: transparent; stroke: transparent; stroke-width: 2; cursor: pointer;
+  &:hover { stroke: var(--cds-border-strong-01); }
+  &:focus-visible, &.selected { stroke: var(--cds-focus); outline: none; }
+}
+.ag-am-dimmer { fill: var(--cds-layer-02); opacity: 0.7; pointer-events: none; }
+.ag-am-arrow { fill: none; stroke: var(--cds-border-strong-01); stroke-width: 1.2; } // open head: ArchiMate "serving"
+
+// the header bell's count: assigned work (the g100 header needs its own blue, not the content theme's)
+.cds--header__action { position: relative; }
+.ag-notif-badge { position: absolute; top: 5px; right: 5px; min-inline-size: 1rem; block-size: 1rem; padding-inline: 2px; border-radius: 0.5rem;
+  background: #0f62fe; color: #ffffff; font-size: 0.6875rem; line-height: 1rem; text-align: center; font-family: var(--font-sans); }
+.ag-notif-item { display: grid; gap: 2px; padding-block: 4px; text-decoration: none; }
+// an assessment summary (or waived reason) spans the table as its own muted row
+.ag-subrow td { background: var(--cds-layer-01); }
+.ag-am-arrow.sel { stroke: var(--cds-link-primary); stroke-width: 1.6; }
+// the selected element's connections, in and out, carry the emphasis; everything unconnected recedes
+.ag-am-edge-sel { stroke: var(--cds-link-primary); stroke-width: 2; }
+.ag-am-edge-faded { opacity: 0.25; }
+.ag-am-badge { pointer-events: none;
+  circle { fill: var(--cds-link-primary); }
+  text { fill: var(--cds-text-on-color); font-size: 0.6875rem; text-anchor: middle; font-family: var(--font-sans); }
+}
+.ag-am-aside { inline-size: 18rem; flex: none; background: var(--cds-layer-01); border: 1px solid var(--cds-border-subtle-01); padding: sp.$spacing-05;
+  h4 { @include type.type-style("heading-compact-01"); }
+}
+.ag-am-thread { display: grid; gap: sp.$spacing-03; margin-block: sp.$spacing-04; }
+.ag-am-add { display: grid; gap: sp.$spacing-03; justify-items: start; margin-block-start: sp.$spacing-04; }
+.ag-am-legend { display: flex; flex-wrap: wrap; gap: sp.$spacing-05; margin-block-start: sp.$spacing-03; }
+.ag-am-legend-item { display: inline-flex; align-items: center; gap: sp.$spacing-03; border: none; background: none; padding: 2px 4px; cursor: pointer;
+  @include type.type-style("label-01"); color: var(--cds-text-secondary);
+  &:hover:not(.static) { color: var(--cds-text-primary); }
+  &:focus-visible { outline: 2px solid var(--cds-focus); outline-offset: 1px; }
+  &.selected { color: var(--cds-text-primary); font-weight: 600; }
+  &.static { cursor: default; }
+}
+// swatch fills come from @carbon/colors (the same palette the exporter embeds in the XML), never inline styles
+.ag-am-swatch { inline-size: 0.75rem; block-size: 0.75rem; border: 1px solid var(--cds-border-subtle-01); display: inline-block;
+  &.application { background-color: colors.$blue-20; }
+  &.technology { background-color: colors.$green-20; }
+  &.context { background-color: colors.$gray-10; }
+}
+.ag-am-anns { margin-block-start: sp.$spacing-05;
+  h4 { @include type.type-style("heading-compact-01"); }
+}
+.ag-am-ann { display: flex; justify-content: space-between; gap: sp.$spacing-05; align-items: center; padding-block: sp.$spacing-02; border-block-end: 1px solid var(--cds-border-subtle-01);
+  .ag-am-ann-body { display: flex; gap: sp.$spacing-03; align-items: baseline; min-inline-size: 0; }
+}
+.ag-am-jump { border: none; background: none; padding: 0; cursor: pointer; color: var(--cds-link-primary); @include type.type-style("label-01");
+  &:hover { text-decoration: underline; } &:focus-visible { outline: 2px solid var(--cds-focus); }
+}
+
+// Governance round: review workflow steps, policy editors, catalogue kind filter, nav badge
+.ag-steps { margin: sp.$spacing-03 0 sp.$spacing-07; padding-bottom: sp.$spacing-05; } // room for the step captions under the ProgressIndicator
+// Carbon's steps keep a minimum width each; on a phone the indicator scrolls sideways rather than widening the page.
+@include bp.breakpoint-down("md") { .ag-steps { overflow-x: auto; } }
+.ag-policy-step { display: grid; grid-template-columns: minmax(10rem, 2fr) minmax(8rem, 1fr) minmax(7rem, 0.8fr) minmax(6rem, 0.6fr) minmax(12rem, 2fr) auto; gap: sp.$spacing-04; align-items: end; }
+@include bp.breakpoint-down("md") { .ag-policy-step { grid-template-columns: 1fr; } }
+.ag-routing-row { display: grid; grid-template-columns: minmax(9rem, 1fr) minmax(9rem, 1fr) minmax(9rem, 1fr) minmax(5rem, 0.5fr) auto; gap: sp.$spacing-04; align-items: end; }
+@include bp.breakpoint-down("md") { .ag-routing-row { grid-template-columns: 1fr; } }
+.ag-nav-badge { margin-left: sp.$spacing-03; }
+.ag-kind-blurb { max-width: 70ch; }
+
+// Board sessions. The agenda is a seven-column table, so it takes the full width and the side panels (attendance,
+// quorum, notes) sit beneath it in two columns; only at Carbon's max breakpoint is there room for the agenda and the
+// panels side by side (3:2). Below lg everything is one column. The minutes span the panel columns; the minutes hash
+// is a mono line with its copy button.
+.ag-grid-agenda { display: grid; grid-template-columns: 1fr; gap: sp.$spacing-07; }
+.ag-grid-agenda > .ag-side { display: grid; grid-template-columns: 1fr 1fr; gap: 0 sp.$spacing-07; align-content: start; }
+.ag-grid-agenda > .ag-side > .ag-span { grid-column: 1 / -1; }
+.ag-grid-agenda > .ag-side > * { min-width: 0; }
+// the attendance status select must show its whole word, not "A…"
+.ag-col-status { min-width: 10.5rem; }
+@include bp.breakpoint-down("lg") { .ag-grid-agenda > .ag-side { grid-template-columns: 1fr; } }
+@include bp.breakpoint("max") { .ag-grid-agenda { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); } .ag-grid-agenda > .ag-side { grid-template-columns: 1fr; } }
+.ag-col-areas { min-width: 10rem; }
+.ag-hash { display: flex; align-items: center; gap: sp.$spacing-03; flex-wrap: wrap; }
+
+// Motion. Nothing here defines a transition or animation of its own: everything that moves is a Carbon
+// component running on Carbon's motion tokens (productive easings, fast-01..moderate-02 durations).
+// The brand book requires motion to be off under reduced motion, which Carbon does not do globally,
+// so it is enforced here for the whole document.
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; scroll-behavior: auto !important; }
+}
+
+// Settings · AI: one bordered block per provider, key and base URL side by side.
+.ag-ai-provider { border: 1px solid var(--cds-border-subtle-01); padding: sp.$spacing-05; background: var(--cds-layer-01); }
+.ag-ai-provider .ag-row.end { margin-top: sp.$spacing-04; }
+
+// The AI review of a decision argument: a bordered advisory block inside the form, never part of the record.
+.ag-ai-review { border: 1px solid var(--cds-border-subtle-01); border-left: 3px solid var(--cds-support-info); padding: sp.$spacing-05; background: var(--cds-layer-01); display: grid; gap: sp.$spacing-04; }
