@@ -17,6 +17,8 @@ All notable changes to Archigov are documented here. The format follows [Keep a 
 
 ### Changed
 
+- The decision form fills its modal: fields on the left, an AI Review panel on the right with the Review Argument button at its top — greyed with an explanatory tooltip when the admin has not enabled the feature.
+
 - Public-repo scope: internal strategy documents and the managed-service front-door scaffold moved to a private repository. The public repo is everything needed to self-host — including the Litestream replication example and the production compose file — and nothing else.
 - The review page is organised into logical blocks: a facts strip under the title (for / board / submitted by / declared by), the workflow strip followed by a **waiting-on line** that names exactly who holds the item up (missing positions by owner — "you" marked — unresolved conditionals, open assessments), a **Submission** column (summary, design, requirements) with the **Activity** timeline beneath it, beside a **Board Record** column (areas & positions or approvals, assessments, conditions, dependencies). Superseded pre-reviews fold to their recommendation line.
 - One action language across the page, per Carbon's button-emphasis guidance: page-level actions in the header, section-header actions tertiary (Request Assessment, Edit Areas, Create Dependent Decision), every in-row table action a ghost button (Record Position, Record Result, View Result, Mark Met, Resolve, Waive).
