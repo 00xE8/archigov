@@ -90,7 +90,7 @@ function Shell() {
   return (
     <div className="ag-shell">
       <Theme theme="g100">
-        <Header aria-label="Archigov">
+        <Header aria-label="Archigov" className="ag-header-glow">
           <SkipToContent />
           <HeaderMenuButton aria-label={open ? "Close menu" : "Open menu"} onClick={() => setOpen((o) => !o)} isActive={open} />
           <HeaderName href="/" prefix="">Archigov</HeaderName>

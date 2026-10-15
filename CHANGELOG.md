@@ -18,6 +18,8 @@ All notable changes to Archigov are documented here. The format follows [Keep a 
 
 ### Changed
 
+- The app carries the landing page's expressive style: every page opens on a dark hero band with its own animated constellation, glow and a gradient title; content enters in a stagger, Overview numbers count up, section headings and tiles gain gradient accents, and the header bar has a gradient edge. All motion stops under prefers-reduced-motion.
+
 - The decision form fills its modal: fields on the left, an AI Review panel on the right with the Review Argument button at its top — greyed with an explanatory tooltip when the admin has not enabled the feature.
 
 - Public-repo scope: internal strategy documents and the managed-service front-door scaffold moved to a private repository. The public repo is everything needed to self-host — including the Litestream replication example and the production compose file — and nothing else.
