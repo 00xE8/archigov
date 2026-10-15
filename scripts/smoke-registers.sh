@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Archigov registers smoke test — criticality classification (derived from tags, set by a person with a reason, reset,
 # verified, read by rules as app.*), the business-service dependency map and the DORA register's criticality column;
-# the legacy register (lifecycle states, a person's version correction, the yearly legacy assessment), end to end
+# the legacy register (lifecycle states, a person's version correction, the yearly legacy assessment); third parties
+# (providers, concentration on a designated critical third party, exit plans into the DORA register), end to end
 # through the API of a LOCAL-mode seeded instance.
 #
 #   scripts/smoke-registers.sh [base_url]   default http://localhost:8080
@@ -9,7 +10,7 @@
 # Run after smoke-work.sh on the same instance (before smoke-catalogue.sh). The default x-user ("smoke-registers") is
 # a platform admin ONLY and must be refused every classification change; authors act as the seeded cast. MUTATES the
 # tenant (a classification set and reset, a verification, a draft standard, a version set and reset, a legacy
-# assessment); reset with
+# assessment, an exit plan); reset with
 # `docker compose down -v && docker compose up -d`.
 set -u
 BASE="${1:-http://localhost:8080}"
@@ -155,6 +156,24 @@ def h():
     s, au = get(f"/audit?entity=applications&entity_id={pid}&action=legacy:assess"); assert au["rows"] and au["rows"][0]["actor"] == "s.patel", au["rows"][:1]
     return "a version set by an author (403 platform admin/auditor) and reset (409 on repeat); Pharmacy assessed → current, audited; draft 409 while AI is off; refresh is the platform admin's"
 step("h  corrections and the yearly legacy assessment", h)
+
+# ---------- i. third parties ----------
+def i_():
+    s, tp = get("/third-parties", user="a.uditor"); assert s == 200, f"{s} {tp}"
+    ms = next(p for p in tp["providers"] if p["id"] == "microsoft"); assert ms["ctp"]["entity"] == "Microsoft Ireland Operations Limited", ms["ctp"]
+    assert any(k["provider"] == "microsoft" for k in tp["concentration"]), tp["concentration"]
+    assert any(p["id"] == "supplier:ledgerline" for p in tp["providers"]), [p["id"] for p in tp["providers"]]
+    erp = apps()["Finance ERP"]["id"]
+    body = {"provider": "supplier:ledgerline", "result": "satisfactory_with_remarks", "substitutability": "medium_complexity", "tested_at": "2026-09-01", "summary_md": "Move to the vendor's SaaS edition or a rival within two quarters.", "reference": "https://docs.example.org/erp-exit"}
+    s, r = post(f"/applications/{erp}/exit-plans", body); assert s == 403, f"platform admin: {s} {r}"
+    s, r = post(f"/applications/{erp}/exit-plans", {**body, "provider": "aws"}, user="s.patel"); assert s == 400, f"not relied on: {s} {r}"
+    s, r = post(f"/applications/{erp}/exit-plans", body, user="s.patel"); assert s == 200 and next(p for p in r if p["provider"] == "supplier:ledgerline")["exit"]["status"] == "current", f"{s} {r}"
+    mutations.append("Finance ERP exit plan for Ledgerline")
+    s, csv = get("/exports/dora-roi.csv", user="a.uditor", raw=True)
+    assert any(erp in l and "Ledgerline" in l and "Medium complexity in terms of substitutability" in l for l in csv.splitlines()), "the supplier row carries the plan's substitutability"
+    s, r = put("/third-parties/ctp", {"instrument": "x", "entries": []}, user="s.patel"); assert s == 403, f"an author does not edit the designations: {s} {r}"
+    return f"{tp['counts']['critical_on_ctp']} critical application(s) on a designated CTP; Ledgerline exit plan recorded and in the DORA register; designations are the platform admin's"
+step("i  third parties: concentration, exit plans, the DORA register", i_)
 
 passed = sum(1 for _, ok in results if ok); failed = len(results) - passed
 print(f"\n{passed} passed, {failed} failed  ({BASE})")
