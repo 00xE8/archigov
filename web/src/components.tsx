@@ -206,10 +206,10 @@ export function FindingEvidence({ e }: { e: any }) {
  * Carbon tooltip (hover and keyboard focus; `description` → aria-describedby, the button keeps its own name)
  * is safe — anything interactive would need a toggletip instead.
  */
-function AboutTip({ about }: { about: React.ReactNode }) {
+export function AboutTip({ about, label = "About this page" }: { about: React.ReactNode; label?: string }) {
   return (
     <Tooltip align="bottom-left" autoAlign description={about} className="ag-about-tip">
-      <button type="button" className="ag-info-btn" aria-label="About this page"><Information size={20} /></button>
+      <button type="button" className="ag-info-btn" aria-label={label}><Information size={20} /></button>
     </Tooltip>
   );
 }
