@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button, SkeletonText, Table, TableHead, TableRow, TableHeader, TableBody, TableCell, ClickableTile, InlineLoading, InlineNotification, Tile, Tag, ContainedList, ContainedListItem } from "@carbon/react";
 import { Renew, Play, Settings as SettingsIcon, Application, ChartNetwork, Cube, WarningAlt, TaskApproved, Time, Unlocked, DecisionTree, ChangeCatalog } from "@carbon/icons-react";
 import { get, post, fmtDate, fmtDateTime, labelFor } from "../api";
-import { PageIntro, PageHeader, Coverage, CountUp, useLoad, LoadError, RLink, StatusTag, PackImporter, AreaTag, AreaPositionTag, KindTag, useDocTitle } from "../components";
+import { PageIntro, PageHeader, Coverage, CountUp, useLoad, LoadError, RLink, StatusTag, PackImporter, AreaTag, AreaPositionTag, KindTag, useDocTitle, artefactLink } from "../components";
 import { Gated, useCan } from "../auth";
 
 // Carbon Charts is a separate chunk; the dashboard shows skeletons for the chart row until it arrives.
@@ -133,7 +133,7 @@ function MyWork({ w }: { w: any }) {
         {queue("circulations", "Circulations due", circulations, (x) => <>{reviewLink(x.review)}<span className="ag-muted ag-label">positions due {fmtDate(x.circulation_due)}</span>{x.overdue && <StatusTag kind="condition" value="overdue" size="sm" />}{(x.missing || []).length ? <span className="ag-muted ag-label">awaiting {x.missing.join(", ")}</span> : null}{x.mine && <StatusTag kind="position" value="mine" size="sm" label="Your position" />}</>)}
         {queue("resubmit", "Sent back to you", resubmit, (x) => <>{reviewLink(x.review)}<span className="ag-muted ag-label">{x.review?.title}</span><StatusTag kind="stage" value="changes_requested" size="sm" /><span className="ag-muted ag-label">by {x.requested_by}{x.requested_at ? ` · ${fmtDate(x.requested_at)}` : ""}{x.text ? ` · ${x.text}` : ""}</span></>)}
         {queue("changed", "Planned changes · changed after approval", changed, (x) => <><RLink to="/backlog?filter=changed">{x.work_item?.type} {x.work_item?.external_id}</RLink><span>{x.work_item?.title}</span><StatusTag kind="attention" value="changed" size="sm" />{x.review?.id && <span className="ag-muted ag-label">review {reviewLink(x.review)}</span>}</>)}
-        {queue("sign_offs", "Sign-offs due", signOffs, (x) => <><RLink to="/sign-offs">{x.subject?.code}</RLink><span className="ag-muted ag-label">{x.subject?.title}</span><span className="ag-muted ag-label">due {fmtDate(x.due)}</span><StatusTag kind="signoff_status" value={x.status} /></>)}
+        {queue("sign_offs", "Reaffirmations due", signOffs, (x) => <><RLink to={x.subject?.kind === "decision" ? `/decisions/${x.subject.id}` : artefactLink(x.subject?.id)}>{x.subject?.code}</RLink><span className="ag-muted ag-label">{x.subject?.title}</span><span className="ag-muted ag-label">due {fmtDate(x.due)}</span><StatusTag kind="signoff_status" value={x.status} /></>)}
         {queue("no_decision", "Epics without a decision", noDecision, (x) => <><RLink to="/backlog?filter=no_decision">{x.work_item?.type} {x.work_item?.external_id}</RLink><span>{x.work_item?.title}</span>{x.work_item?.application_name && <span className="ag-muted ag-label">{x.work_item.application_name}</span>}<StatusTag kind="attention" value="decision" size="sm" label="No decision" /></>)}
       </div>
     </section>

@@ -4,12 +4,13 @@ import { userName } from "./reviews.js";
 import type { Principal } from "./auth/context.js";
 
 /**
- * Review dates and periodic sign-offs. Every adopted catalogue artefact and every accepted decision has a next review
- * date: its adoption (or decision) plus the cadence for its kind — 12 months for artefacts, 24 for decisions by
- * default — or, once signed off, the date that sign-off set. The chair of the board that owns it (the board its
- * review type routes to) signs it off: reaffirmed (still holds; the clock restarts for a full cadence) or revision
- * needed (with a note; it comes back in three months). Deterministic, no AI: a sign-off is a named person's statement.
- * Due soon = within 30 days; overdue = past the date. A chair's due and overdue sign-offs are in their work queue.
+ * Reaffirmations (the UI's name; the record of one is a sign-off, so routes, table and audit keep that word). Every
+ * adopted catalogue artefact and every accepted decision has a reaffirm-by date: its adoption (or decision) plus the
+ * cadence for its kind — 12 months for artefacts, 24 for decisions by default — or, once signed off, the date that
+ * sign-off set. The chair of the board that owns it (the board its review type routes to) signs it off: reaffirmed
+ * (still holds; the clock restarts for a full cadence) or revision needed (with a note; it comes back in three
+ * months). Deterministic, no AI: a sign-off is a named person's statement. It never approves anything — approval is
+ * the board's review. Due soon = within 30 days; overdue = past the date. A chair's due and overdue ones are their work.
  */
 export const SIGNOFF_OUTCOMES = ["reaffirmed", "revision_needed"] as const;
 export type SubjectKind = "artefact" | "decision";
@@ -20,12 +21,16 @@ const addMonths = (iso: string, n: number) => { const d = new Date(iso); d.setUT
 const err = (status: number, message: string) => Object.assign(new Error(message), { status });
 
 interface Subject { kind: SubjectKind; id: string; code: string; title: string; type: string; since: string; board: any }
+const ARTEFACTS = "SELECT id, code, title, kind, category, adopted_at, created_at FROM standards WHERE lifecycle='adopted'";
+const DECISIONS = "SELECT id, code, title, topic, decided_at, created_at FROM decisions WHERE status='accepted'";
+const artefactSubject = (a: any): Subject => ({ kind: "artefact", id: a.id, code: a.code, title: a.title, type: a.kind || "standard", since: a.adopted_at || a.created_at, board: routeBoard((a.kind || "standard") as ReviewType, a.kind || "standard", a.category) });
+const decisionSubject = (d: any): Subject => ({ kind: "decision", id: d.id, code: d.code, title: d.title, type: "decision", since: d.decided_at || d.created_at, board: routeBoard("decision", null, d.topic) });
 function subjects(): Subject[] {
-  const arts = (db.prepare("SELECT id, code, title, kind, category, adopted_at, created_at FROM standards WHERE lifecycle='adopted' ORDER BY code").all() as any[])
-    .map((a) => ({ kind: "artefact" as const, id: a.id, code: a.code, title: a.title, type: a.kind || "standard", since: a.adopted_at || a.created_at, board: routeBoard((a.kind || "standard") as ReviewType, a.kind || "standard", a.category) }));
-  const decs = (db.prepare("SELECT id, code, title, topic, decided_at, created_at FROM decisions WHERE status='accepted' ORDER BY code").all() as any[])
-    .map((d) => ({ kind: "decision" as const, id: d.id, code: d.code, title: d.title, type: "decision", since: d.decided_at || d.created_at, board: routeBoard("decision", null, d.topic) }));
-  return [...arts, ...decs];
+  return [...(db.prepare(`${ARTEFACTS} ORDER BY code`).all() as any[]).map(artefactSubject), ...(db.prepare(`${DECISIONS} ORDER BY code`).all() as any[]).map(decisionSubject)];
+}
+function subjectOf(kind: SubjectKind, id: string): Subject | null {
+  const row = db.prepare(`${kind === "artefact" ? ARTEFACTS : DECISIONS} AND id=?`).get(id) as any;
+  return row ? (kind === "artefact" ? artefactSubject(row) : decisionSubject(row)) : null;
 }
 const lastOf = (kind: SubjectKind, id: string) => db.prepare("SELECT * FROM sign_offs WHERE subject_kind=? AND subject_id=? ORDER BY signed_at DESC, rowid DESC LIMIT 1").get(kind, id) as any;
 
@@ -47,10 +52,29 @@ export function signOffs(p: Principal | null, opts: { status?: string | null } =
     .sort((a, b) => a.due.localeCompare(b.due) || a.subject.code.localeCompare(b.subject.code));
 }
 
+/**
+ * One record's reaffirmation, for its own page: standing, owning board, whether this principal may sign it off, the
+ * cadence, and every sign-off on it newest first. Null while the record is not adopted (artefact) or accepted (decision).
+ */
+export function reaffirmationOf(p: Principal | null, kind: SubjectKind, id: string) {
+  const s = subjectOf(kind, id); if (!s) return null;
+  const history = (db.prepare("SELECT outcome, note, board_id, signed_by, signed_at, next_due FROM sign_offs WHERE subject_kind=? AND subject_id=? ORDER BY signed_at DESC, rowid DESC").all(kind, id) as any[])
+    .map((r) => ({ ...r, signed_by_name: userName(r.signed_by) }));
+  return { subject: { kind: s.kind, id: s.id, code: s.code, title: s.title, type: s.type, since: s.since }, board: boardSummary(s.board), ...standingOf(s),
+    can_sign: !!p && !!s.board && memberRole(p, s.board.id) === "chair", cadence_months: cadenceMonths(kind), history };
+}
+
+/** The standing of every subject of one kind by id — the Decision Log and the catalogue list show it per row. */
+export const standingsByKind = (kind: SubjectKind) => {
+  const now = nowIso();
+  const of = kind === "artefact" ? artefactSubject : decisionSubject;
+  return new Map((db.prepare(kind === "artefact" ? ARTEFACTS : DECISIONS).all() as any[]).map(of).map((s) => { const { due, status, revision_needed } = standingOf(s, now); return [s.id, { due, status, revision_needed }]; }));
+};
+
 /** Sign one subject off; only the chair of its owning board. Returns the new standing. */
 export function signOff(p: Principal | null, b: { subject_kind: string; subject_id: string; outcome: string; note?: string | null }, actor: string) {
   if (b.subject_kind !== "artefact" && b.subject_kind !== "decision") throw err(400, "subject_kind must be artefact or decision");
-  const s = subjects().find((x) => x.kind === b.subject_kind && x.id === b.subject_id);
+  const s = subjectOf(b.subject_kind, b.subject_id);
   if (!s) throw err(404, b.subject_kind === "artefact" ? "no adopted artefact with that id" : "no accepted decision with that id");
   if (!(SIGNOFF_OUTCOMES as readonly string[]).includes(b.outcome)) throw err(400, `outcome must be one of ${SIGNOFF_OUTCOMES.join(", ")}`);
   if (!p || !s.board || memberRole(p, s.board.id) !== "chair") throw err(403, `only the chair of ${s.board?.code ?? "the owning board"} signs off ${s.code}`);

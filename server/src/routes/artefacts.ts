@@ -6,6 +6,8 @@ import { lastRuleErrors } from "../rules.js";
 import { KINDS, isKind, listArtefacts, kindCounts, artefactById, createArtefact, updateArtefact, retireArtefact, verifyArtefact, preReviewArtefact, dryRunArtefact, importArtefacts, type ArtefactInput } from "../artefacts.js";
 import { importArtefactsCsv, csvTemplate } from "../importers/csv.js";
 import { draftRule, suggestControlReferences } from "../ai.js";
+import { currentPrincipal } from "../auth/context.js";
+import { reaffirmationOf, standingsByKind } from "../signoffs.js";
 
 /**
  * /artefacts — the governance catalogue (standards, principles, patterns, policies) behind one set of routes.
@@ -26,7 +28,9 @@ artefacts.get("/artefacts/kinds", (c) => c.json(kindCounts()));
 artefacts.get("/artefacts", (c) => {
   const kind = c.req.query("kind") || null;
   if (kind && !isKind(kind)) return c.json({ error: `kind must be one of ${KINDS.map((k) => k.kind).join(", ")}` }, 400);
-  return c.json(listArtefacts({ kind, lifecycle: c.req.query("lifecycle") || null, q: c.req.query("q") || null }));
+  // an adopted item carries its reaffirmation standing, so the list can flag the overdue and the ones sent for revision
+  const standing = standingsByKind("artefact");
+  return c.json(listArtefacts({ kind, lifecycle: c.req.query("lifecycle") || null, q: c.req.query("q") || null }).map((a: any) => ({ ...a, reaffirmation: standing.get(a.id) ?? null })));
 });
 artefacts.get("/artefacts/:id/preview", (c) => { try { return c.json(preReviewArtefact(c.req.param("id"))); } catch (e: any) { return fail(c, e); } });
 artefacts.get("/artefacts/:id/dry-run", (c) => { try { return c.json(dryRunArtefact(c.req.param("id"))); } catch (e: any) { return fail(c, e); } });
@@ -34,7 +38,7 @@ artefacts.get("/artefacts/:id", (c) => {
   const a = artefactById(c.req.param("id")); if (!a) return c.json({ error: "not found" }, 404);
   const findings = db.prepare("SELECT f.*, e.name element_name, ap.name application_name FROM findings f LEFT JOIN elements e ON e.id=f.element_id LEFT JOIN elements ap ON ap.id=f.application_id WHERE f.standard_id=? AND f.status<>'resolved'").all(a.id).map(fnd);
   const exceptions = db.prepare("SELECT e.*, ap.name application_name FROM exceptions e LEFT JOIN elements ap ON ap.id=e.application_id WHERE e.standard_id=?").all(a.id);
-  return c.json({ ...a, findings, exceptions, rule_error: lastRuleErrors()[a.code] || null });
+  return c.json({ ...a, findings, exceptions, rule_error: lastRuleErrors()[a.code] || null, reaffirmation: reaffirmationOf(currentPrincipal(), "artefact", a.id) });
 });
 // AI drafting for the editor — generate→verify: the response carries validation and a dry run, a human saves, a board adopts.
 const aiFail = (c: any, e: any) => c.json({ error: String(e.message || e).slice(0, 300) }, /not enabled/i.test(String(e.message)) ? 409 : e.status || 502);

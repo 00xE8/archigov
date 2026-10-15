@@ -4,9 +4,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-// Review dates and periodic sign-offs: every adopted artefact and accepted decision has a next review date from its
-// adoption and its kind's cadence; the chair of its owning board — and nobody else — reaffirms it or says it needs a
-// revision; a sign-off moves the date; due and overdue ones are the chair's work.
+// Reaffirmations: every adopted artefact and accepted decision has a reaffirm-by date from its adoption and its kind's
+// cadence; the chair of its owning board — and nobody else — reaffirms it or says it needs a revision; a sign-off moves
+// the date; due and overdue ones are the chair's work; each record carries its own standing and history.
 process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "archigov-signoffs-"));
 delete process.env.AUTH_MODE;
 const { db, migrate, setSetting } = await import("../src/db.js");
@@ -57,6 +57,26 @@ test("only the owning board's chair signs off; a revision needs a note; a sign-o
   assert.equal(rv.status, 200); assert.equal(rv.body.revision_needed, true);
   assert.ok(rv.body.due < new Date(Date.now() + 100 * 86_400_000).toISOString(), "back in three months");
   assert.deepEqual((await call("GET", "/me/work", "j.duduka")).body.sign_offs, [], "nothing left due for the DA chair");
+});
+
+test("each record carries its reaffirmation: the detail with its history, the lists with their standing", async () => {
+  const l = await list();
+  const std = sub(l, "STD-005"), adr = item(l, "ADR-0001");
+  const a = (await call("GET", `/artefacts/${std.subject_id}`, "j.duduka")).body.reaffirmation;
+  assert.equal(a.board.code, "DA"); assert.equal(a.can_sign, true); assert.equal(a.cadence_months, 12); assert.equal(a.revision_needed, true);
+  assert.deepEqual(a.history.map((h: any) => h.outcome), ["revision_needed"], "the sign-off made in the previous test");
+  assert.ok(a.history[0].signed_by_name && a.history[0].next_due, "who, and the date it set");
+  assert.equal((await call("GET", `/artefacts/${std.subject_id}`, "r.khan")).body.reaffirmation.can_sign, false, "another board's chair");
+  const d = (await call("GET", `/decisions/${adr.subject.id}`, "a.uditor")).body.reaffirmation;
+  assert.equal(d.status, "current"); assert.equal(d.cadence_months, 24); assert.deepEqual(d.history, []); assert.equal(d.can_sign, false);
+  const proposed = db.prepare("SELECT id FROM decisions WHERE status='proposed' LIMIT 1").get() as any;
+  assert.equal((await call("GET", `/decisions/${proposed.id}`, "a.uditor")).body.reaffirmation, null, "nothing to reaffirm before acceptance");
+  const log = (await call("GET", "/decisions", "a.uditor")).body;
+  assert.equal(log.find((x: any) => x.id === adr.subject.id).reaffirmation.due, adr.due);
+  assert.equal(log.find((x: any) => x.id === proposed.id).reaffirmation, null);
+  const cat = (await call("GET", "/artefacts", "a.uditor")).body;
+  assert.equal(cat.find((x: any) => x.id === std.subject_id).reaffirmation.revision_needed, true);
+  assert.ok(cat.filter((x: any) => x.lifecycle !== "adopted").every((x: any) => x.reaffirmation === null));
 });
 
 test("the cadence is a setting; overdue decisions appear; the metrics count what is in date", async () => {

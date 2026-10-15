@@ -5,6 +5,7 @@ import { Add, Download, MachineLearningModel } from "@carbon/icons-react";
 import { get, post, put, download, labelFor, ARTEFACT_KINDS, REVIEW_TYPES, kindOfCode } from "../api";
 import { PageIntro, useLoad, useAiFeatures, SeverityTag, Empty, LoadError, RLink, StatusTag, VerificationTag, VerifyButton, FindingEvidence, EmptyState, PackImporter, KindTag, artefactLink, useDocTitle } from "../components";
 import { Gated, useCan } from "../auth";
+import { ReaffirmationPanel, ReaffirmModal } from "../components/Reaffirmation";
 
 const KIND_TABS = ["all", ...ARTEFACT_KINDS.map((k) => k.kind)];
 const RULE_EXAMPLE = '{"scope":"resource","match":{"type":"Microsoft.KeyVault/vaults"},"assert":{"path":"props.enablePurgeProtection","op":"eq","value":true}}';
@@ -40,6 +41,8 @@ export default function Catalogue() {
   const [aiNote, setAiNote] = React.useState<string | null>(null);
   const [importing, setImporting] = React.useState<"pack" | "csv" | "json" | null>(null);
   const [retire, setRetire] = React.useState<any>(null);
+  // Reaffirming from the item: the detail modal steps aside for the reaffirm modal and returns after (modals never nest).
+  const [reaffirm, setReaffirm] = React.useState(false);
   const [msg, setMsg] = React.useState<{ kind: "success" | "error" | "warning"; text: string } | null>(null);
   const [busy, setBusy] = React.useState<string | null>(null);
   const canManage = useCan("manage_artefacts");
@@ -113,9 +116,10 @@ export default function Catalogue() {
                   {/* Classification (category, radar / enforcement, version, board) is plain text under the title; colour is kept for the status cluster. */}
                   <TableCell className="ag-col-item">{s.title}<div className="ag-muted ag-label">{[s.category, hasRadar(s.kind) ? labelFor("radar", s.status) : s.kind === "policy" ? labelFor("enforcement", s.enforcement || "mandatory") : "", s.rule ? "Rule" : "Manual", s.version ? `v${s.version}` : "", s.board_id ? boardName(s.board_id) : ""].filter(Boolean).join(" · ")}</div></TableCell>
                   {/* Status is for exceptions here: "adopted" and "human verified" are the catalogue's norm and say nothing on
-                      every row, so the list shows only drafts/in-review/retired and the items nobody has verified; the open
-                      modal keeps the full set. (The same selectivity as Conformance, where verified is the exception shown.) */}
-                  <TableCell><div className="ag-row tight"><SeverityTag s={s.severity} />{(s.lifecycle || "adopted") !== "adopted" && <StatusTag kind="lifecycle" value={s.lifecycle} />}{(s.verification || "unverified") !== "verified" && <VerificationTag state={s.verification || "unverified"} origin={s.origin} />}</div></TableCell>
+                      every row, so the list shows only drafts/in-review/retired, the items nobody has verified and the ones
+                      overdue for reaffirmation or sent for revision; the open modal keeps the full set. (The same selectivity
+                      as Conformance, where verified is the exception shown.) */}
+                  <TableCell><div className="ag-row tight"><SeverityTag s={s.severity} />{(s.lifecycle || "adopted") !== "adopted" && <StatusTag kind="lifecycle" value={s.lifecycle} />}{(s.verification || "unverified") !== "verified" && <VerificationTag state={s.verification || "unverified"} origin={s.origin} />}{s.reaffirmation?.status === "overdue" && <StatusTag kind="signoff_status" value="overdue" label="Reaffirmation overdue" />}{s.reaffirmation?.revision_needed && <StatusTag kind="signoff_outcome" value="revision_needed" />}</div></TableCell>
                   <TableCell><div className="ag-row tight">{s.open_findings ? <StatusTag kind="finding" value="open" label={`${s.open_findings} open`} /> : <span className="ag-muted">0</span>}{s.excepted ? <StatusTag kind="finding" value="excepted" label={`${s.excepted} excepted`} /> : null}</div></TableCell>
                   <TableCell>{(s.control_refs || []).length ? refs(s.control_refs) : <span className="ag-muted">—</span>}</TableCell>
                   <TableCell>{busy === `review-${s.id}` ? <InlineLoading description="Creating review" /> : canManage && !s.legacy ? (
@@ -130,7 +134,7 @@ export default function Catalogue() {
           </TableContainer>)}
       </DataTable>)}
 
-      <Modal open={!!openId} passiveModal size="lg" modalHeading={detail ? `${detail.code} · ${detail.title}` : "Loading"} onRequestClose={() => setParam("open", "")}>
+      <Modal open={!!openId && !reaffirm} passiveModal size="lg" modalHeading={detail ? `${detail.code} · ${detail.title}` : "Loading"} onRequestClose={() => setParam("open", "")}>
         {!detail ? <SkeletonText paragraph lineCount={6} /> : (
           <div>
             <div className="ag-row snug ag-mb-05">
@@ -154,6 +158,7 @@ export default function Catalogue() {
               <dt>Checkable rule</dt><dd>{detail.rule ? <CodeSnippet type="multi" feedback="Copied">{JSON.stringify(detail.rule, null, 2)}</CodeSnippet> : <span className="ag-muted">Manual: evidenced through reviews, not evaluated automatically.</span>}</dd>
               {detail.rule_error && <><dt>Rule error</dt><dd><StatusTag kind="run" value="error" label={detail.rule_error} /></dd></>}
             </dl>
+            {detail.reaffirmation && <div className="ag-mt-06"><ReaffirmationPanel r={detail.reaffirmation} heading="h3" onReaffirm={() => setReaffirm(true)} /></div>}
             {!detail.legacy && <section className="ag-section ag-mt-06"><h3>Pre-review Preview</h3>
               {preview ? <PreviewPanel p={preview} /> : previewErr ? <p className="ag-muted ag-body">The preview is not available on this server.</p> : <SkeletonText paragraph lineCount={2} />}
             </section>}
@@ -164,6 +169,8 @@ export default function Catalogue() {
             {(detail.exceptions || []).length > 0 && <><h3>Exceptions</h3>{detail.exceptions.map((e: any) => <div className="ag-finding" key={e.id}><div className="ag-row snug"><span className="title">{e.application_name}</span><StatusTag kind="exception" value={e.status} /></div><div className="detail">{e.reason}</div></div>)}</>}
           </div>)}
       </Modal>
+
+      {reaffirm && detail?.reaffirmation && <ReaffirmModal x={detail.reaffirmation} months={detail.reaffirmation.cadence_months} onClose={() => setReaffirm(false)} onDone={(t) => { setReaffirm(false); setMsg({ kind: "success", text: t }); reloadDetail(); reload(); }} />}
 
       <Modal open={importing === "pack"} passiveModal size="lg" modalHeading="Import a Pack" onRequestClose={() => setImporting(null)}>
         <p className="ag-body ag-muted ag-mb-05">Packs are versioned content with control references only — never a framework's own text. Importing adds the items you do not already have and leaves existing ones untouched; imported items start as drafts unless the pack says otherwise.</p>
