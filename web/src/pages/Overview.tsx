@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button, SkeletonText, Table, TableHead, TableRow, TableHeader, TableBody, TableCell, ClickableTile, InlineLoading, InlineNotification, Tile, Tag, ContainedList, ContainedListItem } from "@carbon/react";
-import { Renew, Play, Settings as SettingsIcon } from "@carbon/icons-react";
+import { Renew, Play, Settings as SettingsIcon, Application, ChartNetwork, Cube, WarningAlt, TaskApproved, Time, Unlocked, DecisionTree, ChangeCatalog } from "@carbon/icons-react";
 import { get, post, fmtDate, fmtDateTime, labelFor } from "../api";
 import { PageIntro, PageHeader, Coverage, CountUp, useLoad, LoadError, RLink, StatusTag, PackImporter, AreaTag, AreaPositionTag, KindTag, useDocTitle } from "../components";
 import { Gated, useCan } from "../auth";
@@ -30,32 +30,41 @@ export default function Overview() {
   const firstRun = !!d.first_run || (c.resources ?? 0) === 0;
   if (firstRun || params.get("start") === "1") return <GetStarted forced={!firstRun} onDone={reload} />;
   // Whole tile is the target; a problem is signalled by an icon + word tag beside the number, never by colouring the digits.
-  const tile = (label: string, value: number, to: string, flag?: React.ReactNode) => (
-    <ClickableTile key={label} className="ag-tile" href={to} onClick={(e: React.SyntheticEvent) => { e.preventDefault(); nav(to); }}>
-      <div className="label">{label}</div>
-      <div className="ag-row snug"><span className="value"><CountUp value={value} /></span>{flag}</div>
-    </ClickableTile>
-  );
+  // Each tile carries an icon and a tone; a tile whose number needs attention takes the alert tone (still also flagged in words).
+  const tile = (label: string, value: number, to: string, icon: React.ComponentType<any>, tone: string, flag?: React.ReactNode) => {
+    const Icon = icon;
+    const t = flag && value ? "alert" : tone;
+    return (
+      <ClickableTile key={label} className={`ag-tile ag-ktile ag-kt-${t}`} href={to} onClick={(e: React.SyntheticEvent) => { e.preventDefault(); nav(to); }}>
+        <div className="ag-row between"><div className="label">{label}</div><span className="ag-kt-icon" aria-hidden="true"><Icon size={20} /></span></div>
+        <div className="ag-row snug"><span className="value"><CountUp value={value} /></span>{flag}</div>
+      </ClickableTile>
+    );
+  };
   // The tile label already says what changed, so the tag says only the state.
   const flag = (n: number, value: string, label?: string) => (n ? <StatusTag kind="attention" value={value} label={label} /> : null);
   return (
     <>
       <PageIntro kicker={d.tenant} title="Overview" lead="What waits on you, then the governance pipeline and the state of the estate."
         about="The model below is derived from your estate and backlog. Decisions, the governance catalogue and reviews are the human layer on top of it. Nothing here asserts compliance; it shows evidence and who has verified it."
+        extra={<div className="ag-hero-stats" aria-label="Estate at a glance">
+          {[["Applications", c.applications, "teal"], ["Resources", c.resources, "cyan"], ["Open findings", c.findings_open, c.findings_open ? "red" : "green"], ["Reviews in flight", d.pipeline?.in_flight ?? c.reviews_open ?? 0, "blue"]].map(([l, n, t]) => (
+            <div key={String(l)} className={`ag-glass ag-glass-${t}`}><span className="n"><CountUp value={Number(n) || 0} /></span><span className="l">{l}</span></div>))}
+        </div>}
         actions={busy ? <InlineLoading description="Evaluating conformance" /> : <Gated cap="pre_review" allowed={canEval} reason="Needs the Author role or platform admin"><Button kind="tertiary" size="md" renderIcon={Renew} onClick={async () => { setBusy(true); try { await post("/evaluate"); reload(); } finally { setBusy(false); } }}>Evaluate Conformance</Button></Gated>} />
 
       <MyWork w={work} />
 
       <div className="ag-tiles">
-        {tile("Applications (derived)", c.applications, "/applications")}
-        {tile("Shared services", c.shared_services ?? 0, "/applications#shared")}
-        {tile("Resources", c.resources, "/applications")}
-        {tile("Open findings", c.findings_open, "/conformance", flag(c.findings_open, "open"))}
-        {tile("Reviews in progress", d.pipeline?.in_flight ?? c.reviews_open, "/reviews")}
-        {tile("Overdue conditions", c.conditions_overdue, "/conformance?tab=conditions", flag(c.conditions_overdue, "overdue"))}
-        {tile("Expired exceptions", c.exceptions_expired, "/conformance?tab=exceptions", flag(c.exceptions_expired, "expired"))}
-        {tile("Epics without a decision", c.epics_without_decision, "/backlog?filter=no_decision", flag(c.epics_without_decision, "decision"))}
-        {tile("Planned change after approval", c.material_changes, "/backlog?filter=changed", flag(c.material_changes, "changed", "Changed"))}
+        {tile("Applications (derived)", c.applications, "/applications", Application, "teal")}
+        {tile("Shared services", c.shared_services ?? 0, "/applications#shared", ChartNetwork, "teal")}
+        {tile("Resources", c.resources, "/applications", Cube, "cyan")}
+        {tile("Open findings", c.findings_open, "/conformance", WarningAlt, "green", flag(c.findings_open, "open"))}
+        {tile("Reviews in progress", d.pipeline?.in_flight ?? c.reviews_open, "/reviews", TaskApproved, "blue")}
+        {tile("Overdue conditions", c.conditions_overdue, "/conformance?tab=conditions", Time, "green", flag(c.conditions_overdue, "overdue"))}
+        {tile("Expired exceptions", c.exceptions_expired, "/conformance?tab=exceptions", Unlocked, "green", flag(c.exceptions_expired, "expired"))}
+        {tile("Epics without a decision", c.epics_without_decision, "/backlog?filter=no_decision", DecisionTree, "purple", flag(c.epics_without_decision, "decision"))}
+        {tile("Planned change after approval", c.material_changes, "/backlog?filter=changed", ChangeCatalog, "purple", flag(c.material_changes, "changed", "Changed"))}
       </div>
 
       {/* The state of the estate at a glance (gauges + donut), then the comparisons and the trend; the pipeline detail follows. */}
@@ -108,7 +117,7 @@ function MyWork({ w }: { w: any }) {
   if (total === 0) return null;
   const head = (title: string, n: number) => <span className="ag-work-head">{title}{count(n)}</span>;
   const queue = (key: string, title: string, rows: any[], row: (x: any, i: number) => React.ReactNode) => rows.length === 0 ? null : (
-    <ContainedList key={key} label={head(title, rows.length)} kind="on-page" size="sm">
+    <ContainedList key={key} className={`ag-queue ag-q-${key}`} label={head(title, rows.length)} kind="on-page" size="sm">
       {rows.map((x, i) => <ContainedListItem key={x.id || x.review?.id || x.position_id || x.work_item?.id || i}><div className="ag-work-row">{row(x, i)}</div></ContainedListItem>)}
     </ContainedList>);
   return (
@@ -160,7 +169,7 @@ function Pipeline({ d, boards, sessions }: { d: any; boards: any[]; sessions: an
       <div className="ag-pipeline">
         <div>
           <div className="ag-label ag-muted ag-mb-03">Reviews by stage · <RLink inline to="/reviews">{inFlight ?? 0} in flight</RLink></div>
-          {stages.length === 0 ? <p className="ag-muted ag-body">No reviews yet.</p> : <div className="ag-row tight">{stages.map(([stage, n]) => <StatusTag key={stage} kind="stage" value={stage} label={`${labelFor("stage", stage)} · ${n}`} />)}</div>}
+          {stages.length === 0 ? <p className="ag-muted ag-body">No reviews yet.</p> : <div className="ag-row tight ag-stage-rail">{stages.map(([stage, n]) => <StatusTag key={stage} kind="stage" value={stage} label={`${labelFor("stage", stage)} · ${n}`} />)}</div>}
           {decisions.length > 0 && <p className="ag-muted ag-label ag-mt-03"><RLink inline to="/decisions">Decisions</RLink>: {decisions.map((x: any) => `${x.n} ${labelFor("decision", x.status).toLowerCase()}`).join(" · ")}</p>}
           <dl className="ag-kv ag-mt-05">
             <dt>Next session</dt><dd>{next ? <span className="ag-row tight"><RLink to={`/sessions/${next.id}`}>{next.code}</RLink><span>{next.board?.name || next.board?.code || ""}</span><span className="ag-muted">{fmtDateTime(next.scheduled_at)}</span><StatusTag kind="session_status" value={next.status} size="sm" /></span> : <span className="ag-muted">None planned · <RLink inline to="/sessions">Sessions</RLink></span>}</dd>
