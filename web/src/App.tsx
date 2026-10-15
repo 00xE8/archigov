@@ -1,12 +1,13 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Header, HeaderName, HeaderGlobalBar, HeaderGlobalAction, HeaderPanel, SideNav, SideNavItems, SideNavLink, SideNavMenu, SideNavMenuItem, SideNavDivider, Content, Theme, HeaderMenuButton, SkipToContent, Search, Form, ContainedList, ContainedListItem, Tag } from "@carbon/react";
-import { Dashboard, Application, Rule, Document, Task, Compare, ListChecked, Settings, UserAvatar, Help, Search as SearchIcon, Catalog, Receipt, DataBase, Group, Calendar, Notification, BusinessProcesses, Hourglass, WarningSquare, Partnership } from "@carbon/icons-react";
+import { Dashboard, Application, Rule, Document, Task, Compare, ListChecked, Settings, UserAvatar, Help, Search as SearchIcon, Catalog, Receipt, DataBase, Group, Calendar, Notification, BusinessProcesses, Hourglass, WarningSquare, Partnership, Timeline } from "@carbon/icons-react";
 import Overview from "./pages/Overview";
 import Applications from "./pages/Applications";
 import BusinessServices from "./pages/BusinessServices";
 import LegacyRegister from "./pages/LegacyRegister";
 import ThirdParties from "./pages/ThirdParties";
+import RoadmapPage from "./pages/Roadmap";
 import ApplicationDetail from "./pages/ApplicationDetail";
 import Catalogue from "./pages/Catalogue";
 import Boards, { BoardDetail } from "./pages/Boards";
@@ -40,6 +41,7 @@ const GROUPS: { title: string; icon: React.ComponentType; items: Item[] }[] = [
   { title: "Governance", icon: Rule, items: [
     { to: "/governance", label: "Catalogue", icon: Rule },
     { to: "/decisions", label: "Decision Log", icon: Document },
+    { to: "/roadmap", label: "Roadmap", icon: Timeline },
     { to: "/reviews", label: "Reviews", icon: Task },
     { to: "/boards", label: "Boards", icon: Group },
     { to: "/sessions", label: "Board Sessions", icon: Calendar },
@@ -157,6 +159,7 @@ function Shell() {
             <Route path="/services" element={<BusinessServices />} />
             <Route path="/legacy" element={<LegacyRegister />} />
             <Route path="/third-parties" element={<ThirdParties />} />
+            <Route path="/roadmap" element={<RoadmapPage />} />
             <Route path="/governance" element={<Catalogue />} />
             {/* The catalogue used to be /standards; deep links (?open=, ?q=) keep working. */}
             <Route path="/standards" element={<Navigate to={`/governance${loc.search}`} replace />} />
@@ -190,7 +193,7 @@ function HelpPanel() {
       <dl className="ag-kv stacked">
         <dt>Model</dt><dd>What was collected and inferred: applications, their resources and criticality, the business services that depend on them, and the planned changes fed from the delivery backlog.</dd>
         <dt>Overview</dt><dd>Your work first: positions, declarations and sessions waiting on you, then the governance pipeline and the state of the estate.</dd>
-        <dt>Governance</dt><dd>What people decided: the catalogue of standards, principles, patterns and policies, architecture decisions, reviews of all of them, the boards that approve them and the sessions they sit in.</dd>
+        <dt>Governance</dt><dd>What people decided: the catalogue of standards, principles, patterns and policies, architecture decisions and the roadmap of how far the estate has realised them, reviews of all of them, the boards that approve them and the sessions they sit in.</dd>
         <dt>Board Sessions</dt><dd>A board sits in sessions: decision makers record a position for each area of responsibility they own, or delegate their seat for the sitting, and the chair declares the outcome those positions allow.</dd>
         <dt>Evidence</dt><dd>Where the two meet: conformance findings and drift, imported assessments from Defender for Cloud and Azure Policy, and the audit log.</dd>
         <dt>Risk</dt><dd>Registers derived from the model: the legacy register of components past or near their vendor's end of support and the yearly legacy assessments that cover them, and the third parties the estate relies on — concentration on designated critical third parties and the exit plan for each critical reliance.</dd>

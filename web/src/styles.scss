@@ -496,6 +496,14 @@ $ag-ease-prod: cubic-bezier(0.2, 0, 0.38, 0.9);
   .n { @include type.type-style("heading-05"); color: colors.$white; line-height: 1; }
   .l { @include type.type-style("label-01"); color: colors.$gray-30; } }
 .ag-glass-teal { --g: #{colors.$teal-40}; } .ag-glass-cyan { --g: #{colors.$cyan-40}; } .ag-glass-blue { --g: #{colors.$blue-40}; }
+// Roadmap lanes: four columns on a wide screen, two on a laptop, one on a phone; cards are Carbon tiles.
+.ag-lanes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: sp.$spacing-05; align-items: start; }
+@include bp.breakpoint-down("lg") { .ag-lanes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@include bp.breakpoint-down("md") { .ag-lanes { grid-template-columns: minmax(0, 1fr); } }
+.ag-lane { display: grid; gap: sp.$spacing-03; min-width: 0; }
+.ag-lane-head { display: flex; justify-content: space-between; align-items: baseline; gap: sp.$spacing-03; padding-bottom: sp.$spacing-03; border-bottom: 2px solid var(--cds-border-strong-01); }
+.ag-road-card { display: grid; gap: sp.$spacing-03; min-width: 0; }
+.ag-road-card .ag-road-changes { margin: 0; padding: 0; list-style: none; display: grid; gap: sp.$spacing-02; }
 .ag-glass-red { --g: #{colors.$red-50}; } .ag-glass-green { --g: #{colors.$green-40}; } .ag-glass-magenta { --g: #{colors.$magenta-40}; }
 
 // KPI tiles: a tone, a permanent accent, a tinted wash and an icon square; "alert" when the number needs attention

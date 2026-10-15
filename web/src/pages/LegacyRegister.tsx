@@ -50,8 +50,8 @@ export default function LegacyRegister() {
             <TableBody>{data.applications.map((a: any) => (
               <TableRow key={a.id}>
                 <TableCell><RLink to={`/applications/${a.id}`}>{a.name}</RLink></TableCell>
-                <TableCell>{a.legacy.length ? <div className="ag-row tight">{a.legacy.map((k: string) => { const g = groupOf.get(k); return <StatusTag key={k} kind="lifecycle_state" value={g?.state || "unknown"} size="sm" label={keyLabel(k)} />; })}</div> : <span className="ag-muted">None</span>}</TableCell>
-                <TableCell><StatusTag kind="legacy_status" value={a.status} size="sm" />{a.status === "stale" && <div className="ag-muted ag-label">Not covered: {a.new_since_last.map(keyLabel).join(", ")}</div>}</TableCell>
+                <TableCell>{a.legacy.length ? <div className="ag-row tight">{a.legacy.map((k: string) => { const g = groupOf.get(k); return <StatusTag key={k} kind="lifecycle_state" value={g?.state || "unknown"} label={keyLabel(k)} />; })}</div> : <span className="ag-muted">None</span>}</TableCell>
+                <TableCell><StatusTag kind="legacy_status" value={a.status} />{a.status === "stale" && <div className="ag-muted ag-label">Not covered: {a.new_since_last.map(keyLabel).join(", ")}</div>}</TableCell>
                 <TableCell>{a.last ? <><div>{fmtDate(a.last.assessed_at)} · {a.last.assessed_by}</div><div className="ag-muted ag-label">{labelFor("assessment_result", a.last.result)}{a.last.reference ? <> · <a className="cds--link" href={a.last.reference} target="_blank" rel="noreferrer">reference</a></> : null}</div></> : <span className="ag-muted">Never</span>}</TableCell>
                 <TableCell>{a.last ? fmtDate(a.last.valid_until) : <span className="ag-muted">—</span>}</TableCell>
                 <TableCell>{a.legacy.length > 0 ? <Gated cap="verify"><Button size="sm" kind="ghost" renderIcon={Add} onClick={() => setAssess(a)}>Record Assessment</Button></Gated> : <span className="ag-muted">—</span>}</TableCell>
@@ -72,7 +72,7 @@ export default function LegacyRegister() {
                       <TableExpandRow {...getRowProps({ row: r })} aria-label={`Show the resources running ${g.product_label} ${g.label}`}>
                         <TableCell>{g.product_label}</TableCell>
                         <TableCell><span className="ag-mono">{g.label}</span></TableCell>
-                        <TableCell><StatusTag kind="lifecycle_state" value={g.state} size="sm" /></TableCell>
+                        <TableCell><StatusTag kind="lifecycle_state" value={g.state} /></TableCell>
                         <TableCell>{g.eol ? fmtDate(g.eol) : <span className="ag-muted">—</span>}</TableCell>
                         <TableCell>{g.extended ? fmtDate(g.extended) : <span className="ag-muted">—</span>}</TableCell>
                         <TableCell>{g.resources.length}</TableCell>
@@ -141,7 +141,7 @@ function AssessModal({ app, keyLabel, onClose, onDone }: { app: any; keyLabel: (
       primaryButtonDisabled={!!busy || !summary || summary.trim().length < 10 || refBad} onRequestClose={onClose} onRequestSubmit={save}>
       {!d ? <SkeletonText paragraph lineCount={6} /> : <Stack gap={5}>
         <p className="ag-body">The yearly risk assessment of this application's legacy ICT components (DORA Art. 8(7)). It is recorded under your name, valid for a year, and goes stale if another legacy component appears.</p>
-        <div><div className="ag-label ag-muted ag-mb-03">Components it covers</div><div className="ag-row tight">{d.legacy.map((k: string) => { const c = d.components.find((x: any) => `${x.product}:${x.cycle}` === k); return <StatusTag key={k} kind="lifecycle_state" value={c?.state || "unknown"} size="sm" label={keyLabel(k)} />; })}</div></div>
+        <div><div className="ag-label ag-muted ag-mb-03">Components it covers</div><div className="ag-row tight">{d.legacy.map((k: string) => { const c = d.components.find((x: any) => `${x.product}:${x.cycle}` === k); return <StatusTag key={k} kind="lifecycle_state" value={c?.state || "unknown"} label={keyLabel(k)} />; })}</div></div>
         <RadioButtonGroup legendText="Result" name="legacy-result" valueSelected={result} onChange={(v) => setResult(String(v))} orientation="vertical">
           {(d.results as string[]).map((r) => <RadioButton key={r} id={`lr-${r}`} value={r} labelText={labelFor("assessment_result", r)} />)}
         </RadioButtonGroup>
