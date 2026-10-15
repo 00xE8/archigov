@@ -67,6 +67,7 @@ export default function Metrics() {
             <Figure label="Classified" value={of(m.coverage.classification.classified, m.coverage.classification.total)} sub={`${m.coverage.classification.verified} verified by a person`} />
             <Figure label="Legacy Assessments" value={of(m.coverage.legacy_assessments.current, m.coverage.legacy_assessments.needed)} sub={<RLink to="/legacy">in date</RLink>} />
             <Figure label="Exit Plans" value={of(m.coverage.exit_plans.current, m.coverage.exit_plans.needed)} sub={<RLink to="/third-parties">in date</RLink>} />
+            {m.coverage.sign_offs && <Figure label="Sign-offs" value={of(m.coverage.sign_offs.current, m.coverage.sign_offs.total)} sub={<RLink to="/sign-offs">in date · {m.coverage.sign_offs.overdue} overdue · {m.coverage.sign_offs.due_soon} due soon</RLink>} />}
           </div>
         </section>
         {m.risks && <section className="ag-section"><h2>Risks and Debt</h2>

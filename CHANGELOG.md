@@ -50,6 +50,7 @@ All notable changes to Archigov are documented here. The format follows [Keep a 
 
 ### Fixed
 
+- Sign-off coverage was computed for Governance Metrics and the board pack but shown in neither; it now has a figure tile on the metrics page and a row in the board pack's Coverage table.
 - The board pack's decision list is every decision decided in the period, so its heading no longer says "accepted".
 - The roadmap no longer lists a component whose version is not in the lifecycle data as an upgrade with an unlabelled "unknown" status; only dated deadlines belong on it.
 - Status tags in the fast lane, legacy register and third-parties screens were rendered small, which drops their icon; they now carry colour, icon and word like every other status.

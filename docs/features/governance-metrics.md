@@ -37,7 +37,7 @@ Every figure is deterministic: a count, a median or a 90th percentile over rows 
 | **Conditions** | Open, overdue, met in the period, met on time (closed by the due date) and days to meet. |
 | **Exceptions** | Active exceptions by age (0–30, 31–90, 91–180, over 180 days), those expiring within 30 days, those without expiry, and expired. |
 | **Conformance** | The open-findings trend (the last evaluation run of each day), findings opened and resolved in the period, time to fix (first seen → resolved) and the oldest open finding. |
-| **Coverage** | Human verification, classification, legacy assessments in date, exit plans in date. |
+| **Coverage** | Human verification, classification, legacy assessments in date, exit plans in date, and catalogue items and decisions in date for review (sign-offs). |
 
 A series with no data is reported as *not available* (null), never as zero. No figure is coloured or labelled good or bad.
 
