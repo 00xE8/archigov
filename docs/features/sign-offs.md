@@ -46,7 +46,7 @@ No AI: a sign-off is a named person's statement. The dates and statuses are dete
 
 - **Migration m020** adds `sign_offs` (subject kind and id, outcome, note, board, signed_by/at, next_due). Only the latest row per item sets its date; earlier rows are the history.
 - **Audit:** `signoff:reaffirmed` and `signoff:revision_needed`, recorded on the artefact or decision with the code, board, next date and note.
-- **Metrics:** Governance Metrics coverage gains `sign_offs {current, total, overdue, due_soon}`.
+- **Metrics:** Governance Metrics coverage gains `sign_offs {current, total, overdue, due_soon}`, shown as a *Sign-offs* figure on the metrics page and a row in the board pack's Coverage table.
 - **Seed:** the demo backdates the adoption of STD-001, STD-005 (Design Authority) and POL-001 (Policy & Compliance Board) to 350 days ago. They are due soon, so each chair has sign-offs in their queue.
 
 ## UI

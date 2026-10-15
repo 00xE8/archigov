@@ -69,7 +69,8 @@ export default function BoardPack() {
         </section>
         <section className="ag-section"><h2>Coverage</h2>
           <FigTable caption="Coverage figures" rows={[["Applications verified by a person", `${m.coverage.verification.applications?.verified ?? 0} of ${m.coverage.verification.applications?.total ?? 0}`], ["Applications classified · verified", `${m.coverage.classification.classified} · ${m.coverage.classification.verified} of ${m.coverage.classification.total}`],
-            ["Legacy assessments in date", `${m.coverage.legacy_assessments.current} of ${m.coverage.legacy_assessments.needed}`], ["Exit plans in date", `${m.coverage.exit_plans.current} of ${m.coverage.exit_plans.needed}`]]} />
+            ["Legacy assessments in date", `${m.coverage.legacy_assessments.current} of ${m.coverage.legacy_assessments.needed}`], ["Exit plans in date", `${m.coverage.exit_plans.current} of ${m.coverage.exit_plans.needed}`],
+            ...(m.coverage.sign_offs ? [["Items in date for review (sign-offs)", `${m.coverage.sign_offs.current} of ${m.coverage.sign_offs.total} · ${m.coverage.sign_offs.overdue} overdue`] as [string, React.ReactNode]] : [])]} />
         </section>
       </div>
 
