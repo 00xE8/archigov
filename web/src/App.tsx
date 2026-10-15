@@ -1,7 +1,7 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Header, HeaderName, HeaderGlobalBar, HeaderGlobalAction, HeaderPanel, SideNav, SideNavItems, SideNavLink, SideNavMenu, SideNavMenuItem, SideNavDivider, Content, Theme, HeaderMenuButton, SkipToContent, Search, Form, ContainedList, ContainedListItem, Tag } from "@carbon/react";
-import { Dashboard, Application, Rule, Document, Task, Compare, ListChecked, Settings, UserAvatar, Help, Search as SearchIcon, Catalog, Receipt, DataBase, Group, Calendar, Notification, BusinessProcesses, Hourglass, WarningSquare, Partnership, Timeline, ChartLineData } from "@carbon/icons-react";
+import { Dashboard, Application, Rule, Document, Task, Compare, ListChecked, Settings, UserAvatar, Help, Search as SearchIcon, Catalog, Receipt, DataBase, Group, Calendar, Notification, BusinessProcesses, Hourglass, WarningSquare, Partnership, Timeline, ChartLineData, Stamp } from "@carbon/icons-react";
 import Overview from "./pages/Overview";
 import Applications from "./pages/Applications";
 import BusinessServices from "./pages/BusinessServices";
@@ -10,6 +10,7 @@ import ThirdParties from "./pages/ThirdParties";
 import RoadmapPage from "./pages/Roadmap";
 import Metrics from "./pages/Metrics";
 import BoardPack from "./pages/BoardPack";
+import SignOffs from "./pages/SignOffs";
 import ApplicationDetail from "./pages/ApplicationDetail";
 import Catalogue from "./pages/Catalogue";
 import Boards, { BoardDetail } from "./pages/Boards";
@@ -47,6 +48,7 @@ const GROUPS: { title: string; icon: React.ComponentType; items: Item[] }[] = [
     { to: "/reviews", label: "Reviews", icon: Task },
     { to: "/boards", label: "Boards", icon: Group },
     { to: "/sessions", label: "Board Sessions", icon: Calendar },
+    { to: "/sign-offs", label: "Sign-offs", icon: Stamp },
   ] },
   { title: "Evidence", icon: Compare, items: [
     { to: "/conformance", label: "Conformance", icon: Compare },
@@ -165,6 +167,7 @@ function Shell() {
             <Route path="/roadmap" element={<RoadmapPage />} />
             <Route path="/metrics" element={<Metrics />} />
             <Route path="/board-packs/:hash" element={<BoardPack />} />
+            <Route path="/sign-offs" element={<SignOffs />} />
             <Route path="/governance" element={<Catalogue />} />
             {/* The catalogue used to be /standards; deep links (?open=, ?q=) keep working. */}
             <Route path="/standards" element={<Navigate to={`/governance${loc.search}`} replace />} />
@@ -199,6 +202,7 @@ function HelpPanel() {
         <dt>Model</dt><dd>What was collected and inferred: applications, their resources and criticality, the business services that depend on them, and the planned changes fed from the delivery backlog.</dd>
         <dt>Overview</dt><dd>Your work first: positions, declarations and sessions waiting on you, then the governance pipeline and the state of the estate.</dd>
         <dt>Governance</dt><dd>What people decided: the catalogue of standards, principles, patterns and policies, architecture decisions and the roadmap of how far the estate has realised them, reviews of all of them, the boards that approve them and the sessions they sit in.</dd>
+        <dt>Sign-offs</dt><dd>Every adopted catalogue item and accepted decision has a next review date; the chair of the board that owns it reaffirms it or asks for a revision.</dd>
         <dt>Board Sessions</dt><dd>A board sits in sessions: decision makers record a position for each area of responsibility they own, or delegate their seat for the sitting, and the chair declares the outcome those positions allow.</dd>
         <dt>Evidence</dt><dd>Where the two meet: conformance findings and drift, governance metrics and the signed board packs prepared from them, imported assessments from Defender for Cloud and Azure Policy, and the audit log.</dd>
         <dt>Risk</dt><dd>Registers derived from the model: the legacy register of components past or near their vendor's end of support and the yearly legacy assessments that cover them, and the third parties the estate relies on — concentration on designated critical third parties and the exit plan for each critical reliance.</dd>
@@ -226,6 +230,7 @@ function workItems(w: any): { key: string; to: string; label: string; text: stri
   for (const x of w.conditions || []) out.push({ key: `cnd:${x.id}`, to: `/reviews/${rv(x).id}`, label: "Condition you own", text: `${x.text ? `${String(x.text).slice(0, 80)} · ` : ""}${rv(x).code}`, detail: x.due_at ? `due ${fmtDate(x.due_at)}` : undefined });
   for (const x of w.circulations || []) out.push({ key: `cir:${x.id || rv(x).id}`, to: `/reviews/${rv(x).id}`, label: "Position due by circulation", text: `${rv(x).code} · ${rv(x).title}`, detail: x.due_at || x.circulation_due ? `due ${fmtDate(x.due_at || x.circulation_due)}` : undefined });
   for (const x of w.resubmit || []) out.push({ key: `rsb:${rv(x).id}`, to: `/reviews/${rv(x).id}`, label: "Changes requested on your review", text: `${rv(x).code} · ${rv(x).title}` });
+  for (const x of w.sign_offs || []) out.push({ key: `sgn:${x.subject?.id}:${x.due}`, to: "/sign-offs", label: x.status === "overdue" ? "Sign-off overdue" : "Sign-off due", text: `${x.subject?.code} · ${x.subject?.title}`, detail: `due ${fmtDate(x.due)}` });
   return out;
 }
 const SEEN_KEY = "ag-notif-seen";

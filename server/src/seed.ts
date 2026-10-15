@@ -215,6 +215,8 @@ export function seedDemo(actor = "seed") {
     const a = listElements("application").find((x) => x.name === name);
     if (a) db.prepare("UPDATE app_classifications SET verification='verified', verified_by='j.duduka', verified_at=?, verified_hash=content_hash WHERE application_id=?").run(daysAgo(7), a.id);
   }
+  // the demo tenant has been running for most of a year: three catalogue items adopted 350 days ago come up for their yearly sign-off
+  db.prepare("UPDATE standards SET adopted_at=? WHERE code IN ('STD-001','STD-005','POL-001') AND lifecycle='adopted'").run(daysAgo(350));
   // one legacy assessment on record (DORA Art. 8(7)): Finance ERP's SQL Server 2016, assessed in the spring; the others are due
   const erp = listElements("application").find((x) => x.name === "Finance ERP");
   if (erp) {

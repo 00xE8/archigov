@@ -4,7 +4,7 @@
 # the legacy register (lifecycle states, a person's version correction, the yearly legacy assessment); third parties
 # (providers, concentration on a designated critical third party, exit plans into the DORA register); the roadmap
 # built from records (decision realisation, lanes, per-application view); governance metrics and a signed board
-# pack (prepared by a secretary, verified like the evidence pack), end to end
+# pack (prepared by a secretary, verified like the evidence pack); review dates and periodic sign-offs, end to end
 # through the API of a LOCAL-mode seeded instance.
 #
 #   scripts/smoke-registers.sh [base_url]   default http://localhost:8080
@@ -12,7 +12,7 @@
 # Run after smoke-work.sh on the same instance (before smoke-catalogue.sh). The default x-user ("smoke-registers") is
 # a platform admin ONLY and must be refused every classification change; authors act as the seeded cast. MUTATES the
 # tenant (a classification set and reset, a verification, a draft standard, a version set and reset, a legacy
-# assessment, an exit plan, a board pack); reset with
+# assessment, an exit plan, a board pack, a sign-off); reset with
 # `docker compose down -v && docker compose up -d`.
 set -u
 BASE="${1:-http://localhost:8080}"
@@ -206,6 +206,23 @@ def k_():
     s, d = post("/board-packs/draft-narrative", {"days": 90}, user="j.duduka"); assert s == 409, f"AI narrative off: {s} {d}"
     return f"metrics over {m['period_days']} days ({m['reviews']['decided']} reviews decided, lead time median {m['reviews']['lead_time_days']['median']} d); board pack {r['hash'][:12]}… signed, chained and verified; narrative draft 409 while AI is off"
 step("k  governance metrics and a signed board pack", k_)
+
+# ---------- l. review dates and sign-offs ----------
+def l_():
+    s, so = get("/sign-offs", user="j.duduka"); assert s == 200, f"{s} {so}"
+    by = {x["subject"]["code"]: x for x in so["items"]}
+    assert by["STD-005"]["status"] in ("due_soon", "overdue") and by["STD-005"]["board"]["code"] == "DA" and by["STD-005"]["can_sign"], by["STD-005"]
+    s, w = get("/me/work", user="j.duduka"); assert any(x["subject"]["code"] == "STD-005" for x in w["sign_offs"]), w["sign_offs"]
+    body = {"subject_kind": "artefact", "subject_id": by["STD-005"]["subject"]["id"], "outcome": "reaffirmed", "note": "Still the ownership baseline."}
+    for u in (ADMIN, "m.hughes", "r.khan"):
+        s, r = post("/sign-offs", body, user=u); assert s == 403, f"{u}: {s} {r}"
+    s, r = post("/sign-offs", {**body, "outcome": "revision_needed", "note": "short"}, user="j.duduka"); assert s == 400, f"a revision needs a note: {s} {r}"
+    s, r = post("/sign-offs", body, user="j.duduka"); assert s == 200 and r["status"] == "current", f"{s} {r}"
+    mutations.append("STD-005 reaffirmed by j.duduka")
+    s, w = get("/me/work", user="j.duduka"); assert not any(x["subject"]["code"] == "STD-005" for x in w["sign_offs"]), "signed off, off the queue"
+    s, au = get(f"/audit?entity=standards&entity_id={by['STD-005']['subject']['id']}&action=signoff:reaffirmed"); assert au["rows"], au
+    return f"{sum(1 for x in so['items'] if x['status'] != 'current')} due or overdue; STD-005 reaffirmed by the DA chair (403 platform admin, decision maker, PCB chair), off the queue, audited"
+step("l  review dates and sign-offs: the owning chair's act", l_)
 
 passed = sum(1 for _, ok in results if ok); failed = len(results) - passed
 print(f"\n{passed} passed, {failed} failed  ({BASE})")
