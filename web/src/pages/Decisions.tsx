@@ -27,42 +27,52 @@ export function DecisionForm({ value, onChange, apps, onTriggerAssessment, trigg
     finally { setAiBusy(false); }
   };
   return (
-    <div className="ag-form">
-      <TextInput id="title" labelText="Title" value={value.title} onChange={(e) => onChange({ ...value, title: e.target.value })} />
-      <div className="ag-row">
-        <Select id="topic" labelText="Topic" value={value.topic} onChange={(e) => onChange({ ...value, topic: e.target.value })}>{TOPICS.map((t) => <SelectItem key={t} value={t} text={labelFor("topic", t)} />)}</Select>
-        {/* An empty selection means the decision applies to every application, so the field says so. */}
-        <MultiSelect id="apps" titleText="Applications" label="All applications" items={apps} itemToString={(a: any) => a?.name || ""} initialSelectedItems={apps.filter((a) => value.application_ids.includes(a.id))} onChange={({ selectedItems }: any) => onChange({ ...value, application_ids: selectedItems.map((a: any) => a.id) })} />
-      </div>
-      <TextArea id="ctx" labelText="Context" value={value.context_md} onChange={(e) => onChange({ ...value, context_md: e.target.value })} rows={3} />
-      <TextArea id="opts" labelText="Options considered (one per line: name | pros | cons)" value={value.optionsText} onChange={(e) => onChange({ ...value, optionsText: e.target.value })} rows={3} />
-      <TextArea id="dec" labelText="Recommended Option" helperText="The option you recommend adopting, stated as the decision." value={value.decision_md} onChange={(e) => onChange({ ...value, decision_md: e.target.value })} rows={3} />
-      <TextArea id="jus" labelText="Justification" helperText="Why this option wins against the alternatives — the argument the board will test." value={value.justification_md || ""} onChange={(e) => onChange({ ...value, justification_md: e.target.value })} rows={3} />
-      <TextArea id="con" labelText="Consequences" helperText="What accepting this decision means: what becomes mandatory or excluded, and which risks are explicitly accepted." value={value.consequences_md} onChange={(e) => onChange({ ...value, consequences_md: e.target.value })} rows={3} />
-      <TextInput id="constraint" labelText="Checkable constraint: allowed resource types (comma separated, optional)" helperText="Deployed resources outside this set will be reported as drift against this decision." placeholder="e.g. Microsoft.DBforPostgreSQL/flexibleServers" value={value.allowedTypes} onChange={(e) => onChange({ ...value, allowedTypes: e.target.value })} />
-      <div className="ag-row snug">
-        {aiBusy ? <InlineLoading description="Testing the argument" /> : (
-          <Gated cap="create_decision"
-            allowed={aiOn.review_decision === true && !!value.title.trim() && !!(value.decision_md || "").trim()}
-            reason={aiOn.review_decision !== true ? "AI Decision Review is not enabled for this instance — a platform admin can switch it on under Settings · AI" : "Add a Title and a Recommended Option first"}>
-            <Button size="sm" kind="ghost" renderIcon={MachineLearningModel} onClick={runReview}>Review Argument with AI</Button>
-          </Gated>)}
-        {aiErr && <span className="ag-muted ag-label">{aiErr}</span>}
-      </div>
-      {review && <div className="ag-ai-review">
-        <div className="ag-row snug">
-          <StatusTag kind="recommendation" value={review.verdict === "sound" ? "proceed" : "request_changes"} label={review.verdict === "sound" ? "Argument holds" : "Argument needs work"} />
-          <span className="ag-muted ag-label">AI review ({review.model}) — advisory; nothing is stored, you decide what to submit.</span>
+    // Two columns in the lg modal: the argument's fields on the left, the AI Review panel on the right with its
+    // button at the top — so the review reads beside the text it critiques instead of under it.
+    <div className="ag-decision-form">
+      <div className="ag-form">
+        <TextInput id="title" labelText="Title" value={value.title} onChange={(e) => onChange({ ...value, title: e.target.value })} />
+        <div className="ag-row">
+          <Select id="topic" labelText="Topic" value={value.topic} onChange={(e) => onChange({ ...value, topic: e.target.value })}>{TOPICS.map((t) => <SelectItem key={t} value={t} text={labelFor("topic", t)} />)}</Select>
+          {/* An empty selection means the decision applies to every application, so the field says so. */}
+          <MultiSelect id="apps" titleText="Applications" label="All applications" items={apps} itemToString={(a: any) => a?.name || ""} initialSelectedItems={apps.filter((a) => value.application_ids.includes(a.id))} onChange={({ selectedItems }: any) => onChange({ ...value, application_ids: selectedItems.map((a: any) => a.id) })} />
         </div>
-        <Markdown md={review.assessment_md} />
-        {review.issues?.length > 0 && <ul className="ag-area-findings">{review.issues.map((i: any, k: number) => <li key={k}><KindTag kind="decision_issue" value={i.kind} /><span>{i.point}</span></li>)}</ul>}
-        {/* Critical claims without evidence: each suggestion can become a tracked assessment on the draft decision. */}
-        {review.suggested_assessments?.length > 0 && <div>
-          <div className="ag-label ag-muted">Evidence the Argument Is Missing</div>
-          <ul className="ag-suggest">{review.suggested_assessments.map((s: any, k: number) => <li key={k}><KindTag kind="assessment_type" value={s.type} /><span className="ag-body">{s.title ? <span className="ag-strong">{s.title} · </span> : null}{s.reason}</span>{onTriggerAssessment && <Button size="sm" kind="ghost" renderIcon={Add} onClick={() => onTriggerAssessment(s)}>{triggerLabel || "Trigger Assessment"}</Button>}</li>)}</ul>
+        <TextArea id="ctx" labelText="Context" value={value.context_md} onChange={(e) => onChange({ ...value, context_md: e.target.value })} rows={3} />
+        <TextArea id="opts" labelText="Options considered (one per line: name | pros | cons)" value={value.optionsText} onChange={(e) => onChange({ ...value, optionsText: e.target.value })} rows={3} />
+        <TextArea id="dec" labelText="Recommended Option" helperText="The option you recommend adopting, stated as the decision." value={value.decision_md} onChange={(e) => onChange({ ...value, decision_md: e.target.value })} rows={3} />
+        <TextArea id="jus" labelText="Justification" helperText="Why this option wins against the alternatives — the argument the board will test." value={value.justification_md || ""} onChange={(e) => onChange({ ...value, justification_md: e.target.value })} rows={3} />
+        <TextArea id="con" labelText="Consequences" helperText="What accepting this decision means: what becomes mandatory or excluded, and which risks are explicitly accepted." value={value.consequences_md} onChange={(e) => onChange({ ...value, consequences_md: e.target.value })} rows={3} />
+        <TextInput id="constraint" labelText="Checkable constraint: allowed resource types (comma separated, optional)" helperText="Deployed resources outside this set will be reported as drift against this decision." placeholder="e.g. Microsoft.DBforPostgreSQL/flexibleServers" value={value.allowedTypes} onChange={(e) => onChange({ ...value, allowedTypes: e.target.value })} />
+      </div>
+      <div className="ag-ai-panel">
+        <div className="ag-row between">
+          <span className="ag-colhead">AI Review</span>
+          {aiBusy ? <InlineLoading description="Testing the argument" /> : (
+            <Gated cap="create_decision"
+              allowed={aiOn.review_decision === true && !!value.title.trim() && !!(value.decision_md || "").trim()}
+              reason={aiOn.review_decision !== true ? "AI Decision Review is not enabled for this instance — a platform admin can switch it on under Settings · AI" : "Add a Title and a Recommended Option first"}>
+              <Button size="sm" kind="tertiary" renderIcon={MachineLearningModel} onClick={runReview}>Review Argument</Button>
+            </Gated>)}
+        </div>
+        {aiErr && <p className="ag-muted ag-label">{aiErr}</p>}
+        {!review && !aiBusy && <p className="ag-muted ag-body">{aiOn.review_decision === true
+          ? "A critical test of the argument before you submit: does the recommendation follow from the options, which claims lack evidence, which risks go unstated, what contradicts the adopted catalogue. Advisory — nothing is stored, and you decide what to submit."
+          : "AI Decision Review is not enabled for this instance. A platform admin can switch it on under Settings · AI."}</p>}
+        {review && <div className="ag-ai-review">
+          <div className="ag-row snug">
+            <StatusTag kind="recommendation" value={review.verdict === "sound" ? "proceed" : "request_changes"} label={review.verdict === "sound" ? "Argument holds" : "Argument needs work"} />
+            <span className="ag-muted ag-label">AI review ({review.model}) — advisory; nothing is stored.</span>
+          </div>
+          <Markdown md={review.assessment_md} />
+          {review.issues?.length > 0 && <ul className="ag-area-findings">{review.issues.map((i: any, k: number) => <li key={k}><KindTag kind="decision_issue" value={i.kind} /><span>{i.point}</span></li>)}</ul>}
+          {/* Critical claims without evidence: each suggestion can become a tracked assessment on the draft decision. */}
+          {review.suggested_assessments?.length > 0 && <div>
+            <div className="ag-label ag-muted">Evidence the Argument Is Missing</div>
+            <ul className="ag-suggest">{review.suggested_assessments.map((s: any, k: number) => <li key={k}><KindTag kind="assessment_type" value={s.type} /><span className="ag-body">{s.title ? <span className="ag-strong">{s.title} · </span> : null}{s.reason}</span>{onTriggerAssessment && <Button size="sm" kind="ghost" renderIcon={Add} onClick={() => onTriggerAssessment(s)}>{triggerLabel || "Trigger Assessment"}</Button>}</li>)}</ul>
+          </div>}
+          {review.tightened && <Button size="sm" kind="tertiary" renderIcon={MachineLearningModel} onClick={() => { onChange({ ...value, decision_md: review.tightened.decision_md || value.decision_md, justification_md: review.tightened.justification_md || value.justification_md, consequences_md: review.tightened.consequences_md || value.consequences_md }); setReview(null); }}>Apply Tightened Argument</Button>}
         </div>}
-        {review.tightened && <Button size="sm" kind="tertiary" renderIcon={MachineLearningModel} onClick={() => { onChange({ ...value, decision_md: review.tightened.decision_md || value.decision_md, justification_md: review.tightened.justification_md || value.justification_md, consequences_md: review.tightened.consequences_md || value.consequences_md }); setReview(null); }}>Apply Tightened Argument</Button>}
-      </div>}
+      </div>
     </div>
   );
 }

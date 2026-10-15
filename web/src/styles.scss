@@ -374,5 +374,12 @@ body { font-family: var(--font-sans); color: var(--cds-text-primary); margin: 0;
 .ag-ai-provider { border: 1px solid var(--cds-border-subtle-01); padding: sp.$spacing-05; background: var(--cds-layer-01); }
 .ag-ai-provider .ag-row.end { margin-top: sp.$spacing-04; }
 
-// The AI review of a decision argument: a bordered advisory block inside the form, never part of the record.
+// The AI review of a decision argument: a bordered advisory block, never part of the record.
 .ag-ai-review { border: 1px solid var(--cds-border-subtle-01); border-left: 3px solid var(--cds-support-info); padding: sp.$spacing-05; background: var(--cds-layer-01); display: grid; gap: sp.$spacing-04; }
+// The decision form fills the lg modal: fields left, the AI Review panel right (button at the panel's top).
+.ag-decision-form { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: sp.$spacing-07; align-items: start; }
+// text content must shrink with its track, or long review lines clip at the modal edge instead of wrapping
+.ag-decision-form > *, .ag-ai-panel > *, .ag-ai-review > * { min-width: 0; }
+.ag-decision-form .ag-form { max-width: none; }
+.ag-decision-form .ag-ai-panel { display: grid; gap: sp.$spacing-04; border-left: 1px solid var(--cds-border-subtle-01); padding-left: sp.$spacing-06; }
+@include bp.breakpoint-down("lg") { .ag-decision-form { grid-template-columns: 1fr; } .ag-decision-form .ag-ai-panel { border-left: none; padding-left: 0; } }
