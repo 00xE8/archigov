@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Archigov — Architecture Governance That Derives Its Own Model</title>
+<meta name="description" content="Open-source architecture governance. Your cloud estate becomes the model, boards decide through an audited workflow, conformance runs continuously, and everything lands in a signed evidence pack. Evidence, not assurance.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://1.www.s81c.com/common/carbon/plex/sans.css">
+<meta property="og:title" content="Archigov — architecture governance that derives its own model">
+<meta property="og:description" content="Evidence, not assurance. Open source (AGPL-3.0), one container, usable in minutes.">
+<style>
+  /* Colours are the Carbon palette the product itself uses (brand book: g100 shell, g10 content, one primary blue, square corners). */
+  :root{
+    --blue-60:#0f62fe; --blue-70:#0043ce; --blue-80:#002d9c;
+    --gray-100:#161616; --gray-90:#262626; --gray-80:#393939; --gray-70:#525252; --gray-30:#c6c6c6; --gray-20:#e0e0e0; --gray-10:#f4f4f4;
+    --white:#ffffff; --green-50:#24a148;
+  }
+  *{box-sizing:border-box;margin:0}
+  html{scroll-behavior:smooth}
+  body{font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;color:var(--gray-100);background:var(--white);line-height:1.5}
+  a{color:var(--blue-60)}
+  a:focus-visible,button:focus-visible{outline:2px solid var(--blue-60);outline-offset:2px}
+  .wrap{max-width:1056px;margin:0 auto;padding:0 16px}
+  /* shell */
+  header.shell{background:var(--gray-100);color:var(--white)}
+  header.shell .wrap{display:flex;align-items:center;justify-content:space-between;height:48px}
+  .wordmark{font-weight:600;font-size:.875rem;letter-spacing:.1px;color:var(--white);text-decoration:none}
+  .wordmark span{font-weight:300}
+  nav.top a{color:var(--white);text-decoration:none;font-size:.875rem;margin-left:24px}
+  nav.top a:hover{text-decoration:underline}
+  /* hero (g100) */
+  .hero{background:var(--gray-100);color:var(--white);padding:80px 0 64px}
+  .hero .kicker{color:var(--gray-30);font-size:.875rem;letter-spacing:.16px;text-transform:uppercase;margin-bottom:16px}
+  .hero h1{font-weight:300;font-size:clamp(2rem,5vw,3.375rem);line-height:1.15;max-width:16em}
+  .hero h1 b{font-weight:600}
+  .hero p.lead{color:var(--gray-20);font-size:1.125rem;max-width:38em;margin-top:24px}
+  .cta{margin-top:40px;display:flex;flex-wrap:wrap;gap:16px}
+  .btn{display:inline-block;font-size:.875rem;text-decoration:none;padding:14px 60px 14px 16px;min-width:200px}
+  .btn.primary{background:var(--blue-60);color:var(--white)}
+  .btn.primary:hover{background:var(--blue-70)}
+  .btn.ghost{color:var(--white);border:1px solid var(--gray-70)}
+  .btn.ghost:hover{border-color:var(--white)}
+  .hero code.run{display:inline-block;margin-top:32px;background:var(--gray-90);color:var(--gray-20);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:.875rem;padding:12px 16px;border-left:3px solid var(--blue-60)}
+  /* product shot */
+  .shot{background:var(--gray-100);padding:0 0 0}
+  .shot .frame{max-width:1056px;margin:0 auto;padding:0 16px;transform:translateY(64px)}
+  .shot img{width:100%;display:block;border:1px solid var(--gray-80)}
+  .after-shot{height:96px;background:var(--gray-10)}
+  /* sections */
+  section{padding:64px 0}
+  section.alt{background:var(--gray-10)}
+  h2{font-weight:400;font-size:1.75rem;margin-bottom:12px}
+  .sub{color:var(--gray-70);max-width:44em;margin-bottom:40px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1px;background:var(--gray-20);border:1px solid var(--gray-20)}
+  .card{background:var(--white);padding:24px;min-height:180px}
+  section.alt .card{background:var(--white)}
+  .card h3{font-size:1rem;font-weight:600;margin-bottom:8px}
+  .card p{font-size:.875rem;color:var(--gray-70)}
+  .card .tick{color:var(--blue-60);font-weight:600}
+  /* ai + oss rows */
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:64px}
+  @media (max-width:800px){.split{grid-template-columns:1fr}}
+  ul.plain{list-style:none;padding:0;font-size:.875rem;color:var(--gray-70)}
+  ul.plain li{padding:8px 0;border-top:1px solid var(--gray-20)}
+  ul.plain li:last-child{border-bottom:1px solid var(--gray-20)}
+  ul.plain b{color:var(--gray-100);font-weight:600}
+  .pledge{border-left:3px solid var(--blue-60);background:var(--white);padding:16px 24px;font-size:.875rem;color:var(--gray-70)}
+  .pledge b{color:var(--gray-100)}
+  /* footer */
+  footer{background:var(--gray-100);color:var(--gray-30);font-size:.75rem;padding:32px 0}
+  footer .wrap{display:flex;flex-wrap:wrap;gap:24px;justify-content:space-between}
+  footer a{color:var(--gray-20)}
+</style>
+</head>
+<body>
+<header class="shell">
+  <div class="wrap">
+    <a class="wordmark" href="/">Archigov<span> · architecture governance</span></a>
+    <nav class="top" aria-label="Primary">
+      <a href="#how">How It Works</a>
+      <a href="#ai">AI</a>
+      <a href="#open-source">Open Source</a>
+      <a href="https://github.com/00xE8/archigov">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="hero">
+    <div class="wrap">
+      <p class="kicker">Evidence, not assurance</p>
+      <h1>Architecture governance that <b>derives its own model</b>.</h1>
+      <p class="lead">Your cloud estate becomes the architecture model — collected, not drawn. Boards decide through an explicit, audited workflow. Conformance between what was approved and what is deployed runs continuously. Everything lands in a signed, chained evidence pack a third party can verify.</p>
+      <div class="cta">
+        <a class="btn primary" href="https://github.com/00xE8/archigov">View on GitHub</a>
+        <a class="btn ghost" href="#how">See how it works</a>
+      </div>
+      <code class="run">docker compose up --build&nbsp;&nbsp;# one container, one SQLite file — usable in minutes</code>
+    </div>
+  </div>
+  <div class="shot" aria-hidden="false">
+    <div class="frame"><img src="/assets/overview.png" alt="The Archigov overview: evidence and verification gauges, reviews by stage, open findings by severity and application, and the governance pipeline over a demo NHS estate." loading="lazy"></div>
+  </div>
+  <div class="after-shot"></div>
+
+  <section id="how" class="alt">
+    <div class="wrap">
+      <h2>How It Works</h2>
+      <p class="sub">Four ideas, enforced end to end. The product never asserts compliance — it shows evidence and who stands behind it.</p>
+      <div class="grid">
+        <div class="card">
+          <h3>Derived, Not Drawn</h3>
+          <p>Azure Resource Graph, the delivery backlog and your existing repositories populate the as-is model with provenance. Humans spend their effort on decisions, standards and reviews — never on keeping diagrams honest. Deterministic ArchiMate views come free.</p>
+        </div>
+        <div class="card">
+          <h3>Machine-Checkable Governance</h3>
+          <p>Standards, principles, patterns and policies are human statements with control references and, where possible, a checkable rule. Every adopted rule is evaluated continuously; resource-level checks arrive as imported evidence from Defender for Cloud and Azure Policy, never rebuilt.</p>
+        </div>
+        <div class="card">
+          <h3>Boards Decide, on the Record</h3>
+          <p>Typed reviews route to boards with areas of responsibility. Decision makers record their own positions, the chair declares what the positions allow, sessions derive their minutes from the records — and all of it lands in a SHA-256 audit chain.</p>
+        </div>
+        <div class="card">
+          <h3>Signed Evidence, Continuously</h3>
+          <p>Findings persist across runs, exceptions and conditions are tracked to resolution, and the evidence pack is Ed25519-signed against the chain head. OSCAL and DORA exports carry the same discipline — and the same disclaimer.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="ai">
+    <div class="wrap split">
+      <div>
+        <h2>AI Proposes. Humans Decide.</h2>
+        <p class="sub">Eight AI features, each enabled separately by your admin with its own provider and model — OpenAI, Claude, Mistral or a local Ollama. Every one keeps a deterministic fallback, every output is marked AI-generated and unverified, and nothing an AI writes ever approves, blocks or becomes the record without a named human's audited act.</p>
+      </div>
+      <ul class="plain">
+        <li><b>Pre-review</b> — cited findings on a design; citations must resolve or they are discarded</li>
+        <li><b>Decision review</b> — a critical test of the argument: unsupported claims, unstated risks, contradictions with what you already adopted</li>
+        <li><b>Rule drafting</b> — natural language to a checkable rule, validated and dry-run before anyone saves it</li>
+        <li><b>Evidence suggestions</b> — missing evidence becomes a tracked assessment in one click</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="open-source" class="alt">
+    <div class="wrap split">
+      <div>
+        <h2>Open Source, Without the Rug-Pull</h2>
+        <p class="sub">The core is AGPL-3.0. Run it yourself — even modified — for your own organisation with no obligations. Self-host from one container with SQLite inside; continuous Litestream replication if you want it. A managed UK/EU instance is available for teams that would rather not run it — reach out on GitHub.</p>
+        <a class="btn primary" href="https://github.com/00xE8/archigov">Get the code</a>
+      </div>
+      <div>
+        <p class="pledge"><b>The commitment, made on day one:</b> this project will never move to a licence more restrictive than AGPL-3.0. No BSL, no SSPL. Connectors, templates and the policy SDK will be published under Apache-2.0 as they split out, so integrating with Archigov never requires touching AGPL code.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 Archigov · AGPL-3.0</span>
+    <span><a href="https://github.com/00xE8/archigov">GitHub</a> · <a href="https://github.com/00xE8/archigov/blob/main/CONTRIBUTING.md">Contributing</a> · <a href="https://github.com/00xE8/archigov/blob/main/CHANGELOG.md">Changelog</a></span>
+  </div>
+</footer>
+</body>
+</html>
