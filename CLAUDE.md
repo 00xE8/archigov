@@ -209,6 +209,8 @@ web/src/pages/*                RiskRegister (/risks, Risk group: tabs Risks — 
                                (NEEDS_DECISION_TYPES in http.ts); rows from a real source are read-only here (409)
 web/src/components.tsx         StatusTag, VerificationTag, FindingEvidence, ExportMenu, EmptyState, LoadError, DateField, useLoad …
 design-system/                 README.md (brand book) + tokens.json, exported from the Carbon artifact
+docs/assets/logo.svg           the mark (stone arch, blue-60 keystone, gray-100 tile) — the same file as web/public/favicon.svg; its
+                               generator and the light/dark variants live in the private repo's site/brand/
 infra/                         README (self-host deployment, the Litestream what/when/how, env matrix), litestream/ (example config: S3/R2/S3-compatible;
                                MinIO dropped — no community images since Oct 2025);
                                docker-compose.prod.yml at the root. The managed-service front door (Cloudflare Worker + Durable Object +

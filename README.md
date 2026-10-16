@@ -1,3 +1,5 @@
+<img src="docs/assets/logo.svg" alt="" width="72" height="72">
+
 # Archigov — architecture decisions, governed
 
 **Every architecture decision argued, linked and kept true.**
