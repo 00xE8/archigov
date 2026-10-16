@@ -258,13 +258,12 @@ What the AGPL means in practice:
 - **Run it yourself, even modified, for your own organisation**: no obligations. The AGPL's network clause (section 13) applies only when you offer the software as a service to third parties; your own employees are not third parties.
 - **Host a modified version for others**: you must offer them your modified source. That is the point: nobody can take this product, bolt on closed features and sell access to it without contributing those features back.
 - **Host an unmodified copy for clients**: allowed. Consultancies running Archigov for customers are distribution, not a threat.
-- **Your organisation bans the AGPL**: a commercial licence for the same code is available; contact the maintainer.
 
 **Commitments, stated publicly:**
 
 - **This project will never move to a licence more restrictive than AGPL-3.0.** No BSL, no SSPL, no rug-pull. Decided on day one.
-- **The commercial licence covers the same code as the open-source release.** It exists for organisations whose policies do not allow the AGPL. It is not a way to hold features back from the open-source edition.
-- **The CLA is a licence grant, not a copyright assignment.** Contributors keep their copyright, and it is only needed for the AGPL core, where the commercial licence depends on it.
+- **Nothing is held back from the open-source release.** There is no closed edition, and any other licence the project grants covers the same code.
+- **The CLA is a licence grant, not a copyright assignment.** Contributors keep their copyright. It is only needed for the AGPL core, where it keeps the option to license the core under other terms.
 
 ## Not in this release
 

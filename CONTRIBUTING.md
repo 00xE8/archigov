@@ -47,14 +47,14 @@ Everything outside the Apache-2.0 folders is the core, licensed **AGPL-3.0-only*
 
 Your agreement is recorded on the `cla-signatures` branch, with your GitHub login and account id, the date and a link to your comment. The check turns green, and you are never asked again. Comment `recheck cla` to run the check again, for example after re-authoring commits.
 
-**What it is.** A licence grant on the Apache ICLA model. You keep the copyright in your work and grant the project a licence broad enough to offer it under the AGPL and under the commercial licence. It is not a copyright assignment.
+**What it is.** A licence grant on the Apache ICLA model. You keep the copyright in your work and grant the project a licence broad enough to license it under other terms as well as the AGPL. It is not a copyright assignment.
 
-**Why it exists.** The project offers a commercial licence, covering the same code, to organisations whose policies do not allow the AGPL. That only works if the project can license the whole core under both terms. The Apache-2.0 folders do not need the CLA, because Apache-2.0 already allows that.
+**Why it exists.** It keeps the project able to license the core under terms other than the AGPL, which needs the right to license every contribution to it. A CLA cannot be collected after the fact, so it is asked for from the start. The Apache-2.0 folders do not need it, because Apache-2.0 already allows that.
 
 **What protects you.** The project's public commitments in [README · Licensing](README.md#licensing):
 
 - the core never moves to a licence more restrictive than the AGPL-3.0: no BSL, no SSPL;
-- the commercial licence is not a way to hold features back from the open-source release.
+- any other licence covers the same code as the open-source release, so nothing is held back from it (clause 4 of the CLA).
 
 **Commit emails.** The check matches commits to GitHub accounts by email. If a commit's email is not linked to your account, add it in your GitHub email settings, or re-author the commit, then comment `recheck cla`.
 
