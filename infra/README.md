@@ -65,7 +65,7 @@ LITESTREAM_URL=file:///replica/app.db
 
 For a non-AWS endpoint the entrypoint adds `?endpoint=…&forcePathStyle=true` to the URL itself: Litestream reads only
 the AWS SDK's `AWS_ENDPOINT_URL` and would otherwise address the bucket as a subdomain, which self-hosted stores reject.
-Archigov 0.2.0 and earlier did not do this: in one-URL mode with a non-AWS endpoint, replication failed against AWS and
+Archigov 0.2.0 and earlier did not do this (fixed in 0.2.1): in one-URL mode with a non-AWS endpoint, replication failed against AWS and
 the container did not start. On those versions, put the endpoint in the URL yourself:
 `s3://archigov-backups/prod/app.db?endpoint=https://…&forcePathStyle=true`.
 

@@ -4,6 +4,10 @@ All notable changes to Archigov are documented here. The format follows [Keep a 
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-10-16
+
+A fix for continuous replication, and the documentation around it. With `LITESTREAM_URL` and `AWS_ENDPOINT` set for a store other than Amazon S3, such as Cloudflare R2 or a self-hosted S3-compatible store, the container did not start; it does now. Upgrade if you replicate that way; on 0.2.0, put the endpoint in the URL instead (`?endpoint=…&forcePathStyle=true`). No migrations, no API change. The release also documents when and how to use replication, and adds briefs and prompts for AI-assisted contributions and deployments.
+
 ### Added
 
 - **AGENTS.md and task prompts for AI-assisted contributions.** `AGENTS.md` is the brief coding agents read: the product rules review enforces, the licence boundary, the commands, conventions and a definition of done. It states that the DCO sign-off and the CLA agreement are the contributor's own acts, which an agent never performs, and that agent-written commits carry an `Assisted-by:` trailer. `docs/agents/` has prompts for a policy pack, an assessment template, a connector or importer, and a core change. README, CONTRIBUTING and the pull-request template point to them.
@@ -111,5 +115,6 @@ First public release: the consolidation of the governance platform built to date
 - **Access model**: system roles (author, auditor, service) separate from the operational platform-admin flag; governance rights only from board seats; local dev mode with persona switching; Microsoft Entra ID (OIDC + PKCE) wired, fixture-verified.
 - **UI**: IBM Carbon (g100 shell, g10 content), Title Case labels, every tag and legend entry self-explaining on hover, header notifications of assigned work, tables for tabular facts, accessibility checked with axe on every touched page.
 
+[0.2.1]: https://github.com/00xE8/archigov/releases/tag/v0.2.1
 [0.2.0]: https://github.com/00xE8/archigov/releases/tag/v0.2.0
 [0.1.0]: https://github.com/00xE8/archigov/releases/tag/v0.1.0
