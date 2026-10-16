@@ -4,6 +4,10 @@ All notable changes to Archigov are documented here. The format follows [Keep a 
 
 ## [Unreleased]
 
+### Changed
+
+- **No commercial licence is offered.** README · Licensing, CONTRIBUTING and the CLA no longer describe one. The CLA stays for the AGPL core, so that the core can still be licensed under other terms. Its new version, [v1.2](docs/CLA.md), replaces the commercial-licence sentence in clause 4 with a commitment: any such licence covers the same code as the open-source release, and nothing is held back from it. The grants are unchanged, and the CLA check now records agreements against v1.2.
+
 ## [0.2.1] — 2026-10-16
 
 A fix for continuous replication, and the documentation around it. With `LITESTREAM_URL` and `AWS_ENDPOINT` set for a store other than Amazon S3, such as Cloudflare R2 or a self-hosted S3-compatible store, the container did not start; it does now. Upgrade if you replicate that way; on 0.2.0, put the endpoint in the URL instead (`?endpoint=…&forcePathStyle=true`). No migrations, no API change. The release also documents when and how to use replication, and adds briefs and prompts for AI-assisted contributions and deployments.

@@ -278,7 +278,7 @@ last direct-to-main blob; from here on:
   Keep core logic (workflow, rules engine, model writes beyond what a connector needs) out of the Apache folders, and
   keep pack content, templates and connector code out of the core, so contributions there stay CLA-free. Moving code
   INTO an Apache folder relicenses it — a founder decision, never a refactor side effect. External contributions need a
-  DCO sign-off on every commit and, for commits touching AGPL files, the CLA (docs/CLA.md v1.1, by PR comment). The
+  DCO sign-off on every commit and, for commits touching AGPL files, the CLA (docs/CLA.md v1.2, by PR comment). The
   owner's commits (and bots) are exempt from both checks — so never add a Signed-off-by on the maintainer's behalf.
   For a community PR inside the Apache folders the maintainer adds the CHANGELOG line and docs, keeping it CLA-free.
 
@@ -317,5 +317,5 @@ last direct-to-main blob; from here on:
 
 ## Business constraints to remember
 
-- AGPLv3 core; Apache-2.0 packs, templates, connectors and importers (Oct 2026: the folders in .github/licensing.json), the policy SDK to follow when split out; DCO for every contribution, the CLA (a licence grant, not an assignment) only for the AGPL core, where dual licensing needs it. Decide once, never relicense to something more restrictive; the commercial licence covers the same code and holds nothing back from the open-source release (public — see README · Licensing).
+- AGPLv3 core; Apache-2.0 packs, templates, connectors and importers (Oct 2026: the folders in .github/licensing.json), the policy SDK to follow when split out; DCO for every contribution, the CLA (a licence grant, not an assignment) only for the AGPL core, to keep the option of licensing it under other terms. **No commercial licence is offered** (withdrawn 16 Oct 2026, founder decision): never describe one in tracked files, docs or the landing page; the CLA stays because it cannot be collected retroactively. Decide once, never relicense to something more restrictive; any other licence covers the same code and holds nothing back from the open-source release (public — README · Licensing, CLA clause 4).
 - Pricing, tiers and free-tier economics are not published: see `CLAUDE.local.md` in a working copy, or `BUSINESS.md` in the private repo `00xE8/archigov-internal`.

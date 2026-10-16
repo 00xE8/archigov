@@ -1,6 +1,6 @@
-# Archigov Individual Contributor Licence Agreement (v1.1)
+# Archigov Individual Contributor Licence Agreement (v1.2)
 
-Modelled on the Apache Individual Contributor License Agreement v2.2, adapted to permit dual licensing. It is a licence grant, not a copyright assignment: you keep the copyright in your work.
+Modelled on the Apache Individual Contributor License Agreement v2.2, adapted so the Project can license the core under other terms as well as the AGPL. It is a licence grant, not a copyright assignment: you keep the copyright in your work.
 
 **Scope.** This agreement covers Contributions to the parts of Archigov ("the Project") licensed under the GNU AGPL-3.0, which is everything outside the Apache-2.0 folders. Those folders are listed in [README · Licensing](../README.md#licensing) and [.github/licensing.json](../.github/licensing.json). A Contribution to an Apache-2.0 folder is made under the Apache License 2.0 with a [DCO](../DCO) sign-off, and this agreement does not apply to it.
 
@@ -16,7 +16,7 @@ The CLA check records your agreement on the repository's `cla-signatures` branch
 
 3. **Patent licence.** You grant the Project maintainer and recipients of software distributed by the Project a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable (except as stated here) patent licence. It covers making, using, selling, offering for sale, importing and otherwise transferring your Contribution, alone or combined with the work it was submitted to. It applies only to patent claims licensable by you that are necessarily infringed by your Contribution. If any entity institutes patent litigation alleging that your Contribution or the combined work constitutes patent infringement, any patent licences granted to that entity under this agreement terminate.
 
-4. **The Project's reciprocal commitment.** The Project's open-source licence for the core will never be changed to terms more restrictive than the GNU AGPL-3.0. The commercial licence covers the same code as the open-source release and exists for organisations whose policies do not allow the AGPL. Sublicensing under clause 2 does not remove your Contribution from the open-source distribution.
+4. **The Project's reciprocal commitment.** The Project's open-source licence for the core will never be changed to terms more restrictive than the GNU AGPL-3.0. Any licence the Project grants under clause 2 covers the same code as the open-source release, and nothing is held back from that release. Sublicensing under clause 2 does not remove your Contribution from the open-source distribution.
 
 5. **You represent** that:
    - you are legally entitled to grant the above licences. If your employer has rights to your intellectual property, you have its permission, or it has waived those rights;
@@ -27,6 +27,6 @@ The CLA check records your agreement on the repository's `cla-signatures` branch
 
 ---
 
-**Version history.** v1.1 (October 2026) limits the agreement to the AGPL-3.0 parts and records agreement by pull-request comment. v1.0 covered every contribution and was agreed by a line in the pull-request description.
+**Version history.** v1.2 (16 October 2026) removes the reference to a commercial licence, which the Project does not offer, and commits that any licence granted under clause 2 covers the same code as the open-source release. The grants in clauses 2 and 3 are unchanged. v1.1 (October 2026) limits the agreement to the AGPL-3.0 parts and records agreement by pull-request comment. v1.0 covered every contribution and was agreed by a line in the pull-request description.
 
-*This document was prepared without legal review. Have it reviewed before relying on it for a commercial licensing programme at scale.*
+*This document was prepared without legal review. Have it reviewed before relying on it to license Contributions under other terms.*
