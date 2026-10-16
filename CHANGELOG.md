@@ -8,6 +8,21 @@ All notable changes to Archigov are documented here. The format follows [Keep a 
 
 - **AGENTS.md and task prompts for AI-assisted contributions.** `AGENTS.md` is the brief coding agents read: the product rules review enforces, the licence boundary, the commands, conventions and a definition of done. It states that the DCO sign-off and the CLA agreement are the contributor's own acts, which an agent never performs, and that agent-written commits carry an `Assisted-by:` trailer. `docs/agents/` has prompts for a policy pack, an assessment template, a connector or importer, and a core change. README, CONTRIBUTING and the pull-request template point to them.
 - `npm run typecheck` in `server/` and `web/`.
+- **`docs/agents/deploy.md`**: prompts for deploying and upgrading a self-hosted instance with an AI agent, and the rules an agent keeps around production data, secrets and cloud resources. Linked from `AGENTS.md`.
+
+### Changed
+
+- **Replication is documented properly.** `infra/README.md` · Replication with Litestream says what it is, why Archigov uses it, when it is needed (a table against the nightly backups), how to configure both modes, and what it does not cover:
+  - `/data/keys` is never replicated;
+  - one writer per replica path;
+  - it is not an archive.
+
+  It also gives the commands to check a replica, take a point-in-time copy, and test a restore. The restore test uses a scratch volume and a copy without replication settings, so it never puts a second writer on the replica path. It also states the retention: a day in one-URL mode, a week with the example config file. Every step was verified against the pinned Litestream 0.5.17.
+- **`docker-compose.prod.yml` no longer offers a MinIO service.** MinIO stopped publishing community container images in October 2025, so the example could not be pulled. It now shows S3-compatible object storage and a `file://` replica on a second disk or NAS share.
+
+### Fixed
+
+- **Replication to a non-AWS store in one-URL mode now works.** With `LITESTREAM_URL` and `AWS_ENDPOINT` set as documented (Cloudflare R2, a self-hosted store), the container did not start: Litestream reads only the AWS SDK's `AWS_ENDPOINT_URL`, so it ignored the endpoint and failed against AWS. The entrypoint now carries the endpoint in the replica URL with path-style addressing. Config-file mode was not affected.
 
 ## [0.2.0] — 2026-10-15
 
