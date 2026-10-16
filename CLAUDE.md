@@ -250,7 +250,10 @@ last direct-to-main blob; from here on:
   releasable. Open a PR even solo — the PR body carries what and why, links the feature doc, and is squash-merged
   with a conventional title after the quality gate passes.
 - **Conventional commits**: `feat:` `fix:` `docs:` `refactor:` `test:` `chore:` (+ scope: `feat(boards): …`).
-  The body explains why; attribution lines per the harness convention.
+  The body explains why. **No AI attribution** — no `Co-authored-by` trailer naming Claude or any AI, and no "Generated
+  with" line in PR bodies: skygge is the sole contributor (founder decision, 16 Oct 2026; history was rewritten to
+  remove the earlier trailers). Outside contributors' agents follow AGENTS.md, whose `Assisted-by:` trailer is not a
+  co-author line.
 - **Every feature ships with its documentation, in the same PR**: a page under `docs/features/<slug>.md`
   (what it does; who it serves, by role; how it works — endpoints, tables, capabilities, migrations; what it
   deliberately does not do), a CHANGELOG.md entry under Unreleased, and CLAUDE.md's layout/conventions kept
