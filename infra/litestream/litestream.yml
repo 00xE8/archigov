@@ -5,7 +5,7 @@
 # Reference: https://litestream.io/reference/config/
 #
 # Cloudflare R2:  AWS_ENDPOINT=https://<ACCOUNT_ID>.r2.cloudflarestorage.com   AWS_REGION=auto
-# MinIO:          AWS_ENDPOINT=http://minio:9000                              AWS_REGION=us-east-1 (required, ignored)
+# Self-hosted S3-compatible store (Garage, SeaweedFS, …): AWS_ENDPOINT=http://<host>:<port>  AWS_REGION=<its region>
 # AWS S3:         leave AWS_ENDPOINT unset and set AWS_REGION to the bucket's region
 # Credentials:    LITESTREAM_ACCESS_KEY_ID / LITESTREAM_SECRET_ACCESS_KEY are read automatically; leave the
 #                 access-key fields below unset so the environment wins.

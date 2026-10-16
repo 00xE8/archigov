@@ -119,3 +119,5 @@ Prompts to paste into your agent, each scoped to stay inside the right folder:
 - [An assessment template](docs/agents/new-assessment-template.md)
 - [A connector or an importer](docs/agents/new-connector.md)
 - [A fix or a feature in the core](docs/agents/core-change.md)
+
+Deploying or upgrading an instance rather than contributing? [docs/agents/deploy.md](docs/agents/deploy.md) has the prompts and the rules an agent keeps around production data, secrets and cloud resources.

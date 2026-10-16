@@ -14,12 +14,24 @@ mkdir -p "$DATA_DIR"
 APP="node dist/index.js"
 if command -v litestream >/dev/null 2>&1; then
   if [ -n "$LITESTREAM_URL" ]; then
-    if [ ! -f "$DATA_DIR/app.db" ]; then
-      echo "entrypoint: no local database, attempting restore from $LITESTREAM_URL"
-      litestream restore -if-replica-exists -o "$DATA_DIR/app.db" "$LITESTREAM_URL" || true
+    URL="$LITESTREAM_URL"
+    # Litestream reads only the AWS SDK's AWS_ENDPOINT_URL, never AWS_ENDPOINT, and with it addresses the bucket as a
+    # subdomain, which self-hosted S3 stores reject. A custom endpoint therefore travels in the replica URL, with
+    # path-style addressing (R2 and AWS accept it too). Left out, the endpoint is ignored, replication fails against
+    # AWS, and the app does not start.
+    if [ -n "$AWS_ENDPOINT" ]; then
+      case "$URL" in
+        s3://*endpoint=*) ;;
+        s3://*\?*) URL="$URL&endpoint=$AWS_ENDPOINT&forcePathStyle=true" ;;
+        s3://*) URL="$URL?endpoint=$AWS_ENDPOINT&forcePathStyle=true" ;;
+      esac
     fi
-    echo "entrypoint: running with Litestream replication to $LITESTREAM_URL"
-    exec litestream replicate -exec "$APP" "$DATA_DIR/app.db" "$LITESTREAM_URL"
+    if [ ! -f "$DATA_DIR/app.db" ]; then
+      echo "entrypoint: no local database, attempting restore from $URL"
+      litestream restore -if-replica-exists -o "$DATA_DIR/app.db" "$URL" || true
+    fi
+    echo "entrypoint: running with Litestream replication to $URL"
+    exec litestream replicate -exec "$APP" "$DATA_DIR/app.db" "$URL"
   fi
   CFG="${LITESTREAM_CONFIG:-/etc/litestream.yml}"
   if [ -f "$CFG" ]; then
