@@ -1,7 +1,8 @@
-# Contributor licence agreement, only where dual licensing needs it: a contributor whose commits change files outside
-# the Apache-2.0 folders (.github/licensing.json, read from the default branch so a pull request cannot widen it) agrees
-# to docs/CLA.md once, by commenting the agreement sentence on the pull request. The agreement is recorded with the
-# comment's link on the cla-signatures branch. The maintainer and bots are exempt. The result is the "Archigov CLA"
+# Contributor licence agreement, only for the AGPL core, where it keeps the option to license the core under other
+# terms: a contributor whose commits change files outside the Apache-2.0 folders (.github/licensing.json, read from the
+# default branch so a pull request cannot widen it) agrees to docs/CLA.md once, by commenting the agreement sentence on
+# the pull request. The agreement is recorded with the comment's link on the cla-signatures branch. The maintainer and
+# bots are exempt. The result is the "Archigov CLA"
 # commit status on the pull request's head. Uses the API only; no pull-request code is checked out or run, which is
 # what makes pull_request_target (needed to write the status and the record for pull requests from forks) safe here.
 name: CLA
@@ -29,7 +30,7 @@ jobs:
         with:
           script: |
             const AGREEMENT = "I have read the Archigov CLA and I agree to it for this and all my future contributions.";
-            const CLA_VERSION = "1.1", BRANCH = "cla-signatures", FILE = "signatures.json", MARK = "<!-- archigov-cla -->";
+            const CLA_VERSION = "1.2", BRANCH = "cla-signatures", FILE = "signatures.json", MARK = "<!-- archigov-cla -->";
             const { owner, repo } = context.repo;
             const number = context.payload.pull_request?.number ?? context.payload.issue.number;
             const pr = (await github.rest.pulls.get({ owner, repo, pull_number: number })).data;
