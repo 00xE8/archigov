@@ -9,6 +9,8 @@ Ready-made prompts for the contributions that help Archigov most. Each is scoped
 | [A connector or an importer](new-connector.md) | a new or existing Apache-2.0 folder | A DCO sign-off (open an issue first for a new folder) |
 | [A fix or a feature in the core](core-change.md) | anywhere else | A DCO sign-off and the CLA, once |
 
+Not contributing but running Archigov? [Deploy or upgrade a self-hosted instance](deploy.md) holds the prompts and the safety rules for an agent working on your infrastructure, around production data, secrets and cloud resources.
+
 How to use one:
 
 1. Copy the prompt block into your agent.
