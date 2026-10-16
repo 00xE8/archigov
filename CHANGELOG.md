@@ -6,6 +6,7 @@ All notable changes to Archigov are documented here. The format follows [Keep a 
 
 ### Changed
 
+- **A new mark.** A stone arch whose keystone, the stone that makes an arch stand, is the brand blue: the decision that holds an architecture together. It replaces the blue "A" as the app's favicon and heads the README (`docs/assets/logo.svg`). Square corners and Carbon's gray 100 and blue 60, legible from 16px.
 - **No commercial licence is offered.** README · Licensing, CONTRIBUTING and the CLA no longer describe one. The CLA stays for the AGPL core, so that the core can still be licensed under other terms. Its new version, [v1.2](docs/CLA.md), replaces the commercial-licence sentence in clause 4 with a commitment: any such licence covers the same code as the open-source release, and nothing is held back from it. The grants are unchanged, and the CLA check now records agreements against v1.2.
 
 ## [0.2.1] — 2026-10-16
