@@ -9,18 +9,23 @@
 
 Architecture decisions argued and decided on the record, then checked continuously against a model derived from your cloud estate and backlog.
 
-Every architecture decision is argued, linked and kept true:
-
-- proposals are argued in three parts and tested before they reach the board;
-- every decision links to the standards and earlier decisions it rests on;
-- the right board decides on the record, area by area;
-- the decision is then tracked through its whole lifecycle: enforced against your real estate, revisited when it drifts, and superseded with its lineage intact.
-
-It runs as one container with one SQLite file and no other services. It is usable in minutes with the demo estate or your own Azure subscription. It is open source: the core is AGPL-3.0, and packs, templates, connectors and importers are Apache-2.0.
+Open-source architecture governance for Azure and Azure DevOps. It runs as one container with one SQLite file and no other services, and is usable in minutes with the demo estate or your own Azure subscription. The core is AGPL-3.0; packs, templates, connectors and importers are Apache-2.0.
 
 [archigov.com](https://archigov.com) · [Live demo](https://demo.archigov.com) · [Documentation](https://archigov.com/docs) · [Quickstart](https://archigov.com/docs/getting-started/quickstart) · [How to contribute](#how-to-contribute)
 
 <img src="docs/assets/screenshot-review.webp" alt="A design review in archigov: the Design Authority's record, one position per area of responsibility, and a conditional on Infrastructure waiting for the chair" width="100%">
+
+## The problem
+
+Architecture is decided at three levels, and at each one the same two things break. **Decision-making** is slow and happens off the record. **Auditing** means rebuilding afterwards, by hand, what was decided, who agreed, and whether the estate still matches.
+
+| Level | What is decided there | What breaks today | What archigov does |
+|---|---|---|---|
+| **Enterprise** | Standards, principles, policies and the decisions that cross systems | Agreed in a forum, published as a document, then not applied. Showing a regulator which systems follow them, and who accepted which risk, is rebuilt from SharePoint and inboxes for every audit. | Each standard can carry a rule that is checked against every system. Adoption, positions, exceptions and accepted risks sit on one signed, hash-chained record, exportable to OSCAL and the DORA register. |
+| **Solution** | A system's design and its trade-offs | Designs wait weeks for a monthly board and are rebuilt as slides. The rationale lives in decks, so six months later nobody can say what was decided, why, or who agreed. | Each review goes to the board for its system. Area owners record their own positions when they are ready, and low-risk designs that follow adopted patterns clear in a fast lane. Every decision keeps its argument, the options weighed and the risks accepted. |
+| **Delivery** | The changes teams plan and ship | Epics reach production without the decision they needed. Conditions and "for now" exceptions are never followed up. Drift from what was approved is found in the next incident. | Planned changes from Azure DevOps that need a decision are flagged. Conditions and exceptions become obligations with an owner and a date. The estate collected from Azure is checked continuously, and drift goes back to the board that decided. |
+
+The product never asserts compliance: it shows evidence and who stands behind it.
 
 ## Try it in one minute
 
@@ -34,6 +39,8 @@ Open http://localhost:8080. On first start a demo estate loads: applications col
 
 ## How it works
 
+Every architecture decision is argued, linked and kept true:
+
 | Stage | What happens |
 |---|---|
 | **1 · Propose** | **Argued, not asserted.** A decision states its recommended option, the justification (why it beats the alternatives) and the consequences of accepting it, including the risks accepted. An optional AI review tests the argument and names the evidence it is missing; missing evidence becomes a tracked assessment in one click. |
@@ -41,8 +48,6 @@ Open http://localhost:8080. On first start a demo estate loads: applications col
 | **3 · Decide** | **Coordinated, on the record.** Typed reviews route to the board that owns them. Decision makers record their own positions, one per area of responsibility. The chair has no vote: the chair declares the outcome the positions allow. Conditions and dependent decisions are tracked to closure. |
 | **4 · Enforce** | **Checked against the real estate.** A checkable constraint runs continuously against the model collected from Azure, never drawn by hand. Drift raises a finding and returns the decision to the board. |
 | **5 · Evolve** | **Kept true over its lifecycle.** The owning board's chair reaffirms it on a cadence. When it is replaced, it is superseded with its lineage intact. Every step is audited, hash-chained and in the signed evidence pack. |
-
-The product never asserts compliance: it shows evidence and who stands behind it.
 
 ## What's in it
 
