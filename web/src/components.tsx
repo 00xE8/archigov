@@ -315,7 +315,7 @@ const seeded = (seed: string) => { let h = 2166136261; for (const c of seed) h =
  */
 type HeroTone = "blue" | "teal" | "purple" | "cyan" | "magenta" | "red" | "green" | "gray";
 const TONE_FILLS: Record<HeroTone, string[]> = {
-  blue: ["#78a9ff", "#4589ff", "#a6c8ff", "#be95ff"], teal: ["#3ddbd9", "#08bdba", "#9ef0f0", "#33b1ff"],
+  blue: ["#78a9ff", "#4589ff", "#a6c8ff", "#d0e2ff"], teal: ["#3ddbd9", "#08bdba", "#9ef0f0", "#33b1ff"],
   purple: ["#be95ff", "#a56eff", "#d4bbff", "#ff7eb6"], cyan: ["#33b1ff", "#1192e8", "#82cfff", "#78a9ff"],
   magenta: ["#ff7eb6", "#ee5396", "#ffafd2", "#be95ff"], red: ["#ff8389", "#fa4d56", "#ffb3b8", "#ff7eb6"],
   green: ["#42be65", "#6fdc8c", "#a7f0ba", "#3ddbd9"], gray: ["#a8a8a8", "#8d8d8d", "#c6c6c6", "#78a9ff"],

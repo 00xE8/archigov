@@ -211,6 +211,11 @@ body { font-family: var(--font-sans); color: var(--cds-text-primary); margin: 0;
 .ag-signin { min-height: 100vh; display: grid; place-items: center; padding: sp.$spacing-07; }
 .ag-signin-card { max-width: 34rem; display: grid; gap: sp.$spacing-05; }
 .ag-signin-card h1 { @include type.type-style("heading-05"); margin: 0; }
+// The lockup: the mark, then the lowercase wordmark one stem-width away. Labels elsewhere stay Title Case.
+.ag-brand { display: inline-flex; align-items: center; }
+.ag-brand > span { display: inline-flex; align-items: center; gap: sp.$spacing-03; }
+.ag-mark { width: 1.25rem; height: 1.25rem; flex: none; }
+h1.ag-brand { gap: sp.$spacing-03; } h1.ag-brand .ag-mark { width: 2.5rem; height: 2.5rem; }
 // "Not allowed" toasts sit under the header, above content, below modals.
 .ag-toasts { position: fixed; top: 3.5rem; right: sp.$spacing-05; z-index: 8000; }
 .ag-gated { display: inline-block; }
@@ -385,7 +390,8 @@ body { font-family: var(--font-sans); color: var(--cds-text-primary); margin: 0;
 @include bp.breakpoint-down("lg") { .ag-decision-form { grid-template-columns: 1fr; } .ag-decision-form .ag-ai-panel { border-left: none; padding-left: 0; } }
 
 // ——— Expressive layer (founder decision, Oct 2026: the app carries the landing page's full style) ———
-// Palette stays Carbon (blue/purple/teal/cyan from @carbon/colors); motion uses Carbon's expressive entrance and
+// Palette stays Carbon (@carbon/colors). Decoration is the one brand blue, the bob's gradient; other hues appear only
+// where they mean something (hero tones per part of the product, catalogue kinds, queues, status). Motion uses Carbon's expressive entrance and
 // standard curves at slow-01/slow-02, and every animation below is inert under prefers-reduced-motion.
 $ag-ease-entrance: cubic-bezier(0, 0, 0.3, 1);
 $ag-ease-std: cubic-bezier(0.4, 0.14, 0.3, 1);
@@ -395,7 +401,7 @@ $ag-ease-prod: cubic-bezier(0.2, 0, 0.38, 0.9);
 .ag-content {
   background:
     radial-gradient(1100px 520px at 100% 0%, rgba(colors.$blue-60, 0.07), transparent 60%),
-    radial-gradient(900px 640px at 0% 100%, rgba(colors.$purple-60, 0.05), transparent 60%),
+    radial-gradient(900px 640px at 0% 100%, rgba(colors.$blue-40, 0.06), transparent 60%),
     var(--cds-background);
 }
 
@@ -422,21 +428,21 @@ $ag-ease-prod: cubic-bezier(0.2, 0, 0.38, 0.9);
 // tiles lift and light up; charts glow on hover
 .ag-tile { position: relative; transition: transform 110ms $ag-ease-prod, box-shadow 110ms $ag-ease-prod;
   &::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; transform: scaleX(0); transform-origin: left;
-    background: linear-gradient(90deg, colors.$blue-60, colors.$purple-60, colors.$teal-50); transition: transform 240ms $ag-ease-entrance; }
+    background: linear-gradient(90deg, colors.$blue-70, colors.$blue-40); transition: transform 240ms $ag-ease-entrance; }
   &:hover { transform: translateY(-2px); box-shadow: 0 10px 28px -12px rgba(colors.$blue-60, 0.45); }
   &:hover::before { transform: scaleX(1); }
 }
-.ag-chart { transition: box-shadow 240ms $ag-ease-prod; &:hover { box-shadow: 0 12px 36px -14px rgba(colors.$purple-60, 0.4); } }
+.ag-chart { transition: box-shadow 240ms $ag-ease-prod; &:hover { box-shadow: 0 12px 36px -14px rgba(colors.$blue-60, 0.4); } }
 
-// section headings carry the landing page's gradient accent
+// section headings carry the brand blue accent
 .ag-section > h2:not(.ag-work-head)::after, .ag-section > .ag-row > h2::after {
   content: ""; display: block; width: 32px; height: 3px; margin-top: sp.$spacing-02;
-  background: linear-gradient(90deg, colors.$blue-60, colors.$purple-60);
+  background: linear-gradient(90deg, colors.$blue-60, colors.$blue-40);
 }
 
-// the header bar's bottom edge shimmers with the brand gradient
+// the header bar's bottom edge shimmers in the one brand blue, the bob's own gradient
 .ag-header-glow::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; pointer-events: none;
-  background: linear-gradient(90deg, colors.$blue-60, colors.$purple-60, colors.$teal-50, colors.$blue-60); background-size: 200% 100%; }
+  background: linear-gradient(90deg, colors.$blue-70, colors.$blue-40, colors.$blue-60, colors.$blue-70); background-size: 200% 100%; }
 
 @media (prefers-reduced-motion: no-preference) {
   .ag-hero-net line { stroke-dasharray: 600; stroke-dashoffset: 600; animation: ag-draw 1.4s $ag-ease-entrance forwards; animation-delay: var(--d); }
@@ -459,8 +465,8 @@ $ag-ease-prod: cubic-bezier(0.2, 0, 0.38, 0.9);
 @keyframes ag-bar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
 // banner tones by part of the product (Carbon palette); the title stays one colour everywhere
-.ag-hero { --hero-a: #{colors.$blue-60}; --hero-b: #{colors.$purple-60}; }
-.ag-tone-blue { --hero-a: #{colors.$blue-60}; --hero-b: #{colors.$purple-60}; }
+.ag-hero { --hero-a: #{colors.$blue-60}; --hero-b: #{colors.$blue-40}; }
+.ag-tone-blue { --hero-a: #{colors.$blue-60}; --hero-b: #{colors.$blue-40}; }
 .ag-tone-teal { --hero-a: #{colors.$teal-50}; --hero-b: #{colors.$cyan-50}; }
 .ag-tone-purple { --hero-a: #{colors.$purple-60}; --hero-b: #{colors.$magenta-60}; }
 .ag-tone-cyan { --hero-a: #{colors.$cyan-50}; --hero-b: #{colors.$blue-60}; }
@@ -522,7 +528,7 @@ $ag-ease-prod: cubic-bezier(0.2, 0, 0.38, 0.9);
 .ag-ktile { --kt: #{colors.$blue-60}; --kt-wash: #{rgba(colors.$blue-60, 0.06)};
   background: linear-gradient(160deg, var(--kt-wash), transparent 55%), var(--cds-layer-01);
   &::before { transform: scaleX(1); background: var(--kt); }
-  &:hover::before { background: linear-gradient(90deg, var(--kt), colors.$purple-60); } }
+  &:hover::before { background: linear-gradient(90deg, var(--kt), colors.$blue-40); } }
 .ag-kt-icon { display: inline-flex; padding: 6px; color: colors.$white; background: var(--kt); }
 .ag-kt-teal { --kt: #{colors.$teal-60}; --kt-wash: #{rgba(colors.$teal-50, 0.08)}; }
 .ag-kt-cyan { --kt: #{colors.$cyan-60}; --kt-wash: #{rgba(colors.$cyan-50, 0.08)}; }
@@ -543,12 +549,12 @@ $ag-ease-prod: cubic-bezier(0.2, 0, 0.38, 0.9);
 // review stages sit on a connected rail
 .ag-stage-rail { position: relative; padding-block: sp.$spacing-02;
   &::before { content: ""; position: absolute; inset-inline: 0; top: 50%; height: 2px; z-index: 0;
-    background: linear-gradient(90deg, colors.$blue-60, colors.$teal-50, colors.$purple-60); opacity: 0.35; }
+    background: linear-gradient(90deg, colors.$blue-70, colors.$blue-40); opacity: 0.35; }
   > * { position: relative; z-index: 1; } }
 
 // verification meters: thick, gradient, filling in
 .ag-meter-track { block-size: 8px; }
-.ag-meter-fill { block-size: 100%; background: linear-gradient(90deg, colors.$blue-60, colors.$purple-60 60%, colors.$teal-50); }
+.ag-meter-fill { block-size: 100%; background: linear-gradient(90deg, colors.$blue-70, colors.$blue-50); }
 
 @media (prefers-reduced-motion: no-preference) {
   .ag-glass { animation: ag-rise 400ms $ag-ease-entrance both; }

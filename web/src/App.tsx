@@ -28,6 +28,7 @@ import Audit from "./pages/Audit";
 import SettingsPage from "./pages/Settings";
 import { get, shortType, fmtDate, labelFor } from "./api";
 import { useMedia, RLink, artefactLink } from "./components";
+import { BrandMark } from "./brand";
 import { AuthProvider, AccountPanel, SignIn, useAuth, useCan, PersonaSwitcher } from "./auth";
 
 type Item = { to: string; label: string; icon: React.ComponentType; end?: boolean };
@@ -111,7 +112,7 @@ function Shell() {
         <Header aria-label="Archigov" className="ag-header-glow ag-no-print">
           <SkipToContent />
           <HeaderMenuButton aria-label={open ? "Close menu" : "Open menu"} onClick={() => setOpen((o) => !o)} isActive={open} />
-          <HeaderName href="/" prefix="">Archigov</HeaderName>
+          <HeaderName href="/" prefix="" className="ag-brand"><BrandMark onDark />archigov</HeaderName>
           <HeaderGlobalBar>
             {/* Dev mode (AUTH_MODE=local): the View as dropdown — every user with their roles, one click to act as them. */}
             <PersonaSwitcher />
