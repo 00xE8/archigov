@@ -116,7 +116,7 @@ export const DEMO_RESOURCES: NormalisedResource[] = [
 ];
 
 /**
- * What Defender for Cloud / Azure Policy would report for this estate. Archigov imports these assessments as
+ * What Defender for Cloud / Azure Policy would report for this estate. archigov imports these assessments as
  * evidence attached to each resource; the standards assert on the imported state and never re-test the
  * configuration themselves. `stpharmacyfiles` is deliberately unassessed (legacy subscription, Defender plan
  * off) so the "no evidence imported" path is visible in the demo.

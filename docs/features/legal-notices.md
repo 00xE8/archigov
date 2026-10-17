@@ -23,7 +23,7 @@ source of the very build they are using:
   defaults to the release that version names (`https://github.com/00xE8/archigov/tree/v<version>`), unless `SOURCE_URL`
   is set.
 - `GET /api/auth/about`: exempt from sign-in (an explicit `GET` rule in `auth/roles.ts`), so the sign-in page can show the notices.
-- The web UI: **About Archigov** in the help panel opens the notices in a modal (`web/src/components/About.tsx`). The
+- The web UI: **About archigov** in the help panel opens the notices in a modal (`web/src/components/About.tsx`). The
   sign-in page carries them on one line. AGPL-3.0 §5(d) accepts a prominent item in a menu.
 - No table, no migration, no capability.
 

@@ -20,7 +20,7 @@ const SUBST_CELL: Record<string, string> = { not_substitutable: "Not substitutab
  */
 export const exportsRoutes = new Hono();
 
-const DISCLAIMER = "Evidence, not assurance. This document records what Archigov's derived model, imported compliance evidence, decision log and review workflow contained at generation time, with each item's verification state. Compliance conclusions are for the accountable humans and auditors.";
+const DISCLAIMER = "Evidence, not assurance. This document records what archigov's derived model, imported compliance evidence, decision log and review workflow contained at generation time, with each item's verification state. Compliance conclusions are for the accountable humans and auditors.";
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 // ---------- OSCAL assessment-results ----------
@@ -79,14 +79,14 @@ exportsRoutes.get("/exports/oscal", (c) => {
   const doc = {
     "assessment-results": {
       uuid: randomUUID(),
-      metadata: { title: `Archigov assessment results — ${tenant}${appId ? ` — ${apps[0].name}` : ""}`, "last-modified": now, version: "1", "oscal-version": "1.1.2", remarks: DISCLAIMER },
-      "import-ap": { href: "urn:archigov:assessment-plan:continuous-conformance", remarks: "Archigov's continuous conformance evaluation (rule evaluation over the derived model plus imported Defender for Cloud / Azure Policy assessments) stands in for a separately authored assessment plan." },
+      metadata: { title: `archigov assessment results — ${tenant}${appId ? ` — ${apps[0].name}` : ""}`, "last-modified": now, version: "1", "oscal-version": "1.1.2", remarks: DISCLAIMER },
+      "import-ap": { href: "urn:archigov:assessment-plan:continuous-conformance", remarks: "archigov's continuous conformance evaluation (rule evaluation over the derived model plus imported Defender for Cloud / Azure Policy assessments) stands in for a separately authored assessment plan." },
       results: [{
         uuid: randomUUID(), title: "Continuous conformance evaluation",
         description: `${DISCLAIMER} Scope: ${appId ? `application ${apps[0].name}` : "whole tenant"}. Observations are rule evaluations and imported assessments; findings are one per checkable standard, with objective-id = the standard's code.`,
         start: lastRun?.started_at || now, end: lastRun?.finished_at || now,
         // the controls this result reviewed: every checkable standard, by its code (an NCName token)
-        "reviewed-controls": { description: "Checkable Archigov standards evaluated by rule or by imported assessment.",
+        "reviewed-controls": { description: "Checkable archigov standards evaluated by rule or by imported assessment.",
           "control-selections": [{ "include-controls": standards.filter((s: any) => s.rule).map((s: any) => ({ "control-id": s.code })) }] },
         observations, findings: oscalFindings,
       }],
@@ -140,7 +140,7 @@ exportsRoutes.get("/exports/dora-roi.csv", (c) => {
   const apps = listElements("application");
   const cls = allClassifications();
   const lines = [
-    `# Simplified register of information derived from the Archigov model on ${nowIso()} for tenant ${getSetting("tenant.name", "Local tenant")}. Columns approximate ESAs ITS templates B_06.01 (functions), B_05.01 (ICT third-party service providers), B_02.02 (contractual arrangements, specific) and B_07.01 (assessments); the template.column code is in each header. This is NOT the official ITS/DPM layout (Commission Implementing Regulation (EU) 2024/2956). Function names and B_06.01.0050 criticality come from each application's classification in Archigov (blank where nobody has classified it, and for the important tier). B_07.01 substitutability comes from the latest exit plan recorded in Archigov for that application and provider (blank where there is none); suppliers named on resource tags get rows of their own. Function identifiers are generated; provider identification codes, contract references, Annex III service-type codes, sensitiveness and reliance are left blank for the entity to complete, never inferred. Evidence, not assurance.`,
+    `# Simplified register of information derived from the archigov model on ${nowIso()} for tenant ${getSetting("tenant.name", "Local tenant")}. Columns approximate ESAs ITS templates B_06.01 (functions), B_05.01 (ICT third-party service providers), B_02.02 (contractual arrangements, specific) and B_07.01 (assessments); the template.column code is in each header. This is NOT the official ITS/DPM layout (Commission Implementing Regulation (EU) 2024/2956). Function names and B_06.01.0050 criticality come from each application's classification in archigov (blank where nobody has classified it, and for the important tier). B_07.01 substitutability comes from the latest exit plan recorded in archigov for that application and provider (blank where there is none); suppliers named on resource tags get rows of their own. Function identifiers are generated; provider identification codes, contract references, Annex III service-type codes, sensitiveness and reliance are left blank for the entity to complete, never inferred. Evidence, not assurance.`,
     DORA_COLUMNS.join(","),
   ];
   apps.forEach((a, i) => {

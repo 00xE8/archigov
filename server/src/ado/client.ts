@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: The Archigov Authors
+// SPDX-FileCopyrightText: The archigov Authors
 import { fixturesEnabled, sleep } from "../azure/client.js";
 import { ADO_FIXTURES } from "./fixtures.js";
 

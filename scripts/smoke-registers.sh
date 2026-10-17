@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Archigov registers smoke test — criticality classification (derived from tags, set by a person with a reason, reset,
+# archigov registers smoke test — criticality classification (derived from tags, set by a person with a reason, reset,
 # verified, read by rules as app.*), the business-service dependency map and the DORA register's criticality column;
 # the legacy register (lifecycle states, a person's version correction, the yearly legacy assessment); third parties
 # (providers, concentration on a designated critical third party, exit plans into the DORA register); the roadmap

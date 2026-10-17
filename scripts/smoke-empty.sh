@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Archigov empty-instance smoke test — the "usable in ten minutes with an empty database" path, through the API.
+# archigov empty-instance smoke test — the "usable in ten minutes with an empty database" path, through the API.
 #
 #   scripts/smoke-empty.sh [base_url]     default http://localhost:8080
 #

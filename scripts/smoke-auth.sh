@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Archigov auth / evidence smoke test — the two-level RBAC with board seats (system roles author / auditor /
+# archigov auth / evidence smoke test — the two-level RBAC with board seats (system roles author / auditor /
 # service / none, the platform-admin flag, seats chair / decision maker / reviewer / secretary / observer), the
 # audit hash chain, the signed evidence pack, the OSCAL and DORA exports, chart data and run diffs, driven
 # through the API of a LOCAL-mode instance.

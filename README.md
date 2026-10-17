@@ -3,7 +3,7 @@
   <img src="docs/assets/banner-light.png" alt="archigov: architecture decisions argued and decided on the record, then checked continuously against a model derived from your cloud estate and backlog." width="1280">
 </picture>
 
-# Archigov
+# archigov
 
 **Know what was approved. See what was built.**
 
@@ -20,7 +20,7 @@ It runs as one container with one SQLite file and no other services. It is usabl
 
 [archigov.com](https://archigov.com) · [Documentation](https://archigov.com/docs) · [Quickstart](https://archigov.com/docs/getting-started/quickstart) · [How to contribute](#how-to-contribute)
 
-<img src="docs/assets/screenshot-review.webp" alt="A design review in Archigov: the Design Authority's record, one position per area of responsibility, and a conditional on Infrastructure waiting for the chair" width="100%">
+<img src="docs/assets/screenshot-review.webp" alt="A design review in archigov: the Design Authority's record, one position per area of responsibility, and a conditional on Infrastructure waiting for the chair" width="100%">
 
 ## Try it in one minute
 
@@ -236,7 +236,7 @@ cd web && npm install && npm run dev       # terminal 2, from the repo root: the
 Open http://localhost:5173; the **View as** menu in the header switches between the demo users (author, chair, decision maker, auditor…). Before you push, run `npm test` and `npm run typecheck` in `server/`, and `npm run typecheck` in `web/` if you touched it. Commit with `git commit -s`.
 
 - **Sign off every commit.** `-s` adds `Signed-off-by:`, certifying the [Developer Certificate of Origin](DCO); the **DCO** check verifies it.
-- **The CLA is only for the core.** If your commits change core files, the **Archigov CLA** check asks you, once, to agree by commenting one sentence on the pull request. It is a licence grant on the Apache model, and you keep your copyright.
+- **The CLA is only for the core.** If your commits change core files, the **archigov CLA** check asks you, once, to agree by commenting one sentence on the pull request. It is a licence grant on the Apache model, and you keep your copyright.
 - **Process:** one pull request per change, with conventional commits (`feat(packs): …`, `fix(azure): …`). For a pack, template, connector or importer, the maintainer adds the CHANGELOG line and docs, and runs the full quality gate before merging.
 - **Two product rules are not negotiable:**
   - nothing asserts compliance: the product shows evidence and who stands behind it;
@@ -265,7 +265,7 @@ You remain the contributor:
 
 ## Licensing
 
-Two licences, by folder. The core is copyleft. The content architects most want to share is permissive, and so is the code that connects Archigov to other systems:
+Two licences, by folder. The core is copyleft. The content architects most want to share is permissive, and so is the code that connects archigov to other systems:
 
 | Part | Licence | To contribute |
 |---|---|---|
@@ -278,7 +278,7 @@ What the AGPL means in practice:
 
 - **Run it yourself, even modified, for your own organisation**: no obligations. The AGPL's network clause (section 13) applies only when you offer the software as a service to third parties; your own employees are not third parties.
 - **Host a modified version for others**: you must offer them your modified source. That is the point: nobody can take this product, bolt on closed features and sell access to it without contributing those features back.
-- **Host an unmodified copy for clients**: allowed. Consultancies running Archigov for customers are distribution, not a threat.
+- **Host an unmodified copy for clients**: allowed. Consultancies running archigov for customers are distribution, not a threat.
 
 **Commitments, stated publicly:**
 
@@ -286,9 +286,9 @@ What the AGPL means in practice:
 - **Nothing is held back from the open-source release.** There is no closed edition, and any other licence the project grants covers the same code.
 - **The CLA is a licence grant, not a copyright assignment.** Contributors keep their copyright. It is only needed for the AGPL core, where it keeps the option to license the core under other terms.
 
-Copyright © 2026 Skygge Ltd and contributors. Skygge Ltd maintains the project and receives the CLA's grant. The app shows these notices, and offers the source of the running version, under **About Archigov** in its help panel and on the sign-in page. Whoever hosts a modified build for others sets `SOURCE_URL` to their own source.
+Copyright © 2026 Skygge Ltd and contributors. Skygge Ltd maintains the project and receives the CLA's grant. The app shows these notices, and offers the source of the running version, under **About archigov** in its help panel and on the sign-in page. Whoever hosts a modified build for others sets `SOURCE_URL` to their own source.
 
-**Trademarks.** The name Archigov and the plumb mark are trademarks of Skygge Ltd, and neither licence grants a right to use them. Refer to the project freely, and share unmodified releases under its name; a modified version needs its own name and logo. See [TRADEMARKS.md](TRADEMARKS.md).
+**Trademarks.** The name archigov and the plumb mark are trademarks of Skygge Ltd, and neither licence grants a right to use them. Refer to the project freely, and share unmodified releases under its name; a modified version needs its own name and logo. See [TRADEMARKS.md](TRADEMARKS.md).
 
 ## Not in this release
 

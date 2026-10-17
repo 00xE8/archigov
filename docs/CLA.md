@@ -1,12 +1,12 @@
-# Archigov Individual Contributor Licence Agreement (v1.3)
+# archigov Individual Contributor Licence Agreement (v1.3)
 
 Modelled on the Apache Individual Contributor License Agreement v2.2, adapted so the Project can license the core under other terms as well as the AGPL. It is a licence grant, not a copyright assignment: you keep the copyright in your work.
 
-**Scope.** This agreement covers Contributions to the parts of Archigov ("the Project") licensed under the GNU AGPL-3.0, which is everything outside the Apache-2.0 folders. Those folders are listed in [README · Licensing](../README.md#licensing) and [.github/licensing.json](../.github/licensing.json). A Contribution to an Apache-2.0 folder is made under the Apache License 2.0 with a [DCO](../DCO) sign-off, and this agreement does not apply to it.
+**Scope.** This agreement covers Contributions to the parts of archigov ("the Project") licensed under the GNU AGPL-3.0, which is everything outside the Apache-2.0 folders. Those folders are listed in [README · Licensing](../README.md#licensing) and [.github/licensing.json](../.github/licensing.json). A Contribution to an Apache-2.0 folder is made under the Apache License 2.0 with a [DCO](../DCO) sign-off, and this agreement does not apply to it.
 
 **How you agree.** When a pull request of yours changes AGPL-licensed files, comment on it, once:
 
-> I have read the Archigov CLA and I agree to it for this and all my future contributions.
+> I have read the archigov CLA and I agree to it for this and all my future contributions.
 
 The CLA check records your agreement on the repository's `cla-signatures` branch with your GitHub login and account id, the date, and a link to your comment. You accept the following terms for your present and future Contributions within the scope above.
 

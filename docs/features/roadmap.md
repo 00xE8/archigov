@@ -2,7 +2,7 @@
 
 ## What it is
 
-The **Roadmap** shows the architecture's direction and how far the estate has moved along it. It is built entirely from records Archigov already holds:
+The **Roadmap** shows the architecture's direction and how far the estate has moved along it. It is built entirely from records archigov already holds:
 
 - the decisions, and how far each has been realised;
 - the planned changes under them;

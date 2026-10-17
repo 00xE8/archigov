@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Archigov work-queue smoke test — GET /me/work by role, the overview pipeline, decisions under review (409), the
+# archigov work-queue smoke test — GET /me/work by role, the overview pipeline, decisions under review (409), the
 # per-area findings join on a review, the sessions list filters, attendance by acting, and audit rows resolved to
 # codes (sign-ins under `sign_in`), end to end through the API of a LOCAL-mode seeded instance.
 #

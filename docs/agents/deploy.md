@@ -1,6 +1,6 @@
 # Prompt: Deploy or Upgrade a Self-Hosted Instance
 
-For operators who use an AI agent to deploy Archigov on their own infrastructure. The agent prepares, runs and checks. You own the credentials, the cloud resources and every decision that cannot be undone. The background is in [infra/README.md](../../infra/README.md) and the documentation site's [Self-host in production](https://archigov.com/docs/guides/self-host) and [Continuous replication](https://archigov.com/docs/guides/replication) guides.
+For operators who use an AI agent to deploy archigov on their own infrastructure. The agent prepares, runs and checks. You own the credentials, the cloud resources and every decision that cannot be undone. The background is in [infra/README.md](../../infra/README.md) and the documentation site's [Self-host in production](https://archigov.com/docs/guides/self-host) and [Continuous replication](https://archigov.com/docs/guides/replication) guides.
 
 ## Rules the Agent Keeps
 
@@ -21,7 +21,7 @@ These go into every deployment session, whatever the prompt:
 
 ```text
 Read AGENTS.md, infra/README.md and docker-compose.prod.yml in this repository, then deploy
-Archigov <version tag, e.g. v0.2.1> on <host or platform> for <organisation>, at <https URL>.
+archigov <version tag, e.g. v0.2.1> on <host or platform> for <organisation>, at <https URL>.
 Keep the rules in docs/agents/deploy.md throughout.
 
 1. Preflight: check the container runtime (Docker with Compose v2, or say what you use instead),
@@ -68,7 +68,7 @@ Keep the rules in docs/agents/deploy.md throughout.
 
 ```text
 Read CHANGELOG.md from the running version to <target tag>, and the upgrade notes at
-https://archigov.com/docs/guides/backups-and-upgrades, then upgrade the Archigov instance on
+https://archigov.com/docs/guides/backups-and-upgrades, then upgrade the archigov instance on
 <host>. Keep the rules in docs/agents/deploy.md.
 
 1. Report what changes between the two versions, especially migrations and configuration.

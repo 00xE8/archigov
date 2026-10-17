@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Archigov governance-catalogue smoke test — standards, principles, patterns and policies through one engine, via the API.
+# archigov governance-catalogue smoke test — standards, principles, patterns and policies through one engine, via the API.
 #
 #   scripts/smoke-catalogue.sh [base_url]     default http://localhost:8080
 #

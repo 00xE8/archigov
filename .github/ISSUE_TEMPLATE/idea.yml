@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Everything in Archigov must feed the derived model, improve a decision or prove conformance. Ideas that start from a problem you have with your own architecture board or estate are the easiest to weigh.
+        Everything in archigov must feed the derived model, improve a decision or prove conformance. Ideas that start from a problem you have with your own architecture board or estate are the easiest to weigh.
   - type: textarea
     id: problem
     attributes:

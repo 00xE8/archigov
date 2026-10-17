@@ -16,7 +16,7 @@ Components in extended support or past end of life are **legacy**. Every applica
 
 ## Why
 
-DORA Art. 8(7) requires a specific ICT risk assessment of legacy ICT systems every year, and again before and after connecting new technologies. ISO 27001 A.8.8 and NIST SP 800-53 SA-22 ask the same question in other words: what is unsupported, and what have you done about it? Archigov answers from the derived model instead of a spreadsheet.
+DORA Art. 8(7) requires a specific ICT risk assessment of legacy ICT systems every year, and again before and after connecting new technologies. ISO 27001 A.8.8 and NIST SP 800-53 SA-22 ask the same question in other words: what is unsupported, and what have you done about it? archigov answers from the derived model instead of a spreadsheet.
 
 - The versions come from facts collection already holds.
 - The dates come from a public, versioned dataset ([endoflife.date](https://endoflife.date), MIT).

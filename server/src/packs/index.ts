@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: The Archigov Authors
+// SPDX-FileCopyrightText: The archigov Authors
 import type { StandardsPack } from "./types.js";
 import { ARCHIGOV_CORE } from "./archigov-core.js";
 import { GOVERNANCE_STARTER_PACK } from "./governance-starter.js";

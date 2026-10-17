@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: The Archigov Authors
+// SPDX-FileCopyrightText: The archigov Authors
 import type { PackStandard, StandardsPack } from "./types.js";
 
 /** DORA-oriented architecture standards: the decisions, registers and resilience properties Articles 8, 9, 12 and 28 expect to be evidenced. */

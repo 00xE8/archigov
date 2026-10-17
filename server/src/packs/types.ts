@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: The Archigov Authors
+// SPDX-FileCopyrightText: The archigov Authors
 
 /**
  * The shape of a pack. A pack ships human statements, control *references* and checkable rules — never the text of

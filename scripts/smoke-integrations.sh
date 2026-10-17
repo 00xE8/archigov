@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Archigov integrations smoke test — the Azure / Azure DevOps / importer / packs paths, driven through the API.
+# archigov integrations smoke test — the Azure / Azure DevOps / importer / packs paths, driven through the API.
 #
 #   scripts/smoke-integrations.sh [base_url] [hook_secret]      default http://localhost:8080  test-secret
 #

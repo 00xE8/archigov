@@ -1,4 +1,4 @@
-# AGENTS.md: contributing to Archigov with an AI coding agent
+# AGENTS.md: contributing to archigov with an AI coding agent
 
 This is the brief for coding agents (Claude Code, Codex, Cursor, GitHub Copilot, Gemini CLI, Aider and the like) and for the people who run them. Read it before changing anything. [CONTRIBUTING.md](CONTRIBUTING.md) has the same rules for people; [docs/agents/](docs/agents/) has ready-made prompts for the most useful tasks.
 
@@ -9,13 +9,13 @@ This is the brief for coding agents (Claude Code, Codex, Cursor, GitHub Copilot,
 The agent writes code; the person running it contributes it and answers for it. Two acts are legal statements by that person, and an agent never makes them:
 
 1. **The DCO sign-off.** Do not add `Signed-off-by:` lines, and do not run `git commit -s`. You may commit, on a branch with a conventional message and an `Assisted-by:` trailer, unless the person asks you to leave the changes uncommitted. The person reviews the diff and signs off themselves (`git rebase --signoff origin/main`), certifying the [Developer Certificate of Origin](DCO).
-2. **The CLA agreement.** If the **Archigov CLA** check asks for agreement to [docs/CLA.md](docs/CLA.md), tell the person. Never post the agreement comment.
+2. **The CLA agreement.** If the **archigov CLA** check asks for agreement to [docs/CLA.md](docs/CLA.md), tell the person. Never post the agreement comment.
 
 **Say when an agent helped.** Add an `Assisted-by:` trailer to every commit an agent wrote, for example `Assisted-by: Claude Code (claude-opus-5-5)`, and say so in the pull request description. Never describe work as reviewed or tested when it was not.
 
-## What Archigov is, and the rules review enforces
+## What archigov is, and the rules review enforces
 
-Archigov governs architecture decisions: argued in three parts, linked to the standards they rest on, decided by the right board on the record, then kept true against the estate collected from Azure. These rules are not negotiable in review:
+archigov governs architecture decisions: argued in three parts, linked to the standards they rest on, decided by the right board on the record, then kept true against the estate collected from Azure. These rules are not negotiable in review:
 
 - **Evidence, not assurance.** No code, text or UI may assert that something is compliant. Show the evidence and who stands behind it.
 - **AI proposes; a named person decides.**
@@ -79,11 +79,11 @@ Experiment on a scratch instance so the demo data stays clean: `DATA_DIR=$(mktem
 - A new file in an Apache-2.0 folder starts with exactly these two lines:
   ```ts
   // SPDX-License-Identifier: Apache-2.0
-  // SPDX-FileCopyrightText: The Archigov Authors
+  // SPDX-FileCopyrightText: The archigov Authors
   ```
   No file anywhere else carries them. `server/test/licensing.test.ts` checks both.
 - Do not move code across the boundary. Do not edit `.github/licensing.json`, `LICENSE`, `LICENSE-APACHE`, `DCO`, `docs/CLA.md`, `TRADEMARKS.md` or `.github/workflows/` unless an issue from the maintainer asks for it.
-- Keep the legal notices: `server/src/about.ts` and **About Archigov** (`web/src/components/About.tsx`) carry the copyright, the licences, the no-warranty statement and the source offer the AGPL requires. Do not remove or reword them.
+- Keep the legal notices: `server/src/about.ts` and **About archigov** (`web/src/components/About.tsx`) carry the copyright, the licences, the no-warranty statement and the source offer the AGPL requires. Do not remove or reword them.
 - A new connector or importer needs a new folder. Ask in an issue first, so the folder joins the Apache-2.0 list on `main` before the pull request.
 - A pull request kept inside the Apache-2.0 folders stays CLA-free. The maintainer adds the CHANGELOG line and any docs.
 

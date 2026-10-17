@@ -119,7 +119,7 @@ function PrepareModal({ days, onClose, onDone }: { days: number; onClose: () => 
   return (
     <Modal open size="lg" modalHeading="Prepare Board Pack" primaryButtonText={busy === "save" ? "Signing…" : "Sign Board Pack"} secondaryButtonText="Cancel" primaryButtonDisabled={!!busy} onRequestClose={onClose} onRequestSubmit={save}>
       <Stack gap={5}>
-        <p className="ag-body">The pack is built from the records for the period, signed with the instance key and anchored to the audit chain, so anyone can check later that it is what Archigov held. The narrative is the only part you write; it is recorded under your name{aiUsed ? ", marked as AI-assisted" : ""}.</p>
+        <p className="ag-body">The pack is built from the records for the period, signed with the instance key and anchored to the audit chain, so anyone can check later that it is what archigov held. The narrative is the only part you write; it is recorded under your name{aiUsed ? ", marked as AI-assisted" : ""}.</p>
         <div className="ag-row">
           <Select id="bp-days" labelText="Period" value={String(period)} onChange={(e) => setPeriod(Number(e.target.value))}>{PERIODS.map((p) => <SelectItem key={p} value={String(p)} text={`Last ${p} days`} />)}</Select>
           <Select id="bp-board" labelText="Board" value={board} onChange={(e) => setBoard(e.target.value)} helperText="Reviews in the pack are this board's; the other figures are tenant-wide.">
