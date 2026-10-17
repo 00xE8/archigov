@@ -1,0 +1,40 @@
+# No AI co-authors: every commit in a pull request is checked for a "Co-authored-by:" trailer naming an AI, or a
+# "Generated with" footer. GitHub lists co-authors as repository contributors, and a squash merge copies the commit
+# messages into main, so one such line would put an AI on the contributor list. Saying an agent helped is welcome:
+# AGENTS.md's "Assisted-by:" trailer is not a co-author line and passes. Applies to every author, the maintainer
+# included. Reads the commits through the API only; no pull-request code is checked out or run.
+name: Attribution
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  no-ai-co-authors:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const commits = await github.paginate(github.rest.pulls.listCommits, { owner, repo, pull_number: context.payload.pull_request.number, per_page: 100 });
+            const AI_CO_AUTHOR = /^co-authored-by:.*(claude|anthropic|openai|chatgpt|copilot|gemini)/im;
+            const GENERATED = /generated with \[?claude/i;
+            const found = [];
+            for (const c of commits) {
+              const m = c.commit.message;
+              const line = (m.match(AI_CO_AUTHOR) || m.match(GENERATED) || [])[0];
+              if (line) found.push(`${c.sha.slice(0, 7)} "${m.split("\n")[0].slice(0, 72)}": ${line.trim()}`);
+            }
+            if (found.length === 0) { core.info(`None of the ${commits.length} commit(s) names an AI as co-author.`); return; }
+            core.setFailed([
+              `${found.length} commit(s) name an AI as co-author or carry a "Generated with" footer:`,
+              ...found.map((f) => `  - ${f}`),
+              "",
+              "archigov records no AI co-authors. Remove the line from those commits (git rebase -i origin/main, reword),",
+              "then git push --force-with-lease. If an agent helped, say so with the Assisted-by: trailer instead (AGENTS.md).",
+            ].join("\n"));

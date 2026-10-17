@@ -227,7 +227,8 @@ AGENTS.md, docs/agents/         the brief for AI coding agents of outside contri
                                of done; never sign off or post the CLA for a person; Assisted-by trailer) + task prompts (pack, template,
                                connector, core change). Keep them in step when a rule, a command or the licence boundary changes
 .github/                       licensing.json (the Apache-2.0 folders — the CLA check reads it from main; test/licensing.test.ts checks the
-                               SPDX headers against it), workflows/dco.yml (Signed-off-by per commit), workflows/cla.yml (the CLA, only for
+                               SPDX headers against it), workflows/dco.yml (Signed-off-by per commit), workflows/attribution.yml (fails a
+                               PR whose commits name an AI as co-author or say "Generated with"; Assisted-by passes), workflows/cla.yml (the CLA, only for
                                authors of commits touching AGPL files; agreement by PR comment, recorded on the cla-signatures branch; the
                                "archigov CLA" commit status), workflows/image.yml (a v* tag publishes ghcr.io/00xe8/archigov
                                :<version>, :<major>.<minor>, :latest for amd64+arm64; dispatch with -f tag= for an older
@@ -264,7 +265,10 @@ last direct-to-main blob; from here on:
   The body explains why. **No AI attribution** — no `Co-authored-by` trailer naming Claude or any AI, and no "Generated
   with" line in PR bodies: skygge is the sole contributor (founder decision, 16 Oct 2026; history was rewritten to
   remove the earlier trailers). Outside contributors' agents follow AGENTS.md, whose `Assisted-by:` trailer is not a
-  co-author line.
+  co-author line. GitHub lists co-authors as repository contributors, so this is enforced twice: the Attribution
+  check fails a PR whose commits carry such a line (`.github/workflows/attribution.yml`), and a local `commit-msg`
+  hook in this machine's clones of both repositories strips it. The private repository carries the same rule in its
+  own CLAUDE.md, since sessions started there never load this file.
 - **Every feature ships with its documentation, in the same PR**: a page under `docs/features/<slug>.md`
   (what it does; who it serves, by role; how it works — endpoints, tables, capabilities, migrations; what it
   deliberately does not do), a CHANGELOG.md entry under Unreleased, and CLAUDE.md's layout/conventions kept
