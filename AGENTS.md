@@ -11,7 +11,7 @@ The agent writes code; the person running it contributes it and answers for it. 
 1. **The DCO sign-off.** Do not add `Signed-off-by:` lines, and do not run `git commit -s`. You may commit, on a branch with a conventional message and an `Assisted-by:` trailer, unless the person asks you to leave the changes uncommitted. The person reviews the diff and signs off themselves (`git rebase --signoff origin/main`), certifying the [Developer Certificate of Origin](DCO).
 2. **The CLA agreement.** If the **archigov CLA** check asks for agreement to [docs/CLA.md](docs/CLA.md), tell the person. Never post the agreement comment.
 
-**Say when an agent helped.** Add an `Assisted-by:` trailer to every commit an agent wrote, for example `Assisted-by: Claude Code (claude-opus-5-5)`, and say so in the pull request description. Never describe work as reviewed or tested when it was not.
+**Say when an agent helped.** Add an `Assisted-by:` trailer to every commit an agent wrote, for example `Assisted-by: Claude Code (claude-opus-5-5)`, and say so in the pull request description. Never add a `Co-authored-by:` line naming an AI, or a "Generated with" footer, even if your tool adds one by default: GitHub would list the AI as a contributor, and the **Attribution** check fails the pull request. Never describe work as reviewed or tested when it was not.
 
 ## What archigov is, and the rules review enforces
 

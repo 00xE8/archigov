@@ -67,7 +67,7 @@ You are the contributor, so these stay yours:
 - **Review every line.** You answer for the change in review, not the agent.
 - **Sign off yourself** (`git rebase --signoff origin/main`) after reviewing. An agent never adds `Signed-off-by:`: the DCO is a statement only a person can make.
 - **Agree to the CLA yourself** if the check asks. An agent never posts the agreement.
-- **Say an agent helped.** Add an `Assisted-by:` trailer to the commits it wrote (e.g. `Assisted-by: Claude Code (claude-opus-5-5)`), and mention it in the pull request.
+- **Say an agent helped.** Add an `Assisted-by:` trailer to the commits it wrote (e.g. `Assisted-by: Claude Code (claude-opus-5-5)`), and mention it in the pull request. Remove any `Co-authored-by:` line naming an AI, or "Generated with" footer, that the tool adds: the **Attribution** check fails a pull request that carries one, because GitHub would list the AI as a contributor.
 
 ## The delivery process
 
