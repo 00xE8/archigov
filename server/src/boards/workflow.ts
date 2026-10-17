@@ -3,12 +3,15 @@ import { normaliseBoardRole, seatHas, capabilitiesFor, APPROVING_ROLES, DECIDING
 import type { Principal } from "../auth/context.js";
 import { boardAreas, touchedAreas, areaLabel, memberAreas } from "./areas.js";
 import { fastLaneOf, normaliseFastLane, type FastLane, type FastLanePolicy } from "./fastlane.js";
+import { resourcesOf } from "../model.js";
 
 /**
  * Boards, routing and the approval workflow.
  *
- * A review is routed to one board when it is created (board_routing: most specific rule wins — review type,
- * then artefact kind, then category — by priority; the board coded DA is the fallback). The board's approval
+ * A review is routed to one board when it is created (board_routing). Every rule names a review type; the most specific
+ * matching rule wins — an application condition (the applications listed, or every application whose resources carry
+ * the rule's owner tag; all of the review's applications must be covered) outweighs an artefact kind, which outweighs a
+ * category — and priority breaks ties, lowest first. The board coded DA is the fallback. The board's approval
  * policy for that review type is a list of steps: pre_review (automatic), approvals and decision (who may
  * declare the outcome: the chair). An approvals step runs in one of two modes:
  *   count  `min` distinct `yes` positions from seats holding one of the listed roles (chair or decision_maker; a
@@ -79,13 +82,29 @@ export function normalisePolicy(input: any): Policy {
 const parsePolicy = (json: string): Policy => { try { return normalisePolicy(j(json, null)); } catch { return DEFAULT_POLICY; } };
 
 /** The routing decision for a would-be review. Most specific match first (type+kind+category > type+kind > type+category > type), then priority. */
-export function routeBoard(type: ReviewType, kind?: string | null, category?: string | null): BoardRow | null {
+/** The owner tags on an application's resources, lower-cased: what a routing rule's owner condition matches. */
+export const applicationOwners = (applicationId: string): Set<string> =>
+  new Set(resourcesOf(applicationId).map((r) => String(r.tags?.owner || r.tags?.Owner || "").trim().toLowerCase()).filter(Boolean));
+
+/** The board a new review goes to. `applicationIds` are the applications the review is for: a design's or an
+ *  exception's application, or every application a decision applies to (none for a catalogue review). */
+export function routeBoard(type: ReviewType, kind?: string | null, category?: string | null, applicationIds: string[] = []): BoardRow | null {
   const rules = db.prepare("SELECT r.*, b.code board_code FROM board_routing r JOIN boards b ON b.id=r.board_id WHERE r.review_type=? ORDER BY r.priority").all(type) as any[];
   const k = (kind || "").toLowerCase(), cat = (category || "").toLowerCase();
+  const apps = Array.from(new Set(applicationIds.filter(Boolean)));
+  const owners = new Map<string, Set<string>>();
+  const ownersOf = (id: string) => { if (!owners.has(id)) owners.set(id, applicationOwners(id)); return owners.get(id)!; };
+  // null: the rule has no application condition; otherwise whether it covers every application of the review
+  const covers = (r: any): boolean | null => {
+    const ids: string[] = j(r.application_ids_json, []) || [], owner = String(r.owner || "").trim().toLowerCase();
+    if (!ids.length && !owner) return null;
+    return apps.length > 0 && apps.every((a) => ids.includes(a) || (!!owner && ownersOf(a).has(owner)));
+  };
   const score = (r: any) => {
     const rk = (r.kind || "").toLowerCase(), rc = (r.category || "").toLowerCase();
     if ((rk && rk !== k) || (rc && rc !== cat)) return -1;
-    return (rk ? 2 : 0) + (rc ? 1 : 0);
+    const c = covers(r); if (c === false) return -1;
+    return (c ? 4 : 0) + (rk ? 2 : 0) + (rc ? 1 : 0);
   };
   let best: any = null, bestScore = -1;
   for (const r of rules) { const s = score(r); if (s > bestScore) { best = r; bestScore = s; } }

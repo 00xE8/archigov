@@ -114,10 +114,16 @@ function SubmitModal({ form, setForm, onDone }: { form: any; setForm: (f: any) =
   const artefact = (artefacts || []).find((a) => a.id === form.artefact_id);
   const [route, setRoute] = React.useState<any>(null);
   const [err, setErr] = React.useState<string | null>(null);
+  const decision = (decisions || []).find((d) => d.id === form.decision_id);
+  const finding = (findings || []).find((f) => f.id === form.finding_id);
+  // preview the board with what the server routes by: type, kind, category (a decision's topic) and the applications
   React.useEffect(() => {
     const qs = new URLSearchParams({ type: t }); if (isArtefact) qs.set("kind", t); if (artefact?.category) qs.set("category", artefact.category);
+    if (t === "decision" && decision?.topic) qs.set("category", decision.topic);
+    const routeApps: string[] = t === "design" ? [form.application_id] : t === "decision" ? (decision?.application_ids || []) : t === "exception" ? [finding?.application_id] : [];
+    for (const a of routeApps.filter(Boolean)) qs.append("application", a);
     get<any>(`/boards/route?${qs}`).then(setRoute).catch(() => setRoute(null));
-  }, [t, artefact?.category]);
+  }, [t, artefact?.category, form.application_id, decision?.id, finding?.id]);
   const targetOk = t === "design" ? true : t === "decision" ? !!form.decision_id : t === "exception" ? !!form.finding_id : !!form.artefact_id;
   const submit = async () => {
     const body: any = { type: t, title: form.title, summary: form.summary };

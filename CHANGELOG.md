@@ -6,6 +6,7 @@ All notable changes to Archigov are documented here. The format follows [Keep a 
 
 ### Added
 
+- **Routing by application** ([docs](docs/features/routing-by-application.md)): a routing rule can name the applications it covers, or every application whose resources carry an owner tag. A team, product line or business unit can then have its own board for its own designs, decisions and exceptions, and the Design Authority keeps what no board claims. An application condition is more specific than a kind or category; a decision that spans teams falls back to the general rules. The board page's routing editor gets an Applications picker and an Owner tag choice, and `GET /boards/route` previews by application (migration m022). The review submission form previews the receiving board with the same inputs: the design's application, the decision's topic and applications, the exception's application (it ignored a decision's topic before). The routing editor's Priority field is wider, so its value is no longer hidden behind the stepper buttons.
 - **A published container image.** Every release tag publishes `ghcr.io/00xe8/archigov:<version>`, `:<major>.<minor>` and `:latest` for amd64 and arm64 (`.github/workflows/image.yml`), so trying Archigov is one `docker run` with no clone and no build. The README opens with that command and a screenshot; `docker compose up --build` from a clone is unchanged.
 - **Issue forms** for a bug, an idea and a policy pack, and **SECURITY.md**: vulnerabilities are reported privately through GitHub's advisories, never in a public issue.
 

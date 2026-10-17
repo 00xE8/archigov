@@ -58,7 +58,7 @@ The product never asserts compliance: it shows evidence and who stands behind it
   - AI Act Annex IV design evidence.
 
   CSV, JSON and ArchiMate motivation elements import any kind. Every kind of item stores control references only, never control-body text.
-- **Boards with an explicit workflow.** There are seven review types (design, decision, standard, principle, pattern, policy, exception), each with its own automatic pre-review and routed to the board that owns it. Two boards are seeded: a Design Authority and a Policy & Compliance Board.
+- **Boards with an explicit workflow.** There are seven review types (design, decision, standard, principle, pattern, policy, exception), each with its own automatic pre-review and routed to the board that owns it: by review type, kind and category, or by the applications it is for, so a team can have its own board. Two boards are seeded: a Design Authority and a Policy & Compliance Board.
   - **Seats:** chair, decision maker, reviewer, secretary and observer.
   - **Approval:** a policy either counts approvals or needs a position from the owner of every **area of responsibility** a review touches.
   - **Conditionals:** a conditional position keeps the item open until the chair resolves it with an explanation.

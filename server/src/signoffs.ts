@@ -1,4 +1,4 @@
-import { db, uid, nowIso, audit, getSetting } from "./db.js";
+import { db, j, uid, nowIso, audit, getSetting } from "./db.js";
 import { routeBoard, boardSummary, memberRole, type ReviewType } from "./boards/workflow.js";
 import { userName } from "./reviews.js";
 import type { Principal } from "./auth/context.js";
@@ -24,7 +24,7 @@ interface Subject { kind: SubjectKind; id: string; code: string; title: string; 
 const ARTEFACTS = "SELECT id, code, title, kind, category, adopted_at, created_at FROM standards WHERE lifecycle='adopted'";
 const DECISIONS = "SELECT id, code, title, topic, decided_at, created_at FROM decisions WHERE status='accepted'";
 const artefactSubject = (a: any): Subject => ({ kind: "artefact", id: a.id, code: a.code, title: a.title, type: a.kind || "standard", since: a.adopted_at || a.created_at, board: routeBoard((a.kind || "standard") as ReviewType, a.kind || "standard", a.category) });
-const decisionSubject = (d: any): Subject => ({ kind: "decision", id: d.id, code: d.code, title: d.title, type: "decision", since: d.decided_at || d.created_at, board: routeBoard("decision", null, d.topic) });
+const decisionSubject = (d: any): Subject => ({ kind: "decision", id: d.id, code: d.code, title: d.title, type: "decision", since: d.decided_at || d.created_at, board: routeBoard("decision", null, d.topic, j(d.application_ids_json, []) || []) });
 function subjects(): Subject[] {
   return [...(db.prepare(`${ARTEFACTS} ORDER BY code`).all() as any[]).map(artefactSubject), ...(db.prepare(`${DECISIONS} ORDER BY code`).all() as any[]).map(decisionSubject)];
 }
