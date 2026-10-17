@@ -4,6 +4,10 @@ All notable changes to Archigov are documented here. The format follows [Keep a 
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-10-17
+
+Boards for teams. A routing rule can now name the applications it covers, or an owner tag, so a team, product line or business unit can have its own board for its own designs, decisions and exceptions, while the Design Authority keeps what no board claims. Every release is now published as a container image, so trying Archigov is one `docker run`. The release also brings a new identity, one message across every surface, and the withdrawal of the commercial licence (CLA v1.2). One migration, m022, adds two nullable columns to `board_routing` and runs on start; existing routing is unchanged. No breaking API change: `GET /boards/route` and `PUT /boards/:id/routing` accept new optional fields.
+
 ### Added
 
 - **Routing by application** ([docs](docs/features/routing-by-application.md)): a routing rule can name the applications it covers, or every application whose resources carry an owner tag. A team, product line or business unit can then have its own board for its own designs, decisions and exceptions, and the Design Authority keeps what no board claims. An application condition is more specific than a kind or category; a decision that spans teams falls back to the general rules. The board page's routing editor gets an Applications picker and an Owner tag choice, and `GET /boards/route` previews by application (migration m022). The review submission form previews the receiving board with the same inputs: the design's application, the decision's topic and applications, the exception's application (it ignored a decision's topic before). The routing editor's Priority field is wider, so its value is no longer hidden behind the stepper buttons.
@@ -127,6 +131,7 @@ First public release: the consolidation of the governance platform built to date
 - **Access model**: system roles (author, auditor, service) separate from the operational platform-admin flag; governance rights only from board seats; local dev mode with persona switching; Microsoft Entra ID (OIDC + PKCE) wired, fixture-verified.
 - **UI**: IBM Carbon (g100 shell, g10 content), Title Case labels, every tag and legend entry self-explaining on hover, header notifications of assigned work, tables for tabular facts, accessibility checked with axe on every touched page.
 
+[0.3.0]: https://github.com/00xE8/archigov/releases/tag/v0.3.0
 [0.2.1]: https://github.com/00xE8/archigov/releases/tag/v0.2.1
 [0.2.0]: https://github.com/00xE8/archigov/releases/tag/v0.2.0
 [0.1.0]: https://github.com/00xE8/archigov/releases/tag/v0.1.0
