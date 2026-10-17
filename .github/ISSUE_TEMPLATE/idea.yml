@@ -1,0 +1,41 @@
+name: Idea
+description: A feature, a connector or an importer you would use.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Everything in Archigov must feed the derived model, improve a decision or prove conformance. Ideas that start from a problem you have with your own architecture board or estate are the easiest to weigh.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The Problem
+      description: What you are trying to do today, who does it (author, chair, decision maker, auditor…) and where it breaks.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What Would Help
+      description: The outcome you want. A design is welcome but not needed.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Decisions and the catalogue
+        - Boards, reviews and sessions
+        - Conformance and rules
+        - Model and connectors (Azure, AWS, GCP, Jira…)
+        - Importers (CSV, ArchiMate, LeanIX, Ardoq…)
+        - Registers, risks and the roadmap
+        - Evidence, exports and audit
+        - AI features
+        - Deployment and operations
+        - Other
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contributing
+      options:
+        - label: I would like to build this, with a pointer to where to start.

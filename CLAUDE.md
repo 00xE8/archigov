@@ -223,7 +223,10 @@ AGENTS.md, docs/agents/         the brief for AI coding agents of outside contri
 .github/                       licensing.json (the Apache-2.0 folders — the CLA check reads it from main; test/licensing.test.ts checks the
                                SPDX headers against it), workflows/dco.yml (Signed-off-by per commit), workflows/cla.yml (the CLA, only for
                                authors of commits touching AGPL files; agreement by PR comment, recorded on the cla-signatures branch; the
-                               "Archigov CLA" commit status), pull_request_template.md. Root: LICENSE (AGPL-3.0), LICENSE-APACHE, DCO
+                               "Archigov CLA" commit status), workflows/image.yml (a v* tag publishes ghcr.io/00xe8/archigov
+                               :<version>, :<major>.<minor>, :latest for amd64+arm64; dispatch with -f tag= for an older
+                               release), ISSUE_TEMPLATE/ (bug, idea, policy pack forms; blank issues off; security → advisories),
+                               pull_request_template.md. Root: LICENSE (AGPL-3.0), LICENSE-APACHE, DCO, SECURITY.md
 ```
 
 ## Run / build / test
@@ -272,7 +275,8 @@ last direct-to-main blob; from here on:
 - **Quality gate** (unchanged, now per-PR): tsc clean in both folders, `npm test` green, the nine-smoke battery
   on fresh instances, axe + a browser pass on touched UI, `npm ci --dry-run` lock check.
 - **Releases**: semver. Bump both package.json versions, move Unreleased to a dated heading in CHANGELOG.md,
-  tag `vX.Y.Z`, `gh release create vX.Y.Z` with that section as the notes. Patch = fixes; minor = features;
+  tag `vX.Y.Z`, `gh release create vX.Y.Z` with that section as the notes; pushing the tag runs `image.yml`, which
+  publishes the image the README's `docker run` pulls — check the run went green. Patch = fixes; minor = features;
   major = breaking API/schema (migrations are forward-only — a breaking one forces a major).
 - **Public-repo hygiene**: `data/` is gitignored and holds real credentials — nothing under it is ever committed;
   no tokens, account ids or infrastructure identifiers in tracked files; the secret scan is part of going public,
