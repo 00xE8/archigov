@@ -51,16 +51,26 @@ const membersOf = (b: any) => {
 /** Per area: the decision makers who own it (the UI warns when nobody does). */
 const coverageOf = (b: any) => { const members = membersOf(b); return parseBoardAreas(b.areas_json).map((a) => ({ area: a.id, label: a.label, owners: members.filter((m) => m.board_role === "decision_maker" && m.areas.includes(a.id)).map((m) => m.user_id) })); };
 
+/** A board's routing rules as the API shows them: the application condition names its applications. */
+const routingOf = (boardId: string) => {
+  const names = new Map((db.prepare("SELECT id, name FROM elements WHERE type='application' AND deleted_at IS NULL").all() as any[]).map((a) => [a.id, a.name]));
+  return (db.prepare("SELECT id, review_type, kind, category, priority, application_ids_json, owner FROM board_routing WHERE board_id=? ORDER BY priority, review_type").all(boardId) as any[])
+    .map(({ application_ids_json, ...r }) => { const ids: string[] = j(application_ids_json, []) || []; return { ...r, owner: r.owner || null, application_ids: ids, applications: ids.map((id) => ({ id, name: names.get(id) ?? null })) }; });
+};
+/** Review types a routing rule may scope to applications: the ones that are for an application. */
+const APP_SCOPED_TYPES = ["design", "decision", "exception"];
+
 boards.get("/boards", (c) => c.json((db.prepare("SELECT * FROM boards ORDER BY code").all() as any[]).map(summary)));
 boards.get("/boards/route", (c) => {
   const type = c.req.query("type");
   if (!isReviewType(type)) return c.json({ error: `type must be one of ${REVIEW_TYPES.join(", ")}` }, 400);
-  const b = routeBoard(type, c.req.query("kind") || null, c.req.query("category") || null);
+  const apps = (c.req.queries("application") || []).flatMap((v) => v.split(",")).map((v) => v.trim()).filter(Boolean);
+  const b = routeBoard(type, c.req.query("kind") || null, c.req.query("category") || null, apps);
   return c.json(b ? { ...summary(b), policy: policyFor(b.id, type) } : { error: "no board can receive this review (no routing rule and no board coded DA)" }, b ? 200 : 404);
 });
 boards.get("/boards/:id", (c) => {
   const b = load(c); if (!b) return c.json({ error: "not found" }, 404);
-  const routing = db.prepare("SELECT id, review_type, kind, category, priority FROM board_routing WHERE board_id=? ORDER BY priority, review_type").all(b.id);
+  const routing = routingOf(b.id);
   const inFlight = (db.prepare("SELECT * FROM reviews WHERE board_id=? AND stage IN ('submitted','pre_review','in_review','changes_requested') ORDER BY created_at DESC").all(b.id) as any[])
     .map((r) => ({ id: r.id, code: r.code, title: r.title, type: r.type, stage: r.stage, submitted_by: r.submitted_by, created_at: r.created_at, areas: j(r.areas_json, []) || [], deferred_count: r.deferred_count || 0, progress: approvalProgress(r) }));
   const sessions = (db.prepare("SELECT * FROM board_sessions WHERE board_id=? ORDER BY scheduled_at DESC LIMIT 5").all(b.id) as any[]).map(sessionSummary);
@@ -179,12 +189,22 @@ boards.post("/boards/:id/fast-lane/declare", async (c) => {
 boards.put("/boards/:id/routing", async (c) => {
   const b = boardById(c.req.param("id")); if (!b) return c.json({ error: "not found" }, 404);
   if (!manages(b.id, "routing")) return forbidden(c, "manage_board", currentPrincipal(), `only a platform admin, the chair or the secretary of ${b.code} changes its routing`);
-  const rules = z.array(z.object({ review_type: z.enum(REVIEW_TYPES), kind: z.string().trim().nullable().optional(), category: z.string().trim().nullable().optional(), priority: z.number().int().min(0).max(10000).default(100) })).parse(await c.req.json());
+  const rules = z.array(z.object({ review_type: z.enum(REVIEW_TYPES), kind: z.string().trim().nullable().optional(), category: z.string().trim().nullable().optional(), priority: z.number().int().min(0).max(10000).default(100),
+    application_ids: z.array(z.string().trim().min(1)).max(500).optional().nullable(), owner: z.string().trim().max(200).optional().nullable() })).parse(await c.req.json());
+  const isApp = db.prepare("SELECT 1 FROM elements WHERE id=? AND type='application' AND deleted_at IS NULL");
+  for (const r of rules) {
+    const ids = Array.from(new Set(r.application_ids || []));
+    if ((ids.length || r.owner) && !APP_SCOPED_TYPES.includes(r.review_type)) return c.json({ error: `a ${r.review_type} review is not for an application: only design, decision and exception rules may name applications or an owner` }, 400);
+    const unknown = ids.filter((id) => !isApp.get(id));
+    if (unknown.length) return c.json({ error: `not an application: ${unknown.join(", ")}` }, 400);
+    r.application_ids = ids;
+  }
   db.transaction(() => {
     db.prepare("DELETE FROM board_routing WHERE board_id=?").run(b.id);
-    for (const r of rules) db.prepare("INSERT INTO board_routing(id,board_id,review_type,kind,category,priority) VALUES (?,?,?,?,?,?)").run(uid(), b.id, r.review_type, r.kind || null, r.category || null, r.priority);
+    for (const r of rules) db.prepare("INSERT INTO board_routing(id,board_id,review_type,kind,category,priority,application_ids_json,owner) VALUES (?,?,?,?,?,?,?,?)")
+      .run(uid(), b.id, r.review_type, r.kind || null, r.category || null, r.priority, r.application_ids?.length ? JSON.stringify(r.application_ids) : null, r.owner || null);
   })();
-  audit(actorOf(c), "routing:set", "boards", b.id, { rules: rules.length });
-  return c.json({ ok: true, board: b.code, routing: db.prepare("SELECT id, review_type, kind, category, priority FROM board_routing WHERE board_id=? ORDER BY priority").all(b.id) });
+  audit(actorOf(c), "routing:set", "boards", b.id, { rules: rules.length, by_application: rules.filter((r) => r.application_ids?.length || r.owner).length });
+  return c.json({ ok: true, board: b.code, routing: routingOf(b.id) });
 });
 export type { ReviewType };

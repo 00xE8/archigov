@@ -40,7 +40,7 @@ No AI: a reaffirmation is a named person's statement. The dates and statuses are
   - after a reaffirmation: the date it set. Reaffirmed → a full cadence ahead; revision needed → three months ahead.
 - **Cadence:** settings `review.artefact_months` (default 12) and `review.decision_months` (default 24).
 - **Status:** *overdue* when the date has passed; *due soon* within 30 days; otherwise *in date*. *Revision needed* is shown when the latest reaffirmation asked for one.
-- **The owning board** is the board the item's review type routes to: the artefact's kind and category, or a decision's topic.
+- **The owning board** is the board the item's review type routes to: the artefact's kind and category, or a decision's topic and the applications it applies to ([routing by application](routing-by-application.md)).
 - **Starts and stops with the record:** an item has a reaffirmation only while adopted (artefact) or accepted (decision). A proposed, superseded or retired record has none. A newly adopted version restarts the clock from its own adoption.
 
 ## Who can do what

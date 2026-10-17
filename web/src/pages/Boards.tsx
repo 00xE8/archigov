@@ -1,6 +1,6 @@
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Table, TableHead, TableRow, TableHeader, TableBody, TableCell, TableContainer, DataTableSkeleton, SkeletonText, Button, Modal, TextInput, TextArea, Select, SelectItem, Dropdown, NumberInput, MultiSelect, InlineNotification, InlineLoading, Tag, Checkbox, FormGroup, Toggle, UnorderedList, ListItem } from "@carbon/react";
+import { Table, TableHead, TableRow, TableHeader, TableBody, TableCell, TableContainer, DataTableSkeleton, SkeletonText, Button, Modal, TextInput, TextArea, Select, SelectItem, Dropdown, NumberInput, MultiSelect, FilterableMultiSelect, InlineNotification, InlineLoading, Tag, Checkbox, FormGroup, Toggle, UnorderedList, ListItem } from "@carbon/react";
 import { Add, Edit, TrashCan, Save, Calendar, User, TreeViewAlt, Flow, Checkmark } from "@carbon/icons-react";
 import { get, post, put, del, labelFor, fmtDateTime, REVIEW_TYPES, BOARD_ROLES, BOARD_ROLE_LABELS, APPROVAL_SEATS, DECISION_SEATS, NO_SYSTEM_ROLE, normaliseSeat, ARTEFACT_KINDS, SEEDED_AREAS, AREA_LABELS, areaLabel } from "../api";
 import { PageHeader, PageIntro, useLoad, LoadError, RLink, StatusTag, EmptyState, Empty, Crumbs, KindTag, AreaTag, progressText, useDocTitle } from "../components";
@@ -10,6 +10,10 @@ import { NewSessionModal } from "../components/NewSessionModal";
 const seatList = (roles: string[]) => roles.map((r) => labelFor("board_role", r).toLowerCase()).join(" or ");
 const defaultSeats = (kind: string, mode?: string) => (kind === "decision" ? DECISION_SEATS : mode === "areas" ? ["decision_maker"] : APPROVAL_SEATS);
 type Area = { id: string; label: string };
+/** Review types that are for an application, so a routing rule may name applications or an owner tag. */
+const APP_TYPES = ["design", "decision", "exception"];
+/** A rule's application condition in words: "owner clinical-systems", "PatientFlow, Appointments", or null. */
+const appCondition = (r: any) => [r.owner ? `owner ${r.owner}` : "", (r.applications || []).map((a: any) => a.name || a.id).join(", ")].filter(Boolean).join(" · ") || null;
 /** The API's `areas` may be ids or {id,label}; the UI always works with {id,label}. */
 const asAreas = (list: any): Area[] => (Array.isArray(list) ? list.map((a) => (typeof a === "string" ? { id: a, label: areaLabel(a) } : { id: a.id, label: a.label || areaLabel(a.id) })) : []);
 const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
@@ -86,6 +90,8 @@ export function BoardDetail() {
   const [editingAreas, setEditingAreas] = React.useState<string | null>(null);
   const [areasForm, setAreasForm] = React.useState<{ selected: string[]; custom: Area[]; newLabel: string; newId: string } | null>(null);
   const [routing, setRouting] = React.useState<any[] | null>(null);
+  const [appList] = useLoad(() => get("/applications"), []);
+  const knownOwners: string[] = Array.from(new Set(((appList as any[]) || []).flatMap((a: any) => a.owners || []))).sort() as string[];
   const [policy, setPolicy] = React.useState<{ type: string; steps: any[]; fast_lane?: { enabled: boolean; require_pattern: boolean } } | null>(null);
   const [fastDeclare, setFastDeclare] = React.useState<{ rationale: string } | null>(null);
   const [session, setSession] = React.useState(false);
@@ -225,11 +231,11 @@ export function BoardDetail() {
       {/* 3 · How reviews are decided: how they arrive (routing), then the steps each type must pass — full width, the flow needs the page. */}
       <section className="ag-section"><h2>Decision Flow</h2>
         <p className="ag-muted ag-body ag-mb-03">Reviews arrive here by routing rule and pass the steps set for their type; the chair declares once those steps are satisfied. The UI shows progress against these steps; the server enforces them.</p>
-        <div className="ag-subhead"><h3>Routing</h3>{canManage && <Button size="sm" kind="ghost" renderIcon={Edit} onClick={() => setRouting((b.routing || []).map((r: any) => ({ review_type: r.review_type || "design", kind: r.kind || "", category: r.category || "", priority: r.priority ?? 0 })))}>Edit Routing</Button>}</div>
-        <p className="ag-muted ag-body ag-mb-03">A rule matches a review type and, optionally, a catalogue kind or category; the highest priority wins.</p>
+        <div className="ag-subhead"><h3>Routing</h3>{canManage && <Button size="sm" kind="ghost" renderIcon={Edit} onClick={() => setRouting((b.routing || []).map((r: any) => ({ review_type: r.review_type || "design", kind: r.kind || "", category: r.category || "", priority: r.priority ?? 0, application_ids: r.application_ids || [], owner: r.owner || "" })))}>Edit Routing</Button>}</div>
+        <p className="ag-muted ag-body ag-mb-03">A rule matches a review type and, optionally, a catalogue kind or a category. A design, decision or exception rule may also cover applications: those listed, or every application whose resources carry an owner tag. The most specific rule wins, with applications before kind before category; priority breaks a tie, lowest first.</p>
         {(b.routing || []).length === 0 ? <Empty>No routing rules: this board only receives reviews assigned to it explicitly.</Empty> : (
-          <TableContainer><Table size="sm"><TableHead><TableRow><TableHeader>Review Type</TableHeader><TableHeader>Kind</TableHeader><TableHeader>Category</TableHeader><TableHeader>Priority</TableHeader></TableRow></TableHead>
-            <TableBody>{b.routing.map((r: any, i: number) => <TableRow key={i}><TableCell><KindTag kind="review_type" value={r.review_type} /></TableCell><TableCell>{r.kind ? <KindTag kind="kind" value={r.kind} /> : <span className="ag-muted">any</span>}</TableCell><TableCell>{r.category || <span className="ag-muted">any</span>}</TableCell><TableCell>{r.priority ?? 0}</TableCell></TableRow>)}</TableBody></Table></TableContainer>)}
+          <TableContainer><Table size="sm"><TableHead><TableRow><TableHeader>Review Type</TableHeader><TableHeader>Kind</TableHeader><TableHeader>Category</TableHeader><TableHeader>Applications</TableHeader><TableHeader>Priority</TableHeader></TableRow></TableHead>
+            <TableBody>{b.routing.map((r: any, i: number) => <TableRow key={i}><TableCell><KindTag kind="review_type" value={r.review_type} /></TableCell><TableCell>{r.kind ? <KindTag kind="kind" value={r.kind} /> : <span className="ag-muted">any</span>}</TableCell><TableCell>{r.category || <span className="ag-muted">any</span>}</TableCell><TableCell>{appCondition(r) || <span className="ag-muted">any</span>}</TableCell><TableCell>{r.priority ?? 0}</TableCell></TableRow>)}</TableBody></Table></TableContainer>)}
         <div className="ag-subhead"><h3>Workflows by Review Type</h3></div>
         <p className="ag-muted ag-body ag-mb-03">Every review type, whether this board handles it or not: how its reviews arrive, the steps they pass, and — for whoever runs the board — the workflow editor in place. A routed type with no workflow is decided by the chair alone.</p>
         <TableContainer><Table size="sm">
@@ -241,7 +247,7 @@ export function BoardDetail() {
               <TableRow key={t}>
                 <TableCell><KindTag kind="review_type" value={t} size="md" /></TableCell>
                 <TableCell>{rules.length
-                  ? <div className="ag-row tight">{rules.map((r: any, i: number) => <span key={i} className="ag-label">{r.kind ? labelFor("kind", r.kind) : "any kind"}{r.category ? ` · ${r.category}` : ""} <span className="ag-muted">· priority {r.priority ?? 0}</span></span>)}</div>
+                  ? <div className="ag-row tight">{rules.map((r: any, i: number) => <span key={i} className="ag-label">{r.kind ? labelFor("kind", r.kind) : "any kind"}{r.category ? ` · ${r.category}` : ""}{appCondition(r) ? ` · for ${appCondition(r)}` : ""} <span className="ag-muted">· priority {r.priority ?? 0}</span></span>)}</div>
                   : <span className="ag-muted">Not routed here</span>}</TableCell>
                 <TableCell>{steps
                   ? <div className="ag-row tight"><span className="ag-label">{steps.map((s: any) => s.name || labelFor("step", s.kind)).join(" → ") || "No steps"}</span>{policies[t]?.fast_lane?.enabled && <StatusTag kind="fast_lane" value="eligible" label={policies[t].fast_lane.require_pattern ? "Fast Lane · Pattern Required" : "Fast Lane"} />}</div>
@@ -311,18 +317,31 @@ export function BoardDetail() {
       {session && <NewSessionModal boards={[{ id: b.id, code: b.code, name: b.name }]} boardId={b.id} onClose={() => setSession(false)} onCreated={(s) => { setSession(false); if (s?.id) nav(`/sessions/${s.id}`); else { reload(); reloadSessions(); } }} />}
 
       <Modal open={!!routing} size="lg" modalHeading={`Routing Rules for ${b.name}`} primaryButtonText="Save Routing" secondaryButtonText="Cancel" onRequestClose={() => setRouting(null)}
-        onRequestSubmit={() => { const rows = (routing || []).map((r) => ({ review_type: r.review_type, kind: r.kind || null, category: r.category || null, priority: Number(r.priority) || 0 })); setRouting(null); run("routing", () => put(`/boards/${b.id}/routing`, rows), "Routing saved"); }}>
+        onRequestSubmit={() => { const rows = (routing || []).map((r) => ({ review_type: r.review_type, kind: r.kind || null, category: r.category || null, priority: Number(r.priority) || 0, ...(APP_TYPES.includes(r.review_type) ? { application_ids: r.application_ids || [], owner: r.owner || null } : {}) })); setRouting(null); run("routing", () => put(`/boards/${b.id}/routing`, rows), "Routing saved"); }}>
         {routing && <div className="ag-form">
           {routing.length === 0 && <p className="ag-muted ag-body">No rules. Add one to receive reviews of a type.</p>}
           {routing.map((r, i) => (
-            <div className="ag-routing-row" key={i}>
+            <div className="ag-routing-rule" key={i}>
+            <div className="ag-routing-row">
               <Select id={`rt-${i}`} labelText="Review type" value={r.review_type} onChange={(e) => setRouting(routing.map((x, k) => (k === i ? { ...x, review_type: e.target.value } : x)))}>{REVIEW_TYPES.map((t) => <SelectItem key={t} value={t} text={labelFor("review_type", t)} />)}</Select>
               <Select id={`rk-${i}`} labelText="Kind" value={r.kind} onChange={(e) => setRouting(routing.map((x, k) => (k === i ? { ...x, kind: e.target.value } : x)))}><SelectItem value="" text="Any" />{ARTEFACT_KINDS.map((k) => <SelectItem key={k.kind} value={k.kind} text={k.label} />)}</Select>
               <TextInput id={`rc-${i}`} labelText="Category" placeholder="e.g. AI" value={r.category} onChange={(e) => setRouting(routing.map((x, k) => (k === i ? { ...x, category: e.target.value } : x)))} />
               <NumberInput id={`rp-${i}`} label="Priority" min={0} max={100} value={r.priority} onChange={(_e, { value }) => setRouting(routing.map((x, k) => (k === i ? { ...x, priority: Number(value) || 0 } : x)))} />
               <Button size="md" kind="ghost" renderIcon={TrashCan} iconDescription="Remove rule" hasIconOnly onClick={() => setRouting(routing.filter((_x, k) => k !== i))} />
+            </div>
+            {APP_TYPES.includes(r.review_type) && <div className="ag-routing-apps">
+              <FilterableMultiSelect id={`ra-${i}`} titleText="Applications" placeholder="Any application"
+                helperText="Only reviews for these applications. A decision must apply to nothing else."
+                items={(appList as any[]) || []} itemToString={(a: any) => (a ? a.name : "")}
+                selectedItems={((appList as any[]) || []).filter((a: any) => (r.application_ids || []).includes(a.id))}
+                onChange={({ selectedItems }: any) => setRouting(routing.map((x, k) => (k === i ? { ...x, application_ids: selectedItems.map((a: any) => a.id) } : x)))} />
+              <Select id={`ro-${i}`} labelText="Owner tag" helperText="Or every application whose resources carry this owner tag." value={r.owner || ""} onChange={(e) => setRouting(routing.map((x, k) => (k === i ? { ...x, owner: e.target.value } : x)))}>
+                <SelectItem value="" text="No owner condition" />
+                {Array.from(new Set([...knownOwners, ...(r.owner ? [r.owner] : [])])).map((o) => <SelectItem key={o} value={o} text={o} />)}
+              </Select>
+            </div>}
             </div>))}
-          <div><Button size="sm" kind="tertiary" renderIcon={Add} onClick={() => setRouting([...routing, { review_type: "design", kind: "", category: "", priority: 0 }])}>Add Rule</Button></div>
+          <div><Button size="sm" kind="tertiary" renderIcon={Add} onClick={() => setRouting([...routing, { review_type: "design", kind: "", category: "", priority: 0, application_ids: [], owner: "" }])}>Add Rule</Button></div>
         </div>}
       </Modal>
 

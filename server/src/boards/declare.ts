@@ -211,7 +211,7 @@ export async function createDependency(review: any, b: DependencyBody, p: Princi
     audit(actor, "create", "decisions", id, { code, via_review: review.code, author: review.submitted_by || actor });
     decision = db.prepare("SELECT * FROM decisions WHERE id=?").get(id);
     if (b.submit !== false) {
-      const board = routeBoard("decision", null, topic);
+      const board = routeBoard("decision", null, topic, appIds);
       if (!board) throw Object.assign(new Error("no board can receive a decision review (no routing rule and no board coded DA)"), { status: 500 });
       depReview = await createReview({ type: "decision", title: `Decide ${code}: ${b.create.title}`, target_kind: "decision", target_id: id, decision_id: id, application_id: appIds.length === 1 ? appIds[0] : null, board, submitted_by: review.submitted_by || actor, risk_tier: "medium", summary: `Dependent decision raised from ${review.code}.` }, actor);
     }

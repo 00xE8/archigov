@@ -120,9 +120,9 @@ reviews.post("/reviews", async (c) => {
   const b = ReviewIn.parse(await c.req.json()); const p = currentPrincipal(); const actor = actorOf(c);
   const needs: Capability = ARTEFACT_TYPES.includes(b.type) ? "manage_artefacts" : b.type === "decision" ? "create_decision" : "submit_review";
   if (!has(p, needs)) return forbidden(c, needs, p, `${b.type} reviews need ${needs}`);
-  let target_kind: string, target_id: string, kind: string | null = null, category: string | null = null, application_id = b.application_id || null, decision_id = b.decision_id || null;
+  let target_kind: string, target_id: string, kind: string | null = null, category: string | null = null, application_id = b.application_id || null, decision_id = b.decision_id || null, decisionApps: string[] = [];
   if (b.type === "design") { if (!application_id || !getElement(application_id)) return c.json({ error: "application_id is required for a design review" }, 400); target_kind = "application"; target_id = application_id; }
-  else if (b.type === "decision") { if (!decision_id || !db.prepare("SELECT 1 FROM decisions WHERE id=?").get(decision_id)) return c.json({ error: "decision_id is required for a decision review" }, 400); target_kind = "decision"; target_id = decision_id; const d = db.prepare("SELECT topic FROM decisions WHERE id=?").get(decision_id) as any; category = d?.topic ?? null; }
+  else if (b.type === "decision") { if (!decision_id || !db.prepare("SELECT 1 FROM decisions WHERE id=?").get(decision_id)) return c.json({ error: "decision_id is required for a decision review" }, 400); target_kind = "decision"; target_id = decision_id; const d = db.prepare("SELECT topic, application_ids_json FROM decisions WHERE id=?").get(decision_id) as any; category = d?.topic ?? null; decisionApps = j(d?.application_ids_json, []) || []; }
   else if (ARTEFACT_TYPES.includes(b.type)) {
     if (!b.artefact_id) return c.json({ error: `artefact_id is required for a ${b.type} review` }, 400);
     const a: any = artefactById(b.artefact_id); if (!a) return c.json({ error: "artefact not found" }, 404);
@@ -139,7 +139,9 @@ reviews.post("/reviews", async (c) => {
   if (b.patterns?.length && b.type !== "design") return c.json({ error: "only a design review claims patterns" }, 400);
   let patterns: string[] = [];
   try { patterns = resolvePatterns(b.patterns); } catch (e) { return fail(c, e); }
-  const board = routeBoard(b.type, kind, category);
+  // the applications the review is for: a decision's, or the design's or exception's one (a catalogue review has none)
+  const routeApps = b.type === "decision" ? decisionApps : ARTEFACT_TYPES.includes(b.type) ? [] : application_id ? [application_id] : [];
+  const board = routeBoard(b.type, kind, category, routeApps);
   if (!board) return c.json({ error: "no board can receive this review (no routing rule and no board coded DA)" }, 500);
   const r = await createReview({ type: b.type, title: b.title, target_kind, target_id, board, submitted_by: actor, application_id, decision_id, work_item_id: b.work_item_id || null, risk_tier: b.risk_tier, impact: b.impact || null, summary: b.summary || b.reason || "", design_md: b.design_md || "", patterns,
     submitted_data: b.type === "exception" ? { reason: b.reason, proposed_expires_at: b.proposed_expires_at || null, finding_id: b.finding_id || null, artefact_id: b.artefact_id || null, application_id } : {} }, actor);

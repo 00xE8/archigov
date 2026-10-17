@@ -169,6 +169,7 @@ Rights: **chair or secretary of that board** create/plan/refresh/reorder/record 
 
 ## Boards — additions (`routes/boards.ts`)
 
+- Routing rules may carry an application condition (`application_ids`, `owner`) for design, decision and exception reviews: see `docs/features/routing-by-application.md`.
 - `GET /boards/:id` adds `areas: [{ id, label }]`, members gain `areas`, `sessions_planned`, `sessions: [... last 5 ...]`, `can.sessions` (chair/secretary), `area_coverage: [{ area, owners: [...] }]` (warn in UI when empty).
 - `PUT /boards/:id { areas?: [...] }` — chair of the board or platform admin (areas are configuration); unknown ids allowed only as new custom areas `{ id: slug, label }`; removing an area that a member owns strips it from the member. Audit `board:areas`.
 - `POST /boards/:id/members { user_id, board_role, areas? }` and `PUT /boards/:id/members/:userId { areas }` — chair/secretary/admin; areas only meaningful for decision makers (stored for any seat, ignored elsewhere).

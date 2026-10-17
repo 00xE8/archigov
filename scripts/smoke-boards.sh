@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Archigov boards smoke test — boards, board seats, routing, approval policies and the typed-review workflow,
+# Archigov boards smoke test — boards, board seats, routing (incl. by application), approval policies and the typed-review workflow,
 # end to end through the API of a LOCAL-mode seeded instance.
 #
 #   scripts/smoke-boards.sh [base_url]   default http://localhost:8080
@@ -218,6 +218,34 @@ def si():
     s, au = get(f"/audit?entity=reviews&entity_id={a['id']}&action=decide:approved"); assert au["rows"] and au["rows"][0]["data"].get("basis") == "fast_lane", au["rows"][:1]
     return f"{a['code']} in the lane (low, PAT-001, every check passing) → declared by the chair with basis fast_lane; {b['code']} taken out by m.hughes's no and skipped; policy guard and 403 for the platform admin"
 step("i  fast lane: eligibility, an owner's veto, the chair's board-wide declaration", si)
+
+def sj():
+    # routing by application: a rule scoped to an owner tag takes that owner's design reviews; others keep their board.
+    # The PCB stands in for a team board (no board is created, so later scripts still see DA and PCB); restored after.
+    s, apps = get("/applications"); assert s == 200, s
+    owned = next(a for a in apps if "clinical-systems" in (a.get("owners") or []))
+    other = next(a for a in apps if a.get("owners") and "clinical-systems" not in a["owners"])
+    s, pcb = get("/boards/PCB"); assert s == 200, s
+    keep = lambda r: {k: r[k] for k in ("review_type", "kind", "category", "priority")}
+    before = [keep(r) for r in pcb["routing"]]
+    assert all(not r["application_ids"] and r["owner"] is None for r in pcb["routing"]), pcb["routing"]
+    s, x = put(f"/boards/{pcb['id']}/routing", before + [{"review_type": "standard", "owner": "clinical-systems"}]); assert s == 400, f"a catalogue rule names no application: {s} {x}"
+    s, x = put(f"/boards/{pcb['id']}/routing", before + [{"review_type": "design", "application_ids": ["not-an-application"]}]); assert s == 400, f"{s} {x}"
+    s, x = put(f"/boards/{pcb['id']}/routing", before + [{"review_type": "design", "owner": "clinical-systems"}], user="s.patel"); assert s == 403, f"an author does not route: {s} {x}"
+    s, x = put(f"/boards/{pcb['id']}/routing", before + [{"review_type": "design", "owner": "clinical-systems"}, {"review_type": "decision", "application_ids": [owned["id"]]}]); assert s == 200, f"{s} {x}"
+    rules = {r["review_type"]: r for r in x["routing"] if r["owner"] or r["application_ids"]}
+    assert rules["design"]["owner"] == "clinical-systems" and rules["decision"]["applications"] == [{"id": owned["id"], "name": owned["name"]}], rules
+    mutations.append("PCB routing: owner and application rules added, then restored")
+    s, r1 = get(f"/boards/route?type=design&application={owned['id']}"); assert s == 200 and r1["code"] == "PCB", r1
+    s, r2 = get(f"/boards/route?type=design&application={other['id']}"); assert s == 200 and r2["code"] == "DA", r2
+    s, r3 = get("/boards/route?type=design"); assert r3["code"] == "DA", "no application: the general rule"
+    s, rv = post("/reviews", {"type": "design", "application_id": owned["id"], "title": "Smoke-boards: routed by owner", "summary": "smoke-boards routing", "design_md": "## Design\n\nA small change."}, user=AUTHOR)
+    assert s == 200 and rv["board"]["code"] == "PCB", f"{s} {rv.get('board') if isinstance(rv, dict) else rv}"
+    s, w = post(f"/reviews/{rv['id']}/decide", {"outcome": "withdrawn"}, user=AUTHOR); assert s == 200, f"{s} {w}"
+    s, au = get(f"/audit?entity=boards&entity_id={pcb['id']}&action=routing:set"); assert au["rows"] and au["rows"][0]["data"].get("by_application") == 2, au["rows"][:1]
+    s, x = put(f"/boards/{pcb['id']}/routing", before); assert s == 200 and not any(r["owner"] or r["application_ids"] for r in x["routing"]), x
+    return f"{owned['name']} (owner clinical-systems) → PCB, {other['name']} → DA; {rv['code']} landed on PCB, then withdrawn; guards: catalogue types, unknown ids, authors; routing restored"
+step("j  routing by application: owner and application rules, preview, guards", sj)
 
 passed = sum(1 for _, ok in results if ok); failed = len(results) - passed
 print(f"\n{passed} passed, {failed} failed  ({BASE})")
