@@ -18,11 +18,13 @@ Every architecture decision is argued, linked and kept true:
 
 It runs as one container with one SQLite file and no other services. It is usable in minutes with the demo estate or your own Azure subscription. It is open source: the core is AGPL-3.0, and packs, templates, connectors and importers are Apache-2.0.
 
-[archigov.com](https://archigov.com) · [Documentation](https://archigov.com/docs) · [Quickstart](https://archigov.com/docs/getting-started/quickstart) · [How to contribute](#how-to-contribute)
+[archigov.com](https://archigov.com) · [Live demo](https://demo.archigov.com) · [Documentation](https://archigov.com/docs) · [Quickstart](https://archigov.com/docs/getting-started/quickstart) · [How to contribute](#how-to-contribute)
 
 <img src="docs/assets/screenshot-review.webp" alt="A design review in archigov: the Design Authority's record, one position per area of responsibility, and a conditional on Infrastructure waiting for the chair" width="100%">
 
 ## Try it in one minute
+
+No install needed for a first look: the [live demo](https://demo.archigov.com) is this release's UI on the same demo estate, read-only. To run it yourself:
 
 ```bash
 docker run --rm -p 8080:8080 ghcr.io/00xe8/archigov
