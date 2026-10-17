@@ -1,4 +1,7 @@
-<img src="docs/assets/logo.svg" alt="" width="72" height="72">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/banner-dark.png">
+  <img src="docs/assets/banner-light.png" alt="archigov: architecture decisions, standards and reviews, derived from your cloud estate and backlog and checked continuously against them." width="1280">
+</picture>
 
 # Archigov — architecture decisions, governed
 

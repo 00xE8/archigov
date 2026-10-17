@@ -6,7 +6,7 @@ All notable changes to Archigov are documented here. The format follows [Keep a 
 
 ### Changed
 
-- **A new mark.** A stone arch whose keystone, the stone that makes an arch stand, is the brand blue: the decision that holds an architecture together. It replaces the blue "A" as the app's favicon and heads the README (`docs/assets/logo.svg`). Square corners and Carbon's gray 100 and blue 60, legible from 16px.
+- **A new identity: the plumb mark.** A stem and a bob hanging at rest beside it: the plumb line builders use to see whether work stands true, as Archigov shows whether the estate stands true to what the board approved. The bob is the one colour in the mark, a Carbon blue gradient. The app's favicon is the mark on its Blue 60 tile. The header and the sign-in page carry the mark and a lowercase "archigov" wordmark; labels elsewhere stay Title Case. The README opens on a light or dark banner. Decorative gradients (header edge, tile bars, ambient light, the Overview hero, meters, the stage rail) are now the one brand blue. Colours that carry meaning are unchanged: hero tones per part of the product, catalogue kinds, queues and status.
 - **No commercial licence is offered.** README · Licensing, CONTRIBUTING and the CLA no longer describe one. The CLA stays for the AGPL core, so that the core can still be licensed under other terms. Its new version, [v1.2](docs/CLA.md), replaces the commercial-licence sentence in clause 4 with a commitment: any such licence covers the same code as the open-source release, and nothing is held back from it. The grants are unchanged, and the CLA check now records agreements against v1.2.
 
 ## [0.2.1] — 2026-10-16
