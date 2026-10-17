@@ -4,6 +4,10 @@ All notable changes to archigov are documented here. The format follows [Keep a 
 
 ## [Unreleased]
 
+## [0.3.2] — 2026-10-17
+
+The name, written as it is meant to be: archigov, lowercase, everywhere in the app, its exports and its packs. No migrations, no API change.
+
 ### Changed
 
 - **The name is written archigov, lowercase, everywhere**: the app (titles, About archigov, the help panel), the export metadata (OSCAL, DORA register, ArchiMate), pack names, the container image's title, the README, the documentation, the trademark policy and the CLA. The CLA agreement sentence was already matched without regard to case, so agreeing still works either way. The `ARCHIGOV_*` environment variables are unchanged.
@@ -148,6 +152,7 @@ First public release: the consolidation of the governance platform built to date
 - **Access model**: system roles (author, auditor, service) separate from the operational platform-admin flag; governance rights only from board seats; local dev mode with persona switching; Microsoft Entra ID (OIDC + PKCE) wired, fixture-verified.
 - **UI**: IBM Carbon (g100 shell, g10 content), Title Case labels, every tag and legend entry self-explaining on hover, header notifications of assigned work, tables for tabular facts, accessibility checked with axe on every touched page.
 
+[0.3.2]: https://github.com/00xE8/archigov/releases/tag/v0.3.2
 [0.3.1]: https://github.com/00xE8/archigov/releases/tag/v0.3.1
 [0.3.0]: https://github.com/00xE8/archigov/releases/tag/v0.3.0
 [0.2.1]: https://github.com/00xE8/archigov/releases/tag/v0.2.1
