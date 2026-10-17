@@ -4,6 +4,10 @@ All notable changes to Archigov are documented here. The format follows [Keep a 
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-10-17
+
+The legal notices the AGPL asks of an interactive program, now in the app. **About Archigov** in the help panel, and a line on the sign-in page, show the version, the copyright (Skygge Ltd and contributors), the licences, that there is no warranty, and a link to the source of the running version; `SOURCE_URL` points a modified build at its own source. The release also publishes a trademark policy and names Skygge Ltd as the party the CLA grants to (v1.3). No migrations; one new endpoint, `GET /api/auth/about`, open before sign-in.
+
 ### Added
 
 - **Legal notices and the source offer** ([docs](docs/features/legal-notices.md)). **About Archigov** in the help panel, and a line on the sign-in page, show every user what the AGPL-3.0 asks of an interactive program: the version, "Copyright © 2026 Skygge Ltd and contributors", the licences, that there is no warranty, and a link to the source of the running version (§5(d) and §13). The source link defaults to the release the version names; `SOURCE_URL` points it at a modified build's own source. Served by `GET /api/auth/about`, open before sign-in.
@@ -140,6 +144,7 @@ First public release: the consolidation of the governance platform built to date
 - **Access model**: system roles (author, auditor, service) separate from the operational platform-admin flag; governance rights only from board seats; local dev mode with persona switching; Microsoft Entra ID (OIDC + PKCE) wired, fixture-verified.
 - **UI**: IBM Carbon (g100 shell, g10 content), Title Case labels, every tag and legend entry self-explaining on hover, header notifications of assigned work, tables for tabular facts, accessibility checked with axe on every touched page.
 
+[0.3.1]: https://github.com/00xE8/archigov/releases/tag/v0.3.1
 [0.3.0]: https://github.com/00xE8/archigov/releases/tag/v0.3.0
 [0.2.1]: https://github.com/00xE8/archigov/releases/tag/v0.2.1
 [0.2.0]: https://github.com/00xE8/archigov/releases/tag/v0.2.0
