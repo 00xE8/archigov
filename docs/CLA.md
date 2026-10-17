@@ -1,4 +1,4 @@
-# Archigov Individual Contributor Licence Agreement (v1.2)
+# Archigov Individual Contributor Licence Agreement (v1.3)
 
 Modelled on the Apache Individual Contributor License Agreement v2.2, adapted so the Project can license the core under other terms as well as the AGPL. It is a licence grant, not a copyright assignment: you keep the copyright in your work.
 
@@ -10,7 +10,7 @@ Modelled on the Apache Individual Contributor License Agreement v2.2, adapted so
 
 The CLA check records your agreement on the repository's `cla-signatures` branch with your GitHub login and account id, the date, and a link to your comment. You accept the following terms for your present and future Contributions within the scope above.
 
-1. **Definitions.** "You" is the copyright owner making this agreement. "Contribution" is any original work of authorship you intentionally submit to the Project for inclusion in it.
+1. **Definitions.** "You" is the copyright owner making this agreement. "Contribution" is any original work of authorship you intentionally submit to the Project for inclusion in it. "The Project maintainer" is Skygge Ltd, a company registered in England and Wales (company number 17110940), which maintains the Project, and its successors.
 
 2. **Copyright licence.** You grant the Project maintainer a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright licence to reproduce, prepare derivative works of, publicly display, publicly perform, **sublicense and distribute your Contributions and such derivative works, under any licence terms, including commercial licence terms and open-source licences**. You retain copyright ownership of your Contribution; this is a licence, not an assignment.
 
@@ -27,6 +27,6 @@ The CLA check records your agreement on the repository's `cla-signatures` branch
 
 ---
 
-**Version history.** v1.2 (16 October 2026) removes the reference to a commercial licence, which the Project does not offer, and commits that any licence granted under clause 2 covers the same code as the open-source release. The grants in clauses 2 and 3 are unchanged. v1.1 (October 2026) limits the agreement to the AGPL-3.0 parts and records agreement by pull-request comment. v1.0 covered every contribution and was agreed by a line in the pull-request description.
+**Version history.** v1.3 (17 October 2026) names the Project maintainer: Skygge Ltd. The grants and commitments are unchanged. v1.2 (16 October 2026) removes the reference to a commercial licence, which the Project does not offer, and commits that any licence granted under clause 2 covers the same code as the open-source release. The grants in clauses 2 and 3 are unchanged. v1.1 (October 2026) limits the agreement to the AGPL-3.0 parts and records agreement by pull-request comment. v1.0 covered every contribution and was agreed by a line in the pull-request description.
 
 *This document was prepared without legal review. Have it reviewed before relying on it to license Contributions under other terms.*

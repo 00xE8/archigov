@@ -8,6 +8,7 @@ import { USER_TYPES, BOARD_ROLES, LEGACY_NAMES, canMap, resolveRoleName, type Pr
 import { authMode, entraConfigured, loginRedirect, completeLogin, logoutUrl } from "../auth/entra.js";
 import { resolvePrincipal, principalFrom, type Principal } from "../auth/middleware.js";
 import { upsertUser, applyGrants, listUsers, legacyRoleOf, boardByCode, setMembership, getUser } from "../auth/users.js";
+import { about } from "../about.js";
 
 export const auth = new Hono();
 
@@ -23,6 +24,8 @@ const expiry = () => Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS;
 const rememberUser = (p: { id: string; name: string; email: string | null }) => setSetting(`user.${p.id}`, JSON.stringify({ name: p.name, email: p.email, last_sign_in: nowIso() }));
 
 auth.get("/auth/me", (c) => c.json(me(resolvePrincipal(c))));
+// the legal notices and the source offer: open before sign-in (auth/roles.ts), so the sign-in page shows them too
+auth.get("/auth/about", (c) => c.json(about()));
 
 // ---------- local mode: pick who you are (the PoC "acting as", now a signed session over a users row) ----------
 const LocalIn = z.object({

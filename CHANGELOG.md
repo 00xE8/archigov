@@ -4,6 +4,15 @@ All notable changes to Archigov are documented here. The format follows [Keep a 
 
 ## [Unreleased]
 
+### Added
+
+- **Legal notices and the source offer** ([docs](docs/features/legal-notices.md)). **About Archigov** in the help panel, and a line on the sign-in page, show every user what the AGPL-3.0 asks of an interactive program: the version, "Copyright © 2026 Skygge Ltd and contributors", the licences, that there is no warranty, and a link to the source of the running version (§5(d) and §13). The source link defaults to the release the version names; `SOURCE_URL` points it at a modified build's own source. Served by `GET /api/auth/about`, open before sign-in.
+- **A trademark policy** ([TRADEMARKS.md](TRADEMARKS.md)). The name Archigov and the plumb mark are Skygge Ltd's. Refer to the project freely and share unmodified releases under its name; a modified version needs its own name and logo.
+
+### Changed
+
+- **CLA v1.3 names the Project maintainer: Skygge Ltd** (England and Wales, company number 17110940). The grants and the commitments are unchanged, and the CLA check now records agreements against v1.3. README · Licensing states the copyright holder.
+
 ## [0.3.0] — 2026-10-17
 
 Boards for teams. A routing rule can now name the applications it covers, or an owner tag, so a team, product line or business unit can have its own board for its own designs, decisions and exceptions, while the Design Authority keeps what no board claims. Every release is now published as a container image, so trying Archigov is one `docker run`. The release also brings a new identity, one message across every surface, and the withdrawal of the commercial licence (CLA v1.2). One migration, m022, adds two nullable columns to `board_routing` and runs on start; existing routing is unchanged. No breaking API change: `GET /boards/route` and `PUT /boards/:id/routing` accept new optional fields.

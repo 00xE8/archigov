@@ -47,7 +47,7 @@ Everything outside the Apache-2.0 folders is the core, licensed **AGPL-3.0-only*
 
 Your agreement is recorded on the `cla-signatures` branch, with your GitHub login and account id, the date and a link to your comment. The check turns green, and you are never asked again. Comment `recheck cla` to run the check again, for example after re-authoring commits.
 
-**What it is.** A licence grant on the Apache ICLA model. You keep the copyright in your work and grant the project a licence broad enough to license it under other terms as well as the AGPL. It is not a copyright assignment.
+**What it is.** A licence grant on the Apache ICLA model. You keep the copyright in your work and grant Skygge Ltd, which maintains the project, a licence broad enough to license it under other terms as well as the AGPL. It is not a copyright assignment.
 
 **Why it exists.** It keeps the project able to license the core under terms other than the AGPL, which needs the right to license every contribution to it. A CLA cannot be collected after the fact, so it is asked for from the start. The Apache-2.0 folders do not need it, because Apache-2.0 already allows that.
 

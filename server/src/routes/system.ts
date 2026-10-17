@@ -11,6 +11,7 @@ import { buildEvidencePack, signAndPersist, verifyPack, ensureSigningKeys } from
 import { authMode, entraConfigured } from "../auth/entra.js";
 import { currentPrincipal } from "../auth/context.js";
 import { workQueueFor, IN_FLIGHT_SQL } from "../boards/work.js";
+import { VERSION } from "../about.js";
 
 export const system = new Hono();
 
@@ -172,7 +173,6 @@ function backupsInfo() {
     return { count: files.length, latest: files[0] ?? null };
   } catch { return { count: 0, latest: null }; }
 }
-const VERSION = (() => { try { return JSON.parse(fs.readFileSync(new URL("../../package.json", import.meta.url), "utf8")).version as string; } catch { return null; } })();
 
 system.get("/settings", (c) => {
   // what is wired up, from the environment only (never the secrets themselves); fixture mode stands in for every cloud source

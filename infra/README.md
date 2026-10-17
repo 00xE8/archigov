@@ -127,6 +127,7 @@ The documentation site has the long form: [Continuous replication](https://archi
 | `DATA_DIR` | SQLite file, blobs, backups, evidence packs | `/data` |
 | `SEED_DEMO` | load the demo tenant on first boot of an empty database | `true` (`docker-compose.yml`), `false` in production |
 | `APP_BASE_URL` | public URL used for sign-in redirects and links | — |
+| `SOURCE_URL` | where the app's About and sign-in notices offer the source (AGPL-3.0 §13). Set it when you host a modified or untagged build for others | the release on GitHub that the version names |
 | `ARCHIGOV_FIXTURES` | `1` makes the Azure / Azure DevOps connectors read recorded responses instead of calling the APIs (demos, CI) | unset |
 | **Sign-in** | | |
 | `AUTH_MODE` | `local` (named user + role picker, no SSO) or `entra` | `local` |

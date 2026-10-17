@@ -575,3 +575,7 @@ $ag-ease-prod: cubic-bezier(0.2, 0, 0.38, 0.9);
 .ag-service-row { align-items: flex-end; flex-wrap: nowrap; }
 .ag-service-row > .ag-grow { flex: 1 1 auto; min-width: 0; }
 .ag-service-row > .ag-service-kind { flex: 0 0 15rem; }
+
+// About Archigov: the legal notices, one paragraph after another
+.ag-about { display: grid; gap: sp.$spacing-05; }
+.ag-about p { margin: 0; }

@@ -82,7 +82,8 @@ Experiment on a scratch instance so the demo data stays clean: `DATA_DIR=$(mktem
   // SPDX-FileCopyrightText: The Archigov Authors
   ```
   No file anywhere else carries them. `server/test/licensing.test.ts` checks both.
-- Do not move code across the boundary. Do not edit `.github/licensing.json`, `LICENSE`, `LICENSE-APACHE`, `DCO`, `docs/CLA.md` or `.github/workflows/` unless an issue from the maintainer asks for it.
+- Do not move code across the boundary. Do not edit `.github/licensing.json`, `LICENSE`, `LICENSE-APACHE`, `DCO`, `docs/CLA.md`, `TRADEMARKS.md` or `.github/workflows/` unless an issue from the maintainer asks for it.
+- Keep the legal notices: `server/src/about.ts` and **About Archigov** (`web/src/components/About.tsx`) carry the copyright, the licences, the no-warranty statement and the source offer the AGPL requires. Do not remove or reword them.
 - A new connector or importer needs a new folder. Ask in an issue first, so the folder joins the Apache-2.0 list on `main` before the pull request.
 - A pull request kept inside the Apache-2.0 folders stays CLA-free. The maintainer adds the CHANGELOG line and any docs.
 

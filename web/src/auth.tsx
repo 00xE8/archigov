@@ -3,6 +3,7 @@ import { Button, Tile, InlineNotification, Modal, TextInput, Dropdown, Tag, Dism
 import { Login, Logout, UserAvatar, User, Switcher, Group, Settings as SettingsIcon, Add } from "@carbon/icons-react";
 import { get, post, setAuthMode, currentUser, setCurrentUser, USER_TYPE_ITEMS, NO_SYSTEM_ROLE, BOARD_ROLES, BOARD_ROLE_LABELS, NEED_FOR, CAP_ALIAS, AUTHOR_CAPS, normaliseUserType, labelFor } from "./api";
 import { BrandMark } from "./brand";
+import { LegalLine } from "./components/About";
 
 export type Caps = Record<string, boolean>;
 export type Board = { id: string; code: string; name: string; role: string };
@@ -98,6 +99,7 @@ export function SignIn({ loginUrl }: { loginUrl: string }) {
         {err && <InlineNotification kind="error" lowContrast hideCloseButton title="Sign-in did not complete" subtitle={err} />}
         <div><Button size="lg" renderIcon={Login} onClick={() => { window.location.href = loginUrl; }}>Sign in with Microsoft Entra ID</Button></div>
         <p className="ag-muted ag-label">Use your organisation's Entra ID account. Your system role (author, auditor, service account) and whether you administer the platform come from the app roles assigned to you; what you may approve or decide comes from your seat on each board.</p>
+        <LegalLine />
       </Tile>
     </div>
   );

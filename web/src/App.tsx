@@ -1,6 +1,6 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { Header, HeaderName, HeaderGlobalBar, HeaderGlobalAction, HeaderPanel, SideNav, SideNavItems, SideNavLink, SideNavMenu, SideNavMenuItem, SideNavDivider, Content, Theme, HeaderMenuButton, SkipToContent, Search, Form, ContainedList, ContainedListItem, Tag } from "@carbon/react";
+import { Header, HeaderName, HeaderGlobalBar, HeaderGlobalAction, HeaderPanel, SideNav, SideNavItems, SideNavLink, SideNavMenu, SideNavMenuItem, SideNavDivider, Content, Theme, HeaderMenuButton, SkipToContent, Search, Form, ContainedList, ContainedListItem, Tag, Button } from "@carbon/react";
 import { Dashboard, Application, Rule, Document, Task, Compare, ListChecked, Settings, UserAvatar, Help, Search as SearchIcon, Catalog, Receipt, DataBase, Group, Calendar, Notification, BusinessProcesses, Hourglass, WarningSquare, Partnership, Timeline, ChartLineData, Stamp, Debug } from "@carbon/icons-react";
 import Overview from "./pages/Overview";
 import Applications from "./pages/Applications";
@@ -30,6 +30,7 @@ import { get, shortType, fmtDate, labelFor } from "./api";
 import { useMedia, RLink, artefactLink } from "./components";
 import { BrandMark } from "./brand";
 import { AuthProvider, AccountPanel, SignIn, useAuth, useCan, PersonaSwitcher } from "./auth";
+import { AboutModal } from "./components/About";
 
 type Item = { to: string; label: string; icon: React.ComponentType; end?: boolean };
 // Overview sits above the groups: it is my work and the pipeline, not part of the model.
@@ -198,6 +199,7 @@ function Shell() {
 }
 
 function HelpPanel() {
+  const [about, setAbout] = React.useState(false);
   return (
     <div className="ag-panel-body">
       <h3>What Archigov Is</h3>
@@ -213,6 +215,9 @@ function HelpPanel() {
         <dt>Risk</dt><dd>Registers derived from the model: the legacy register of components past or near their vendor's end of support and the yearly legacy assessments that cover them, and the third parties the estate relies on — concentration on designated critical third parties and the exit plan for each critical reliance — and the risk register with the architecture debt derived from the records.</dd>
       </dl>
       <div className="ag-row snug"><RLink to="/?start=1">Get started</RLink>{useCan("manage_platform") && <RLink to="/settings">Settings</RLink>}</div>
+      {/* the legal notices and the source offer (AGPL-3.0 §5(d), §13): a prominent item every user can reach */}
+      <Button kind="ghost" size="sm" className="ag-mt-03" onClick={() => setAbout(true)}>About Archigov</Button>
+      <AboutModal open={about} onClose={() => setAbout(false)} />
     </div>
   );
 }
