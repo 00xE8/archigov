@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: The Archigov Authors
+// SPDX-FileCopyrightText: The archigov Authors
 import type { PackStandard, StandardsPack } from "./types.js";
 
 /** EU AI Act Annex IV: the technical-documentation evidence a high-risk AI system's architecture must be able to produce. Manual, except the decision check. */

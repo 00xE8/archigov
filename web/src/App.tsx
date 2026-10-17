@@ -110,7 +110,7 @@ function Shell() {
   return (
     <div className="ag-shell">
       <Theme theme="g100">
-        <Header aria-label="Archigov" className="ag-header-glow ag-no-print">
+        <Header aria-label="archigov" className="ag-header-glow ag-no-print">
           <SkipToContent />
           <HeaderMenuButton aria-label={open ? "Close menu" : "Open menu"} onClick={() => setOpen((o) => !o)} isActive={open} />
           <HeaderName href="/" prefix="" className="ag-brand"><BrandMark onDark />archigov</HeaderName>
@@ -202,7 +202,7 @@ function HelpPanel() {
   const [about, setAbout] = React.useState(false);
   return (
     <div className="ag-panel-body">
-      <h3>What Archigov Is</h3>
+      <h3>What archigov Is</h3>
       <p className="ag-body">The architecture model is derived from your cloud estate and backlog, not drawn by hand. Standards, decisions and reviews are the human layer on top of it. Nothing here asserts compliance: it shows evidence and who stands behind it.</p>
       <h3>Finding Your Way</h3>
       <dl className="ag-kv stacked">
@@ -216,7 +216,7 @@ function HelpPanel() {
       </dl>
       <div className="ag-row snug"><RLink to="/?start=1">Get started</RLink>{useCan("manage_platform") && <RLink to="/settings">Settings</RLink>}</div>
       {/* the legal notices and the source offer (AGPL-3.0 §5(d), §13): a prominent item every user can reach */}
-      <Button kind="ghost" size="sm" className="ag-mt-03" onClick={() => setAbout(true)}>About Archigov</Button>
+      <Button kind="ghost" size="sm" className="ag-mt-03" onClick={() => setAbout(true)}>About archigov</Button>
       <AboutModal open={about} onClose={() => setAbout(false)} />
     </div>
   );

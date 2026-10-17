@@ -210,7 +210,7 @@ function GetStarted({ forced, onDone }: { forced: boolean; onDone: () => void })
   return (
     <>
       <PageHeader kicker={forced ? <RLink to="/">Back to the overview</RLink> : undefined} title="Get Started"
-        subtitle="Archigov derives the architecture model from a real estate; nothing is drawn by hand. Connect a source or load the demo estate, add the standards you want checked, and the overview fills in." />
+        subtitle="archigov derives the architecture model from a real estate; nothing is drawn by hand. Connect a source or load the demo estate, add the standards you want checked, and the overview fills in." />
       {msg && <InlineNotification kind={msg.kind} lowContrast title={msg.text} onCloseButtonClick={() => setMsg(null)} className="ag-notice" />}
       <div className="ag-start">
         <Tile className="ag-start-tile">

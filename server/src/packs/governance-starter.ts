@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: The Archigov Authors
+// SPDX-FileCopyrightText: The archigov Authors
 import type { PackStandard, StandardsPack } from "./types.js";
 
 /**
@@ -42,6 +42,6 @@ export const GOVERNANCE_STARTER: PackStandard[] = [
     rationale: "Open-ended exceptions become the de-facto standard.", control_refs: ["ISO 27001 A.5.1", "DORA Art.6(8)"], rule: null },
 ];
 
-export const GOVERNANCE_STARTER_PACK: StandardsPack = { id: "archigov-governance-starter", name: "Archigov governance starter: principles, patterns and policies", version: "1.0.0", lifecycle_on_import: "draft",
+export const GOVERNANCE_STARTER_PACK: StandardsPack = { id: "archigov-governance-starter", name: "archigov governance starter: principles, patterns and policies", version: "1.0.0", lifecycle_on_import: "draft",
   description: "Three principles, two patterns and two policies an architecture function can adopt on day one. Imported as drafts for the governing board to review; two of them are checkable.",
   standards: GOVERNANCE_STARTER };

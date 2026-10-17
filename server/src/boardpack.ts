@@ -14,7 +14,7 @@ import { riskRegister } from "./risks.js";
  * is what the instance held. An optional narrative is the only authored part: written by the person who creates the
  * pack (perhaps from an AI draft, which the pack then says), never by a model on its own.
  */
-export const BOARD_PACK_DISCLAIMER = "This board pack summarises records held in Archigov for the period stated. It shows evidence and who stands behind it; it does not assert compliance with any regulation or standard.";
+export const BOARD_PACK_DISCLAIMER = "This board pack summarises records held in archigov for the period stated. It shows evidence and who stands behind it; it does not assert compliance with any regulation or standard.";
 
 export interface BoardPackInput { days?: number; title?: string; board_id?: string | null; narrative_md?: string | null; narrative_origin?: "human" | "ai_assisted" }
 export function buildBoardPack(b: BoardPackInput, actor: string) {

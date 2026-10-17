@@ -13,7 +13,7 @@ const REPO = "https://github.com/00xE8/archigov";
 export function about() {
   const tag = VERSION ? `v${VERSION}` : "main";
   return {
-    name: "Archigov",
+    name: "archigov",
     version: VERSION,
     copyright: "Copyright © 2026 Skygge Ltd and contributors",
     licence: "AGPL-3.0-only",

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Archigov boards smoke test — boards, board seats, routing (incl. by application), approval policies and the typed-review workflow,
+# archigov boards smoke test — boards, board seats, routing (incl. by application), approval policies and the typed-review workflow,
 # end to end through the API of a LOCAL-mode seeded instance.
 #
 #   scripts/smoke-boards.sh [base_url]   default http://localhost:8080

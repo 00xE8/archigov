@@ -3,7 +3,7 @@ import { hashOf } from "./model.js";
 
 /**
  * Imported compliance evidence. Resource-level checks (public access, TLS, OS support, purge protection…)
- * are produced by Defender for Cloud / Azure Policy; Archigov imports their state as evidence attached to the
+ * are produced by Defender for Cloud / Azure Policy; archigov imports their state as evidence attached to the
  * resource and lets standards assert on it. It never re-implements the check.
  */
 export type EvidenceSource = "defender" | "azure_policy" | "manual";

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: The Archigov Authors
+// SPDX-FileCopyrightText: The archigov Authors
 import type { PackStandard, StandardsPack } from "./types.js";
 
 /** The five architecture-governance rules. Resource-configuration checks are deliberately absent: those are imported from Defender / Azure Policy as evidence. */
@@ -31,6 +31,6 @@ export const CORE_STANDARDS: PackStandard[] = [
     rule: { scope: "resource", match: { type: "Microsoft.Web/sites" }, assert: { path: "props.siteConfig_netFrameworkVersion", op: "missing" } } },
 ];
 
-export const ARCHIGOV_CORE: StandardsPack = { id: "archigov-core", name: "Archigov core architecture standards", version: "1.0.0", lifecycle_on_import: "adopted",
+export const ARCHIGOV_CORE: StandardsPack = { id: "archigov-core", name: "archigov core architecture standards", version: "1.0.0", lifecycle_on_import: "adopted",
   description: "Five architecture-governance rules any estate can start with: UK hosting, accountable owners, data-store decisions and their conformance, and the technology radar. Resource-configuration checks are not here; they are imported from Defender for Cloud / Azure Policy as evidence. Imported as adopted so a first run is effective at once.",
   standards: CORE_STANDARDS };

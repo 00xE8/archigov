@@ -1,6 +1,6 @@
 # Security
 
-Archigov holds an organisation's architecture decisions, its estate's metadata and a signed audit trail, so we treat
+archigov holds an organisation's architecture decisions, its estate's metadata and a signed audit trail, so we treat
 vulnerabilities seriously.
 
 ## Reporting a vulnerability

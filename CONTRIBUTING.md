@@ -1,4 +1,4 @@
-# Contributing to Archigov
+# Contributing to archigov
 
 Contributions are welcome: packs, templates, connectors, importers, fixes and docs. Read this before your first pull request. Contributing is quick, and where your work lands decides how much paperwork it needs.
 
@@ -41,9 +41,9 @@ The **DCO** check on the pull request lists any commit without a matching sign-o
 
 ## Changes to the core: the CLA, once
 
-Everything outside the Apache-2.0 folders is the core, licensed **AGPL-3.0-only**. If your commits change a core file, the **Archigov CLA** check asks you, once, to agree to the [contributor licence agreement](docs/CLA.md) by commenting on the pull request:
+Everything outside the Apache-2.0 folders is the core, licensed **AGPL-3.0-only**. If your commits change a core file, the **archigov CLA** check asks you, once, to agree to the [contributor licence agreement](docs/CLA.md) by commenting on the pull request:
 
-> I have read the Archigov CLA and I agree to it for this and all my future contributions.
+> I have read the archigov CLA and I agree to it for this and all my future contributions.
 
 Your agreement is recorded on the `cla-signatures` branch, with your GitHub login and account id, the date and a link to your comment. The check turns green, and you are never asked again. Comment `recheck cla` to run the check again, for example after re-authoring commits.
 
@@ -92,6 +92,6 @@ Two product rules are not negotiable in review:
 ## For maintainers
 
 - **Exemptions.** The repository owner's commits and bots are exempt from both checks, because the owner is the licensor.
-- **Branch protection.** Make **DCO** and **Archigov CLA** required status checks on `main`.
+- **Branch protection.** Make **DCO** and **archigov CLA** required status checks on `main`.
 - **The signature record.** `cla-signatures` is an orphan branch holding `signatures.json`, written only by the CLA workflow. Protect it from deletion and force-pushes. Correct a record only with a commit that says why.
 - **Moving the licence boundary.** Changing what is Apache-2.0 means changing `.github/licensing.json`, the SPDX headers, and this file and README · Licensing together. Code moved *into* an Apache-2.0 folder is relicensed. Code moved *out* of one stays available under Apache-2.0 in every version already published.

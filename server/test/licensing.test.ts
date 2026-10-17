@@ -10,7 +10,7 @@ const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const scope: string[] = JSON.parse(fs.readFileSync(path.join(repo, ".github/licensing.json"), "utf8")).apache_2_0;
 const walk = (dir: string): string[] => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]));
 const rel = (f: string) => path.relative(repo, f).split(path.sep).join("/");
-const APACHE = /^\/\/ SPDX-License-Identifier: Apache-2\.0\n\/\/ SPDX-FileCopyrightText: The Archigov Authors\n/;
+const APACHE = /^\/\/ SPDX-License-Identifier: Apache-2\.0\n\/\/ SPDX-FileCopyrightText: The archigov Authors\n/;
 
 test("the Apache-2.0 folders exist, and every source file in them carries the Apache-2.0 SPDX header", () => {
   assert.ok(scope.length > 0);

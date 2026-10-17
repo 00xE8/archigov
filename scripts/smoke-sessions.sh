@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Archigov sessions smoke test — areas of responsibility, positions per area, board sessions (agenda, attendance,
+# archigov sessions smoke test — areas of responsibility, positions per area, board sessions (agenda, attendance,
 # delegation, consent, circulation, deferral, derived minutes) and dependent decisions, end to end through the API
 # of a LOCAL-mode seeded instance. Spec: docs/board-sessions.md. Run after smoke-boards.sh on the same instance.
 #

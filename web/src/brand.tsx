@@ -1,7 +1,7 @@
 import React from "react";
 import { blue40, blue50, blue60, blue70, gray10, gray100 } from "@carbon/colors";
 
-/** The Archigov mark: a plumb line — a stem and a bob hanging at rest (geometry and variants: the private repo's
+/** The archigov mark: a plumb line — a stem and a bob hanging at rest (geometry and variants: the private repo's
  *  site/brand/mark.py). Decorative beside the wordmark, so it is hidden from assistive technology. */
 export function BrandMark({ onDark = false, className = "ag-mark" }: { onDark?: boolean; className?: string }) {
   const id = React.useId().replace(/:/g, "");

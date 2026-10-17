@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Archigov smoke test — the end-to-end flow from CLAUDE.md ("Run / build / test"), driven through the API.
+# archigov smoke test — the end-to-end flow from CLAUDE.md ("Run / build / test"), driven through the API.
 #
 #   scripts/smoke.sh [base_url]          default http://localhost:8080
 #

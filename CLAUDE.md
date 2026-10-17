@@ -1,4 +1,4 @@
-# Archigov — project context for Claude Code
+# archigov — project context for Claude Code
 
 Open-source, product-led architecture governance tool. Solo-founder project. **Contributing from outside (not the maintainer)? Start from `AGENTS.md`**: the conventions below apply to you, but the delivery-process, release, deployment and private-repository parts of this file are the maintainer's. Read `README.md` for the user-facing description; this file is the working context. The research/decision documents behind the thesis, the business constraints (pricing, licensing strategy, free-tier economics) and the managed-service infrastructure live in the private repo `00xE8/archigov-internal`; in a working copy, `CLAUDE.local.md` (gitignored) mirrors the business constraints and machine-specific notes. Consult them before changing scope, pricing, positioning or the compliance approach.
 
@@ -107,7 +107,7 @@ server/src/secrets.ts          secrets at rest: AES-256-GCM for settings-stored 
                                never replicated); legacy plaintext re-encrypts on first read; AI_<PROVIDER>_API_KEY / _FILE env beats the DB
 server/src/about.ts            the AGPL notices (§5(d)) and the source offer (§13): about() — version from package.json, "Copyright © 2026
                                Skygge Ltd and contributors", licences, source_url (the release's tag, or SOURCE_URL for a modified build),
-                               served open at GET /auth/about; web/src/components/About.tsx shows it as About Archigov (help panel) and a
+                               served open at GET /auth/about; web/src/components/About.tsx shows it as About archigov (help panel) and a
                                line on the sign-in page. Never remove or reword the notices
 server/src/evidence.ts         imported evidence: importEvidence() upsert by (resource, source, control), summaries
 server/src/evidence-pack.ts    Ed25519 signing, canonical JSON, chain head, persisted packs, verify()
@@ -228,7 +228,7 @@ AGENTS.md, docs/agents/         the brief for AI coding agents of outside contri
 .github/                       licensing.json (the Apache-2.0 folders — the CLA check reads it from main; test/licensing.test.ts checks the
                                SPDX headers against it), workflows/dco.yml (Signed-off-by per commit), workflows/cla.yml (the CLA, only for
                                authors of commits touching AGPL files; agreement by PR comment, recorded on the cla-signatures branch; the
-                               "Archigov CLA" commit status), workflows/image.yml (a v* tag publishes ghcr.io/00xe8/archigov
+                               "archigov CLA" commit status), workflows/image.yml (a v* tag publishes ghcr.io/00xe8/archigov
                                :<version>, :<major>.<minor>, :latest for amd64+arm64; dispatch with -f tag= for an older
                                release), ISSUE_TEMPLATE/ (bug, idea, policy pack forms; blank issues off; security → advisories),
                                pull_request_template.md. Root: LICENSE (AGPL-3.0), LICENSE-APACHE, DCO, SECURITY.md, TRADEMARKS.md (the name and the plumb
@@ -290,7 +290,7 @@ last direct-to-main blob; from here on:
   `CLAUDE.local.md` (gitignored) and the private repo, never here.
 - **Licence boundary**: AGPL-3.0-only core; Apache-2.0 for the folders in `.github/licensing.json` (packs/, templates/,
   azure/, ado/, importers/ under server/src). A new file in those folders starts with `// SPDX-License-Identifier:
-  Apache-2.0` + `// SPDX-FileCopyrightText: The Archigov Authors`; no file elsewhere carries it (licensing.test.ts).
+  Apache-2.0` + `// SPDX-FileCopyrightText: The archigov Authors`; no file elsewhere carries it (licensing.test.ts).
   Keep core logic (workflow, rules engine, model writes beyond what a connector needs) out of the Apache folders, and
   keep pack content, templates and connector code out of the core, so contributions there stay CLA-free. Moving code
   INTO an Apache folder relicenses it — a founder decision, never a refactor side effect. External contributions need a
@@ -335,6 +335,11 @@ last direct-to-main blob; from here on:
 ## Business constraints to remember
 
 - AGPLv3 core; Apache-2.0 packs, templates, connectors and importers (Oct 2026: the folders in .github/licensing.json), the policy SDK to follow when split out; DCO for every contribution, the CLA (a licence grant, not an assignment) only for the AGPL core, to keep the option of licensing it under other terms. **No commercial licence is offered** (withdrawn 16 Oct 2026, founder decision): never describe one in tracked files, docs or the landing page; the CLA stays because it cannot be collected retroactively. Decide once, never relicense to something more restrictive; any other licence covers the same code and holds nothing back from the open-source release (public — README · Licensing, CLA clause 4).
+- **The name is written `archigov`, lowercase, everywhere** (founder decision, 17 Oct 2026): at the start of a sentence, in
+  Title Case labels ("About archigov", "What archigov Is"), page titles, the README heading, legal documents (copyright
+  lines, TRADEMARKS.md, the CLA, deeds) and any text in images or videos. Never "Archigov" or "ARCHIGOV" — and no CSS
+  `text-transform: uppercase` on an element that contains the name. The `ARCHIGOV_*` environment variables are
+  identifiers, not the name, and stay as they are.
 - **Messaging** (founder decision, Oct 2026): one headline, "Know what was approved. See what was built.", and one supporting line, "Architecture decisions argued and decided on the record, then checked continuously against a model derived from your cloud estate and backlog.", used verbatim on public surfaces (README, landing hero and meta, social card, GitHub About, brand guide). "Every architecture decision argued, linked and kept true" introduces the decision lifecycle and is not a headline. Never write that decisions, standards or reviews are derived; the model is derived, and people decide.
 - **Skygge Ltd** (England and Wales, company number 17110940; registered office 71–75 Shelton Street, Covent Garden, London
   WC2H 9JQ) is the copyright holder named in the notices, the party the CLA grants to (v1.3) and the owner of the

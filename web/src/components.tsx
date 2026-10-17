@@ -76,7 +76,7 @@ const EXPLAIN_KIND: Record<string, string> = {
   risk: "Risk tier the submitter chose for this review.",
   work: "State of this work item as reported by the delivery backlog source.",
   source: "Result of this source's last sync.",
-  evidence: "Assessment state imported from the source; Archigov never re-tests configuration itself.",
+  evidence: "Assessment state imported from the source; archigov never re-tests configuration itself.",
   llm: "Whether an AI model gateway is configured.",
   origin: "Where this item came from.",
   attention: "Something that needs a person's attention.",
@@ -560,9 +560,9 @@ export function VerifiedBy({ by, at }: { by?: string | null; at?: string | null 
   return by ? <span className="ag-muted ag-label">Verified by {by}{at ? ` on ${fmtDateTime(at)}` : ""}</span> : null;
 }
 
-/** The browser-tab title for this page: "REV-0007 · Archigov". Detail pages pass their code or name once loaded. */
+/** The browser-tab title for this page: "REV-0007 · archigov". Detail pages pass their code or name once loaded. */
 export function useDocTitle(title?: string | null) {
-  React.useEffect(() => { document.title = title ? `${title} · Archigov` : "Archigov"; }, [title]);
+  React.useEffect(() => { document.title = title ? `${title} · archigov` : "archigov"; }, [title]);
 }
 
 /**

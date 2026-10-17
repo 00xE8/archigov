@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: The Archigov Authors
+// SPDX-FileCopyrightText: The archigov Authors
 import { db, uid, nowIso, audit } from "../db.js";
 import { hashOf, listElements } from "../model.js";
 import { fixturesEnabled } from "../azure/client.js";

@@ -42,7 +42,7 @@ export default function Evidence() {
   return (
     <>
       <PageIntro title="Imported Evidence" lead="Resource-level assessments imported from Defender for Cloud and Azure Policy, attached to each resource."
-        about="Resource-level compliance checks are produced by Defender for Cloud and Azure Policy. Archigov imports their assessments as evidence attached to each resource and lets standards assert on that state; it never re-implements the check. Missing evidence is a finding, never a pass."
+        about="Resource-level compliance checks are produced by Defender for Cloud and Azure Policy. archigov imports their assessments as evidence attached to each resource and lets standards assert on that state; it never re-implements the check. Missing evidence is a finding, never a pass."
         actions={<>
           {syncable("defender") && (syncing === "defender" ? <InlineLoading description="Syncing Defender for Cloud" /> : <Gated cap="manage_platform" reason="Platform admin only"><Button size="md" kind="tertiary" renderIcon={Renew} disabled={!!syncing} onClick={() => sync("defender", "Defender for Cloud")}>Sync Defender for Cloud</Button></Gated>)}
           {syncable("policy") && (syncing === "policy" ? <InlineLoading description="Syncing Azure Policy" /> : <Gated cap="manage_platform" reason="Platform admin only"><Button size="md" kind="tertiary" renderIcon={Renew} disabled={!!syncing} onClick={() => sync("policy", "Azure Policy")}>Sync Azure Policy</Button></Gated>)}

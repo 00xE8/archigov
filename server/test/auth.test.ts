@@ -181,7 +181,7 @@ test("entra claims: issuer/tenant/nonce checks, tid:oid identity, app-role value
   assert.throws(() => mapClaims({ ...base, iss: "https://evil.example/v2.0" }, "n1"), /issuer/);
   assert.throws(() => mapClaims({ ...base, oid: undefined }, "n1"), /oid/);
   // legacy app-role values still work, de-duplicated, mapped through ENTRA_ROLE_MAP; a dotted value keeps the legacy-suffix meaning
-  assert.deepEqual(mapRoleValues(["arb.chair", "Archigov.Reviewer", "reviewer", "something-else"]), [{ user_type: "author", board: { code: "DA", role: "chair" } }, { user_type: "author", board: { code: "DA", role: "reviewer" } }]);
+  assert.deepEqual(mapRoleValues(["arb.chair", "archigov.Reviewer", "reviewer", "something-else"]), [{ user_type: "author", board: { code: "DA", role: "chair" } }, { user_type: "author", board: { code: "DA", role: "reviewer" } }]);
   assert.deepEqual(mapRoleValues(["board/PCB/member"]), [{ board: { code: "PCB", role: "decision_maker" } }]);
   process.env.ENTRA_ROLE_MAP = "arb.chair=chair, platform.owner = platform_admin";
   assert.deepEqual(profileFromGrants(mapRoleValues(["platform.owner", "engineer"])), { user_type: "author", is_platform_admin: true });

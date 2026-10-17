@@ -1,17 +1,21 @@
 # Changelog
 
-All notable changes to Archigov are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [semver](https://semver.org). Each feature links its page under `docs/features/`.
+All notable changes to archigov are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [semver](https://semver.org). Each feature links its page under `docs/features/`.
 
 ## [Unreleased]
 
+### Changed
+
+- **The name is written archigov, lowercase, everywhere**: the app (titles, About archigov, the help panel), the export metadata (OSCAL, DORA register, ArchiMate), pack names, the container image's title, the README, the documentation, the trademark policy and the CLA. The CLA agreement sentence was already matched without regard to case, so agreeing still works either way. The `ARCHIGOV_*` environment variables are unchanged.
+
 ## [0.3.1] — 2026-10-17
 
-The legal notices the AGPL asks of an interactive program, now in the app. **About Archigov** in the help panel, and a line on the sign-in page, show the version, the copyright (Skygge Ltd and contributors), the licences, that there is no warranty, and a link to the source of the running version; `SOURCE_URL` points a modified build at its own source. The release also publishes a trademark policy and names Skygge Ltd as the party the CLA grants to (v1.3). No migrations; one new endpoint, `GET /api/auth/about`, open before sign-in.
+The legal notices the AGPL asks of an interactive program, now in the app. **About archigov** in the help panel, and a line on the sign-in page, show the version, the copyright (Skygge Ltd and contributors), the licences, that there is no warranty, and a link to the source of the running version; `SOURCE_URL` points a modified build at its own source. The release also publishes a trademark policy and names Skygge Ltd as the party the CLA grants to (v1.3). No migrations; one new endpoint, `GET /api/auth/about`, open before sign-in.
 
 ### Added
 
-- **Legal notices and the source offer** ([docs](docs/features/legal-notices.md)). **About Archigov** in the help panel, and a line on the sign-in page, show every user what the AGPL-3.0 asks of an interactive program: the version, "Copyright © 2026 Skygge Ltd and contributors", the licences, that there is no warranty, and a link to the source of the running version (§5(d) and §13). The source link defaults to the release the version names; `SOURCE_URL` points it at a modified build's own source. Served by `GET /api/auth/about`, open before sign-in.
-- **A trademark policy** ([TRADEMARKS.md](TRADEMARKS.md)). The name Archigov and the plumb mark are Skygge Ltd's. Refer to the project freely and share unmodified releases under its name; a modified version needs its own name and logo.
+- **Legal notices and the source offer** ([docs](docs/features/legal-notices.md)). **About archigov** in the help panel, and a line on the sign-in page, show every user what the AGPL-3.0 asks of an interactive program: the version, "Copyright © 2026 Skygge Ltd and contributors", the licences, that there is no warranty, and a link to the source of the running version (§5(d) and §13). The source link defaults to the release the version names; `SOURCE_URL` points it at a modified build's own source. Served by `GET /api/auth/about`, open before sign-in.
+- **A trademark policy** ([TRADEMARKS.md](TRADEMARKS.md)). The name archigov and the plumb mark are Skygge Ltd's. Refer to the project freely and share unmodified releases under its name; a modified version needs its own name and logo.
 
 ### Changed
 
@@ -19,18 +23,18 @@ The legal notices the AGPL asks of an interactive program, now in the app. **Abo
 
 ## [0.3.0] — 2026-10-17
 
-Boards for teams. A routing rule can now name the applications it covers, or an owner tag, so a team, product line or business unit can have its own board for its own designs, decisions and exceptions, while the Design Authority keeps what no board claims. Every release is now published as a container image, so trying Archigov is one `docker run`. The release also brings a new identity, one message across every surface, and the withdrawal of the commercial licence (CLA v1.2). One migration, m022, adds two nullable columns to `board_routing` and runs on start; existing routing is unchanged. No breaking API change: `GET /boards/route` and `PUT /boards/:id/routing` accept new optional fields.
+Boards for teams. A routing rule can now name the applications it covers, or an owner tag, so a team, product line or business unit can have its own board for its own designs, decisions and exceptions, while the Design Authority keeps what no board claims. Every release is now published as a container image, so trying archigov is one `docker run`. The release also brings a new identity, one message across every surface, and the withdrawal of the commercial licence (CLA v1.2). One migration, m022, adds two nullable columns to `board_routing` and runs on start; existing routing is unchanged. No breaking API change: `GET /boards/route` and `PUT /boards/:id/routing` accept new optional fields.
 
 ### Added
 
 - **Routing by application** ([docs](docs/features/routing-by-application.md)): a routing rule can name the applications it covers, or every application whose resources carry an owner tag. A team, product line or business unit can then have its own board for its own designs, decisions and exceptions, and the Design Authority keeps what no board claims. An application condition is more specific than a kind or category; a decision that spans teams falls back to the general rules. The board page's routing editor gets an Applications picker and an Owner tag choice, and `GET /boards/route` previews by application (migration m022). The review submission form previews the receiving board with the same inputs: the design's application, the decision's topic and applications, the exception's application (it ignored a decision's topic before). The routing editor's Priority field is wider, so its value is no longer hidden behind the stepper buttons.
-- **A published container image.** Every release tag publishes `ghcr.io/00xe8/archigov:<version>`, `:<major>.<minor>` and `:latest` for amd64 and arm64 (`.github/workflows/image.yml`), so trying Archigov is one `docker run` with no clone and no build. The README opens with that command and a screenshot; `docker compose up --build` from a clone is unchanged.
+- **A published container image.** Every release tag publishes `ghcr.io/00xe8/archigov:<version>`, `:<major>.<minor>` and `:latest` for amd64 and arm64 (`.github/workflows/image.yml`), so trying archigov is one `docker run` with no clone and no build. The README opens with that command and a screenshot; `docker compose up --build` from a clone is unchanged.
 - **Issue forms** for a bug, an idea and a policy pack, and **SECURITY.md**: vulnerabilities are reported privately through GitHub's advisories, never in a public issue.
 
 ### Changed
 
 - **One message everywhere.** The README, the landing page, the social card and the brand guide lead with "Know what was approved. See what was built." and one supporting line: "Architecture decisions argued and decided on the record, then checked continuously against a model derived from your cloud estate and backlog." The supporting line replaces wording that said decisions, standards and reviews are derived from the estate: the model is derived, people decide. "Every architecture decision argued, linked and kept true" now introduces the decision lifecycle instead of competing as a headline.
-- **A new identity: the plumb mark.** A stem and a bob hanging at rest beside it: the plumb line builders use to see whether work stands true, as Archigov shows whether the estate stands true to what the board approved. The bob is the one colour in the mark, a Carbon blue gradient. The app's favicon is the mark on its Blue 60 tile. The header and the sign-in page carry the mark and a lowercase "archigov" wordmark; labels elsewhere stay Title Case. The README opens on a light or dark banner. Decorative gradients (header edge, tile bars, ambient light, the Overview hero, meters, the stage rail) are now the one brand blue. Colours that carry meaning are unchanged: hero tones per part of the product, catalogue kinds, queues and status.
+- **A new identity: the plumb mark.** A stem and a bob hanging at rest beside it: the plumb line builders use to see whether work stands true, as archigov shows whether the estate stands true to what the board approved. The bob is the one colour in the mark, a Carbon blue gradient. The app's favicon is the mark on its Blue 60 tile. The header and the sign-in page carry the mark and a lowercase "archigov" wordmark; labels elsewhere stay Title Case. The README opens on a light or dark banner. Decorative gradients (header edge, tile bars, ambient light, the Overview hero, meters, the stage rail) are now the one brand blue. Colours that carry meaning are unchanged: hero tones per part of the product, catalogue kinds, queues and status.
 - **No commercial licence is offered.** README · Licensing, CONTRIBUTING and the CLA no longer describe one. The CLA stays for the AGPL core, so that the core can still be licensed under other terms. Its new version, [v1.2](docs/CLA.md), replaces the commercial-licence sentence in clause 4 with a commitment: any such licence covers the same code as the open-source release, and nothing is held back from it. The grants are unchanged, and the CLA check now records agreements against v1.2.
 
 ## [0.2.1] — 2026-10-16
@@ -45,7 +49,7 @@ A fix for continuous replication, and the documentation around it. With `LITESTR
 
 ### Changed
 
-- **Replication is documented properly.** `infra/README.md` · Replication with Litestream says what it is, why Archigov uses it, when it is needed (a table against the nightly backups), how to configure both modes, and what it does not cover:
+- **Replication is documented properly.** `infra/README.md` · Replication with Litestream says what it is, why archigov uses it, when it is needed (a table against the nightly backups), how to configure both modes, and what it does not cover:
   - `/data/keys` is never replicated;
   - one writer per replica path;
   - it is not an archive.
@@ -129,7 +133,7 @@ The decision-centric release. Architecture decisions are argued in three parts a
 
 ## [0.1.0] — 2026-10-15
 
-First public release: the consolidation of the governance platform built to date, renamed from the working title *Archgov* to **Archigov**.
+First public release: the consolidation of the governance platform built to date, renamed from the working title *Archgov* to **archigov**.
 
 ### The platform
 
