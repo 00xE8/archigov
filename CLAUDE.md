@@ -282,7 +282,10 @@ last direct-to-main blob; from here on:
   a changed UI label, route, rule, role or workflow step means the page, its screenshot or its diagram is now
   wrong). Stale documentation is a defect: remove what no longer applies rather than leaving it to mislead.
   The PR body states the outcome in one line — what was created, updated or deleted, or "no documentation
-  impact" with the reason.
+  impact" with the reason. **The README links every feature it lists to the excerpt that explains it**
+  (`https://archigov.com/docs/<page>#<section>--<item>`: the docs generator gives each table row and each lead-term
+  list item its own anchor). A README line for a new feature links its excerpt the same way, and the private repo's
+  docs build fails when a docs change breaks one of these links.
 - **Quality gate** (unchanged, now per-PR): tsc clean in both folders, `npm test` green, the nine-smoke battery
   on fresh instances, axe + a browser pass on touched UI, `npm ci --dry-run` lock check.
 - **Releases**: semver. Bump both package.json versions, move Unreleased to a dated heading in CHANGELOG.md,
