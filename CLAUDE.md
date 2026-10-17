@@ -220,7 +220,8 @@ docs/assets/logo.svg           the plumb mark (stem + bob) on its Blue 60 tile �
 infra/                         README (self-host deployment, the Litestream what/when/how, env matrix), litestream/ (example config: S3/R2/S3-compatible;
                                MinIO dropped — no community images since Oct 2025);
                                docker-compose.prod.yml at the root. The managed-service front door (Cloudflare Worker + Durable Object +
-                               Containers), the archigov.com landing page and the research documents live in the private repo 00xE8/archigov-internal
+                               Containers), the archigov.com landing page, the live demo (site/demo/ → demo.archigov.com, refreshed at
+                               every release) and the research documents live in the private repo 00xE8/archigov-internal
 Dockerfile, docker/entrypoint.sh, docker-compose.yml
 AGENTS.md, docs/agents/         the brief for AI coding agents of outside contributors (product rules, licence boundary, commands, definition
                                of done; never sign off or post the CLA for a person; Assisted-by trailer) + task prompts (pack, template,
@@ -284,6 +285,12 @@ last direct-to-main blob; from here on:
   tag `vX.Y.Z`, `gh release create vX.Y.Z` with that section as the notes; pushing the tag runs `image.yml`, which
   publishes the image the README's `docker run` pulls — check the run went green. Patch = fixes; minor = features;
   major = breaking API/schema (migrations are forward-only — a breaking one forces a major).
+- **Every release also updates the live demo**, exactly as it updates the documentation: demo.archigov.com (the landing
+  page's Live Demo button) is the released image's UI on a recorded snapshot of a fresh demo instance's API answers —
+  read-only, no server, no AI — built in the private repo's `site/demo/` (README there). Once `image.yml` is green:
+  `node capture.mjs X.Y.Z`, `node check.mjs` must report no unanswered read, page error or console error, then
+  `wrangler deploy` and `node check.mjs https://demo.archigov.com`. A release is not finished while the demo still
+  shows the previous one; a new read the check reports goes into capture.mjs's click-only list.
 - **Public-repo hygiene**: `data/` is gitignored and holds real credentials — nothing under it is ever committed;
   no tokens, account ids or infrastructure identifiers in tracked files; the secret scan is part of going public,
   not a one-off. Operational auth notes (Cloudflare tokens, wrangler versions, machine specifics) live in

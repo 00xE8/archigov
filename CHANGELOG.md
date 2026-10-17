@@ -4,6 +4,10 @@ All notable changes to archigov are documented here. The format follows [Keep a 
 
 ## [Unreleased]
 
+### Added
+
+- **A live demo** at [demo.archigov.com](https://demo.archigov.com), linked from the README and the landing page's header: the released UI on the demo estate, with View as persona switching, search and the exports. It is read-only, with no server or AI behind it, and is refreshed at every release.
+
 ## [0.3.2] — 2026-10-17
 
 The name, written as it is meant to be: archigov, lowercase, everywhere in the app, its exports and its packs. No migrations, no API change.
