@@ -1,13 +1,15 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/banner-dark.png">
-  <img src="docs/assets/banner-light.png" alt="archigov: architecture decisions, standards and reviews, derived from your cloud estate and backlog and checked continuously against them." width="1280">
+  <img src="docs/assets/banner-light.png" alt="archigov: architecture decisions argued and decided on the record, then checked continuously against a model derived from your cloud estate and backlog." width="1280">
 </picture>
 
-# Archigov — architecture decisions, governed
+# Archigov
 
-**Every architecture decision argued, linked and kept true.**
+**Know what was approved. See what was built.**
 
-Archigov makes architecture decision-making coordinated and systematic:
+Architecture decisions argued and decided on the record, then checked continuously against a model derived from your cloud estate and backlog.
+
+Every architecture decision is argued, linked and kept true:
 
 - proposals are argued in three parts and tested before they reach the board;
 - every decision links to the standards and earlier decisions it rests on;
