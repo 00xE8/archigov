@@ -4,6 +4,11 @@ All notable changes to Archigov are documented here. The format follows [Keep a 
 
 ## [Unreleased]
 
+### Added
+
+- **A published container image.** Every release tag publishes `ghcr.io/00xe8/archigov:<version>`, `:<major>.<minor>` and `:latest` for amd64 and arm64 (`.github/workflows/image.yml`), so trying Archigov is one `docker run` with no clone and no build. The README opens with that command and a screenshot; `docker compose up --build` from a clone is unchanged.
+- **Issue forms** for a bug, an idea and a policy pack, and **SECURITY.md**: vulnerabilities are reported privately through GitHub's advisories, never in a public issue.
+
 ### Changed
 
 - **A new identity: the plumb mark.** A stem and a bob hanging at rest beside it: the plumb line builders use to see whether work stands true, as Archigov shows whether the estate stands true to what the board approved. The bob is the one colour in the mark, a Carbon blue gradient. The app's favicon is the mark on its Blue 60 tile. The header and the sign-in page carry the mark and a lowercase "archigov" wordmark; labels elsewhere stay Title Case. The README opens on a light or dark banner. Decorative gradients (header edge, tile bars, ambient light, the Overview hero, meters, the stage rail) are now the one brand blue. Colours that carry meaning are unchanged: hero tones per part of the product, catalogue kinds, queues and status.

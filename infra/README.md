@@ -18,9 +18,13 @@ repository and is not needed to self-host anything.
 ## Self-host
 
 ```bash
+docker run -d -p 8080:8080 -v archigov-data:/data ghcr.io/00xe8/archigov   # the published image (amd64, arm64)
 docker compose up --build                       # development: seeds the demo tenant, http://localhost:8080
 docker compose -f docker-compose.prod.yml up -d  # production example: empty tenant, restart policy, healthcheck
 ```
+
+Each release tag publishes `ghcr.io/00xe8/archigov:<version>`, `:<major>.<minor>` and `:latest`; pin a version in
+production. The compose files build from the checkout instead.
 
 ## Replication with Litestream
 

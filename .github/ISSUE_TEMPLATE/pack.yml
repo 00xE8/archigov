@@ -1,0 +1,35 @@
+name: Policy Pack
+description: Propose standards, principles, patterns or policies for a framework (ISO 27001, NCSC CAF, DSPT, PCI DSS…).
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A pack is one file under `server/src/packs/` (Apache-2.0, DCO sign-off only). Packs carry control **references** only — never the control text of the framework itself. `docs/agents/new-policy-pack.md` walks through one.
+  - type: input
+    id: framework
+    attributes:
+      label: Framework
+      placeholder: "NCSC Cyber Assessment Framework 3.2"
+    validations:
+      required: true
+  - type: textarea
+    id: items
+    attributes:
+      label: Items You Would Include
+      description: Each as a kind (standard, principle, pattern, policy), a one-line statement and the control references it cites. Say which could carry a checkable rule.
+      placeholder: |
+        STD · Storage accounts deny public blob access · CAF B3.c · rule: props.publicAccess eq false
+    validations:
+      required: true
+  - type: textarea
+    id: who
+    attributes:
+      label: Who Would Use It
+      description: The kind of organisation and board this pack serves.
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contributing
+      options:
+        - label: I would like to write this pack.

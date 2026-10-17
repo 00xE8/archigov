@@ -18,6 +18,16 @@ It runs as one container with one SQLite file and no other services. It is usabl
 
 [archigov.com](https://archigov.com) · [Documentation](https://archigov.com/docs) · [Quickstart](https://archigov.com/docs/getting-started/quickstart) · [How to contribute](#how-to-contribute)
 
+<img src="docs/assets/screenshot-review.webp" alt="A design review in Archigov: the Design Authority's record, one position per area of responsibility, and a conditional on Infrastructure waiting for the chair" width="100%">
+
+## Try it in one minute
+
+```bash
+docker run --rm -p 8080:8080 ghcr.io/00xe8/archigov
+```
+
+Open http://localhost:8080. On first start a demo estate loads: applications collected from a fictional Azure tenant, the core standards pack, two boards with seated members, reviews in several stages and open findings. The **View as** menu in the header switches between the demo's author, chair, decision makers and auditor, so you can walk a decision through the board as each of them. The image runs on amd64 and arm64; add `-v archigov-data:/data` to keep what you change.
+
 ## How it works
 
 | Stage | What happens |
@@ -107,12 +117,16 @@ UI: IBM Carbon (`@carbon/react` 1.118.0, `@carbon/charts-react` 1.27.21, IBM Ple
 
 ### With Docker
 
+Every release is published to the GitHub Container Registry for amd64 and arm64, as `ghcr.io/00xe8/archigov:<version>` and `:latest`:
+
 ```bash
-docker compose up --build
+docker run -d --name archigov -p 8080:8080 -v archigov-data:/data ghcr.io/00xe8/archigov
 # open http://localhost:8080
 ```
 
-Data lives in the `archigov-data` volume (`/data/app.db`, `/data/blobs`, `/data/backups`, `/data/keys`, `/data/evidence-packs`). Nightly backups keep the last 14 copies. Upgrades are `docker compose pull && docker compose up`. `docker-compose.prod.yml` is the self-host production example; [infra/README.md](infra/README.md) has the deployment notes and the full environment matrix, and `infra/litestream/` an example replication config.
+From a clone, `docker compose up --build` builds the same image from source.
+
+Data lives in the `archigov-data` volume (`/data/app.db`, `/data/blobs`, `/data/backups`, `/data/keys`, `/data/evidence-packs`). Nightly backups keep the last 14 copies. To upgrade, pull the new tag and recreate the container on the same volume, or from a clone `git pull && docker compose up -d --build`; migrations run on start. `docker-compose.prod.yml` is the self-host production example; [infra/README.md](infra/README.md) has the deployment notes and the full environment matrix, and `infra/litestream/` an example replication config.
 
 ### Without Docker (Node 22)
 

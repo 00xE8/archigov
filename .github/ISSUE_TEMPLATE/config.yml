@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://archigov.com/docs
+    about: Quickstart, concepts, guides and the configuration reference.
+  - name: Report a security vulnerability
+    url: https://github.com/00xE8/archigov/security/advisories/new
+    about: Privately, please — never in a public issue. See SECURITY.md.

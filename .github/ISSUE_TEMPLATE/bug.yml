@@ -1,0 +1,49 @@
+name: Bug
+description: Something does not work as the documentation says it should.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What Happened
+      description: What you did, what you expected and what you saw instead. Paste errors as text.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: On the demo tenant if you can, so anyone can follow them.
+      placeholder: |
+        1. View as Joel Duduka (chair)
+        2. Open REV-0007
+        3. …
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The image tag or release you run (a platform admin sees it under Settings · General).
+      placeholder: "0.2.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: run
+    attributes:
+      label: How You Run It
+      options:
+        - Published image (ghcr.io)
+        - Docker Compose from a clone
+        - From source (Node)
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: auth
+    attributes:
+      label: Sign-in Mode
+      options:
+        - local
+        - entra
+  - type: markdown
+    attributes:
+      value: Never paste tenant ids, keys, tokens or real resource names. Redact them.
