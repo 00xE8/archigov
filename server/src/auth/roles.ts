@@ -155,6 +155,8 @@ interface RouteRule { method: Verb; pattern: RegExp; capability: Capability | Ca
 export const ROUTE_RULES: RouteRule[] = [
   { method: "*", pattern: /^\/health$/, capability: "exempt" },
   { method: "*", pattern: /^\/auth\/(me|local|login|callback|logout)$/, capability: "exempt" },
+  // the legal notices and the source offer: shown on the sign-in page, so readable before anyone signs in
+  { method: "GET", pattern: /^\/auth\/about$/, capability: "exempt" },
   { method: "GET", pattern: /^\/auth\/roles$/, capability: "read" },
   { method: "POST", pattern: /^\/auth\/roles$/, capability: "manage_platform" },
   { method: "*", pattern: /^\/hooks(\/|$)/, capability: "exempt" },

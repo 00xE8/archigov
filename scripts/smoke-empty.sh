@@ -101,6 +101,15 @@ def h():
     return "demo_loaded=true"
 step("h  settings now report the demo source", h)
 
+def i():
+    # open like the rest of /auth: the sign-in page shows the notices before anyone signs in
+    req = urllib.request.Request(BASE + "/auth/about", method="GET")
+    with urllib.request.urlopen(req, timeout=30) as r: a = json.loads(r.read())
+    assert a["licence"] == "AGPL-3.0-only" and "Skygge Ltd" in a["copyright"] and a["version"], a
+    assert a["source_url"].startswith("https://") and a["source_url"].endswith("v" + a["version"]), a["source_url"]
+    return f"{a['name']} {a['version']}, source {a['source_url']}"
+step("i  the legal notices and the source offer are open", i)
+
 passed = sum(1 for _, ok in results if ok); failed = len(results) - passed
 print(f"\n{passed} passed, {failed} failed  ({BASE})")
 sys.exit(1 if failed else 0)

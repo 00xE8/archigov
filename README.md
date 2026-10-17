@@ -286,6 +286,10 @@ What the AGPL means in practice:
 - **Nothing is held back from the open-source release.** There is no closed edition, and any other licence the project grants covers the same code.
 - **The CLA is a licence grant, not a copyright assignment.** Contributors keep their copyright. It is only needed for the AGPL core, where it keeps the option to license the core under other terms.
 
+Copyright © 2026 Skygge Ltd and contributors. Skygge Ltd maintains the project and receives the CLA's grant. The app shows these notices, and offers the source of the running version, under **About Archigov** in its help panel and on the sign-in page. Whoever hosts a modified build for others sets `SOURCE_URL` to their own source.
+
+**Trademarks.** The name Archigov and the plumb mark are trademarks of Skygge Ltd, and neither licence grants a right to use them. Refer to the project freely, and share unmodified releases under its name; a modified version needs its own name and logo. See [TRADEMARKS.md](TRADEMARKS.md).
+
 ## Not in this release
 
 These are the most useful places to contribute:

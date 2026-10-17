@@ -30,7 +30,7 @@ jobs:
         with:
           script: |
             const AGREEMENT = "I have read the Archigov CLA and I agree to it for this and all my future contributions.";
-            const CLA_VERSION = "1.2", BRANCH = "cla-signatures", FILE = "signatures.json", MARK = "<!-- archigov-cla -->";
+            const CLA_VERSION = "1.3", BRANCH = "cla-signatures", FILE = "signatures.json", MARK = "<!-- archigov-cla -->";
             const { owner, repo } = context.repo;
             const number = context.payload.pull_request?.number ?? context.payload.issue.number;
             const pr = (await github.rest.pulls.get({ owner, repo, pull_number: number })).data;
