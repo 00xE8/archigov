@@ -1,13 +1,13 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/banner-dark.png">
-  <img src="docs/assets/banner-light.png" alt="archigov: architecture decisions argued and decided on the record, then checked continuously against a model derived from your cloud estate and backlog." width="1280">
+  <img src="docs/assets/banner-light.png" alt="archigov: AI-assisted decisions, and instant feedback on how every design measures up against your standards and patterns." width="1280">
 </picture>
 
 # archigov
 
-**Know what was approved. See what was built.**
+**Better architecture decisions. Faster design reviews.**
 
-Architecture decisions argued and decided on the record, then checked continuously against a model derived from your cloud estate and backlog.
+AI-assisted decisions, and instant feedback on how every design measures up against your standards and patterns.
 
 Open-source architecture governance for Azure and Azure DevOps. It runs as one container with one SQLite file and no other services, and is usable in minutes with the demo estate or your own Azure subscription. The core is AGPL-3.0; packs, templates, connectors and importers are Apache-2.0.
 
