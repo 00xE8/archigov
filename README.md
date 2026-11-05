@@ -11,7 +11,7 @@ AI-assisted decisions, and instant feedback on how every design measures up agai
 
 Open-source architecture governance for Azure and Azure DevOps. It runs as one container with one SQLite file and no other services, and is usable in minutes with the demo estate or your own Azure subscription. The core is AGPL-3.0; packs, templates, connectors and importers are Apache-2.0.
 
-[archigov.com](https://archigov.com) · [Live demo](https://demo.archigov.com) · [Documentation](https://archigov.com/docs) · [Quickstart](https://archigov.com/docs/getting-started/quickstart) · [How to contribute](#how-to-contribute)
+[archigov.com](https://archigov.com) · [Live demo](https://demo.archigov.com) · [Features](https://archigov.com/features/) · [Documentation](https://archigov.com/docs) · [Quickstart](https://archigov.com/docs/getting-started/quickstart) · [How to contribute](#how-to-contribute)
 
 <img src="docs/assets/screenshot-review.webp" alt="A design review in archigov: the Design Authority's record, one position per area of responsibility, and a conditional on Infrastructure waiting for the chair" width="100%">
 
@@ -23,7 +23,7 @@ Architecture governance rarely fails for lack of process. It fails because the p
 
 [<img src="docs/assets/boards-loop.webp" alt="archigov's Reviews list: each review with the board that decides it — the Data &amp; AI Board, the Referrals Programme Board, the Clinical Systems Board, the Engineering Board, the Design Authority and the Policy &amp; Compliance Board" width="100%">](https://archigov.com/#problem)
 
-*Boards at every level and one list across them. [Watch it on archigov.com](https://archigov.com/#problem).*
+*Boards at every level and one list across them. [Watch it on archigov.com](https://archigov.com/features/design-reviews).*
 
 | Problem | What breaks today | What archigov does |
 |---|---|---|
