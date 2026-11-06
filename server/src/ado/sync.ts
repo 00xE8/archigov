@@ -61,6 +61,16 @@ export function mapWorkItem(w: AdoWorkItem) {
   };
 }
 
+/**
+ * Work items the source reports that are not planned changes: something else in the product keeps them (a work item
+ * made for a condition of an approval). A claimer is told what the source says of an item and answers true when the
+ * item is its own; the feed then leaves it alone, in the backfill and in the service hook alike.
+ */
+export type SourceItem = { id: number; rev: number; fields: Record<string, any>; deleted?: boolean };
+const claimers: ((w: SourceItem) => boolean)[] = [];
+export const claimWorkItems = (fn: (w: SourceItem) => boolean) => { claimers.push(fn); };
+const claimed = (w: SourceItem) => claimers.some((fn) => { try { return fn(w); } catch { return false; } });
+
 export type UpsertOutcome = { outcome: "created" | "updated" | "unchanged" | "skipped_old_rev"; material_change: boolean; id: string };
 
 /**
@@ -96,7 +106,7 @@ export async function syncAdo(actor: string) {
   try {
     const { wiql: query } = adoConfig();
     const ids = (await wiql(query)).workItems.map((w) => w.id);
-    const items = await workItemsBatch(ids);
+    const items = (await workItemsBatch(ids)).filter((w) => !claimed({ id: w.id, rev: w.rev, fields: w.fields }));
     const stats = { fetched: items.length, created: 0, updated: 0, unchanged: 0, skipped_old_rev: 0, material_changes: 0 };
     db.transaction(() => { for (const w of items) { const r = upsertWorkItem(src.id, w, actor, "sync"); stats[r.outcome]++; if (r.material_change) stats.material_changes++; } })();
     db.prepare("UPDATE sources SET status='ok', last_sync_at=?, last_error=NULL WHERE id=?").run(nowIso(), src.id);
@@ -132,6 +142,7 @@ export function handleAdoHook(payload: any, actor = "ado-hook") {
   const fields: Record<string, any> = { ...(res.revision?.fields || {}), ...(res.fields || {}) };
   if (type === "workitem.deleted") fields["System.State"] = "Removed";
   const rev = Number(res.rev ?? res.revision?.rev ?? 0);
+  if (claimed({ id, rev, fields, deleted: type === "workitem.deleted" })) return { ok: true, external_id: String(id), outcome: "claimed" as const, material_change: false };
   const src = adoSource();
   const r = upsertWorkItem(src.id, { id, rev, fields, url: res.url || res.revision?.url }, actor, "hook");
   audit(actor, "ado_hook", "work_items", r.id, { eventType: type, external_id: String(id), rev, outcome: r.outcome, material_change: r.material_change });

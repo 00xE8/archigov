@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db, j, uid, nowIso, audit } from "../db.js";
 import { listElements } from "../model.js";
 import { evaluateAll } from "../rules.js";
+import { raisedOf } from "../raise.js";
 import { actorOf, fnd, wi } from "../http.js";
 
 export const conformance = new Hono();
@@ -12,7 +13,7 @@ conformance.get("/conformance", (c) => {
   const findings = db.prepare("SELECT f.*, s.code standard_code, s.kind AS artefact_kind, s.code AS artefact_code, s.title standard_title, s.category, e.name element_name, e.subtype element_type, e.verification element_verification FROM findings f JOIN standards s ON s.id=f.standard_id LEFT JOIN elements e ON e.id=f.element_id WHERE f.status<>'resolved' ORDER BY CASE f.severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END, s.code").all().map(fnd).map((f: any) => ({ ...f, application_name: apps.get(f.application_id) || null }));
   const decisionDrift = findings.filter((f: any) => f.decision_id);
   const exceptions = db.prepare("SELECT e.*, s.code standard_code, s.title standard_title FROM exceptions e JOIN standards s ON s.id=e.standard_id ORDER BY e.expires_at").all().map((e: any) => ({ ...e, application_name: apps.get(e.application_id) || null }));
-  const conditions = db.prepare("SELECT c.*, r.code review_code, r.title review_title FROM conditions c JOIN reviews r ON r.id=c.review_id WHERE c.status IN ('open','overdue') ORDER BY c.due_at").all();
+  const conditions = (db.prepare("SELECT c.*, r.code review_code, r.title review_title FROM conditions c JOIN reviews r ON r.id=c.review_id WHERE c.status IN ('open','overdue') ORDER BY c.due_at").all() as any[]).map((cd) => ({ ...cd, raised: raisedOf(cd.id) }));
   const runs = db.prepare("SELECT r.*, s.name source_name FROM runs r LEFT JOIN sources s ON s.id=r.source_id WHERE r.kind IN ('evaluate','sync') ORDER BY r.started_at DESC LIMIT 10").all()
     .map((r: any) => ({ id: r.id, kind: r.kind, source_id: r.source_id, source_name: r.source_name || null, started_at: r.started_at, finished_at: r.finished_at, status: r.status, error: r.error || null, stats: j(r.stats_json, {}) }));
   const materialChanges = db.prepare("SELECT w.*, r.code review_code FROM work_items w LEFT JOIN reviews r ON r.id=w.review_id WHERE w.material_change=1").all().map(wi);

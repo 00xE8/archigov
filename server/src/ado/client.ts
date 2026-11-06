@@ -16,6 +16,12 @@ import { ADO_FIXTURES } from "./fixtures.js";
  *          application/json-patch+json; validateOnly=true checks without saving, suppressNotifications=true tells no follower.
  *          Needs vso.work_write, where everything above needs vso.work.
  *          https://learn.microsoft.com/rest/api/azure/devops/wit/work-items/update?view=azure-devops-rest-7.1
+ *   Create: POST https://dev.azure.com/{org}/{project}/_apis/wit/workitems/${type}?api-version=7.1   body a JSON Patch document of
+ *          `add` operations (fields, relations); the same validateOnly / suppressNotifications; needs vso.work_write.
+ *          https://learn.microsoft.com/rest/api/azure/devops/wit/work-items/create?view=azure-devops-rest-7.1
+ *   List:  GET https://dev.azure.com/{org}/{project}/_apis/wit/workitems?ids=1,2&$expand=relations&errorPolicy=omit&api-version=7.1
+ *          → { count, value: [...] }, at most 200 ids; with errorPolicy=omit an item that is gone is left out.
+ *          https://learn.microsoft.com/rest/api/azure/devops/wit/work-items/list?view=azure-devops-rest-7.1
  * Auth: a PAT as HTTP basic (empty user, PAT as password), or a Microsoft Entra token for the Azure DevOps resource
  *   (scope https://app.vssps.visualstudio.com/.default — the resource id form 499b84ac-1321-427f-aa17-267ca6975798/.default
  *   is the same audience) via DefaultAzureCredential.
@@ -81,7 +87,7 @@ export async function workItemsBatch(ids: number[], fields = ADO_FIELDS): Promis
 export const ADO_PATCH_TYPE = "application/json-patch+json";
 export interface JsonPatchOp { op: "add" | "replace" | "remove" | "test"; path: string; value?: unknown }
 export interface AdoRelation { rel: string; url: string; attributes?: Record<string, any> }
-export interface AdoWorkItemFull { id: number; rev: number; fields: Record<string, any>; relations?: AdoRelation[]; url?: string }
+export interface AdoWorkItemFull { id: number; rev: number; fields: Record<string, any>; relations?: AdoRelation[]; url?: string; _links?: { html?: { href?: string } } }
 const itemUrl = (id: number | string) => { const { org, project } = adoConfig(); return `https://dev.azure.com/${encodeURIComponent(org)}/${encodeURIComponent(project)}/_apis/wit/workitems/${encodeURIComponent(String(id))}`; };
 
 /** One work item as it stands now, with its links. ($expand cannot be combined with a field list, so every field comes back.) */
@@ -99,4 +105,31 @@ export async function patchWorkItem(id: number | string, ops: JsonPatchOp[], opt
   if (fixturesEnabled()) { if (ADO_FIXTURES.state.latencyMs) await sleep(ADO_FIXTURES.state.latencyMs); return ADO_FIXTURES.update(String(id), ops, opts); }
   const q = `${opts.validateOnly ? "validateOnly=true&" : ""}${opts.suppressNotifications ? "suppressNotifications=true&" : ""}api-version=${ADO_API_VERSION}`;
   return adoFetch(`${itemUrl(id)}?${q}`, { method: "PATCH", body: JSON.stringify(ops), headers: { "Content-Type": ADO_PATCH_TYPE } }, 3, false);
+}
+
+/**
+ * Create a work item of a type from a JSON Patch document of `add` operations. Sent once, like patchWorkItem: a
+ * server error may have been answered after the item was made, and making it again is the caller's call.
+ */
+export async function createWorkItem(type: string, ops: JsonPatchOp[], opts: { validateOnly?: boolean; suppressNotifications?: boolean } = {}): Promise<AdoWorkItemFull> {
+  if (fixturesEnabled()) { if (ADO_FIXTURES.state.latencyMs) await sleep(ADO_FIXTURES.state.latencyMs); return ADO_FIXTURES.create(type, ops, opts); }
+  const { org, project } = adoConfig();
+  const q = `${opts.validateOnly ? "validateOnly=true&" : ""}${opts.suppressNotifications ? "suppressNotifications=true&" : ""}api-version=${ADO_API_VERSION}`;
+  const base = `https://dev.azure.com/${encodeURIComponent(org)}/${encodeURIComponent(project)}/_apis/wit/workitems`;
+  return adoFetch(`${base}/$${encodeURIComponent(type)}?${q}`, { method: "POST", body: JSON.stringify(ops), headers: { "Content-Type": ADO_PATCH_TYPE } }, 3, false);
+}
+
+/** Several work items as they stand, with their links. One that is gone is left out. */
+export async function getWorkItems(ids: (number | string)[]): Promise<AdoWorkItemFull[]> {
+  if (!ids.length) return [];
+  if (fixturesEnabled()) return ADO_FIXTURES.list(ids.map(String));
+  const { org, project } = adoConfig();
+  const base = `https://dev.azure.com/${encodeURIComponent(org)}/${encodeURIComponent(project)}/_apis/wit/workitems`;
+  const out: AdoWorkItemFull[] = [];
+  for (let i = 0; i < ids.length; i += ADO_BATCH_MAX) {
+    const chunk = ids.slice(i, i + ADO_BATCH_MAX).map((x) => encodeURIComponent(String(x))).join(",");
+    const body = await adoFetch(`${base}?ids=${chunk}&$expand=relations&errorPolicy=omit&api-version=${ADO_API_VERSION}`, {}, 2);
+    out.push(...((body.value || []) as (AdoWorkItemFull | null)[]).filter((x): x is AdoWorkItemFull => !!x));
+  }
+  return out;
 }

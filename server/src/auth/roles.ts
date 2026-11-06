@@ -207,6 +207,10 @@ export const ROUTE_RULES: RouteRule[] = [
   { method: "PUT", pattern: /^\/reviews\/[^/]+\/patterns$/, capability: "submit_review" },
   { method: "POST", pattern: /^\/review-events\/[^/]+\/verify$/, capability: "verify" },
   { method: "POST", pattern: /^\/conditions\/[^/]+\/close$/, capability: "close_condition" },
+  // Raising a condition as a work item is a matter of standing, not of role: its owner, the review's submitter, or
+  // the chair or secretary of its board (the handler checks which, and refuses an auditor or a service account). An
+  // owner may hold no role and no seat at all, so the gate is the one every signed-in person passes.
+  { method: "POST", pattern: /^\/conditions\/[^/]+\/raise$/, capability: "read" },
   // AI review of a decision draft: the same right as authoring the decision it reviews
   { method: "POST", pattern: /^\/decisions\/review-draft$/, capability: "create_decision" },
   // evidence on a proposed decision: the author's act (the handler locks it to the decision's author)

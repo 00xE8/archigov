@@ -5,6 +5,7 @@ import { boardAreas, areaLabel } from "./areas.js";
 import { reviewRow, userName } from "../reviews.js";
 import { sessionItems } from "./sessions.js";
 import { signOffsDueFor } from "../signoffs.js";
+import { raisedOf, conditionsToConfirm } from "../raise.js";
 
 /**
  * The work queue of one principal: what the workflow is waiting on them for, derived from the same rules the
@@ -17,8 +18,8 @@ export const sessionRef = (s: SessionRow | null) => (s ? { id: s.id, code: s.cod
 const IN_FLIGHT = ["submitted", "pre_review", "in_review", "changes_requested", "approved_pending_dependencies", "approved_subject_to_circulation"];
 export const IN_FLIGHT_SQL = `(${IN_FLIGHT.map((s) => `'${s}'`).join(",")})`;
 
-interface WorkLists { positions: any[]; declare: any[]; resolve: any[]; assessments: any[]; sessions: any[]; conditions: any[]; circulations: any[]; resubmit: any[]; changed: any[]; no_decision: any[]; sign_offs: any[] }
-const empty = (): WorkLists => ({ positions: [], declare: [], resolve: [], assessments: [], sessions: [], conditions: [], circulations: [], resubmit: [], changed: [], no_decision: [], sign_offs: [] });
+interface WorkLists { positions: any[]; declare: any[]; resolve: any[]; assessments: any[]; sessions: any[]; conditions: any[]; confirm: any[]; circulations: any[]; resubmit: any[]; changed: any[]; no_decision: any[]; sign_offs: any[] }
+const empty = (): WorkLists => ({ positions: [], declare: [], resolve: [], assessments: [], sessions: [], conditions: [], confirm: [], circulations: [], resubmit: [], changed: [], no_decision: [], sign_offs: [] });
 const countsOf = (l: WorkLists) => { const c: Record<string, number> = {}; let total = 0; for (const k of Object.keys(l) as (keyof WorkLists)[]) { c[k] = l[k].length; total += l[k].length; } return { total, ...c }; };
 /** Holds a governance identity: a system role that acts (author) or at least one seat; never an auditor or a service account. */
 export const governs = (p: Principal | null): p is Principal => !!p && p.user_type !== "auditor" && p.user_type !== "service" && (p.user_type === "author" || p.boards.length > 0);
@@ -69,8 +70,10 @@ export function workQueueFor(p: Principal | null) {
   // conditions I own, the overdue ones first
   for (const c of db.prepare("SELECT id, review_id, text, due_at, status, area FROM conditions WHERE owner=? AND status IN ('open','overdue') ORDER BY CASE status WHEN 'overdue' THEN 0 ELSE 1 END, COALESCE(due_at, '9999'), created_at").all(p.id) as any[]) {
     const r = reviewRow(c.review_id); if (!r) continue;
-    lists.conditions.push({ id: c.id, review: reviewRef(r), text: c.text, due_at: c.due_at ?? null, status: c.status, area: c.area ?? null });
+    lists.conditions.push({ id: c.id, review: reviewRef(r), text: c.text, due_at: c.due_at ?? null, status: c.status, area: c.area ?? null, raised: raisedOf(c.id) });
   }
+  // conditions on the boards I chair whose work item was closed in Azure DevOps: the team says the work is done, and it is mine to confirm
+  for (const c of conditionsToConfirm(p)) { const r = reviewRow(c.review_id); if (r) lists.confirm.push({ id: c.id, review: reviewRef(r), text: c.text, due_at: c.due_at, status: c.status, area: c.area, raised: c.raised }); }
   // my items sent back: who sent them back and why (the latest send-back on the timeline)
   for (const r of db.prepare("SELECT * FROM reviews WHERE submitted_by=? AND stage='changes_requested' ORDER BY updated_at DESC").all(p.id) as any[]) {
     const ev = db.prepare("SELECT actor, created_at, body_md FROM review_events WHERE review_id=? AND (kind='request_changes' OR (kind='position' AND json_extract(data_json,'$.position')='no') OR (kind='circulation_objection')) ORDER BY created_at DESC LIMIT 1").get(r.id) as any;
