@@ -114,6 +114,7 @@ def sb():
     st, a = author.post("/artefacts", {"kind": "principle", "title": "smoke-auth: author draft principle", "category": "Smoke", "statement": "Authors draft; a board adopts."}); assert st == 200 and a["lifecycle"] == "draft", f"{st} {a}"
     st, _ = author.post("/evaluate"); assert st == 200, "an author may run the engine (pre_review)"
     st, _ = author.post("/sources/demo/resync"); assert st == 403, "an author must not sync sources"
+    st, _ = author.post("/sources/ado/writeback", {"enabled": True}); assert st == 403, "an author must not turn write-back on"
     st, _ = author.put("/users/ann.auditor", {"is_platform_admin": True}); assert st == 403, "an author must not edit users"
     return f"author submits {r['code']} (DA, in_review), drafts {a['code']}, evaluates; no seat → cannot approve; not a platform admin"
 step("b  author: submits, drafts, evaluates; holds no seat and runs nothing", sb)
@@ -129,6 +130,10 @@ def sc():
         st, b = admin.post(path, body); assert st == 403 and b.get("capability") in caps and b.get("is_platform_admin") is True, f"{path}: {st} {b}"
     st, r = admin.post("/standards/packs/archigov-core/import"); assert st == 200 and r["imported"] == 0 and r["skipped"] == 5, f"a platform admin bootstraps packs: {st} {r}"
     st, _ = admin.post("/sources/demo/resync"); assert st == 200, "a platform admin syncs sources"
+    # write-back is the admin's switch, off by default, and it needs the backlog source it writes to
+    st, wb = admin.get("/sources/ado/writeback"); assert st == 200 and wb["enabled"] is False, f"write-back is off until an admin turns it on: {st} {wb}"
+    st, b = admin.post("/sources/ado/writeback", {"enabled": True}); assert st == (200 if wb["available"] else 409), f"write-back without a connected backlog: {st} {b}"
+    if st == 200: st, b = admin.post("/sources/ado/writeback", {"enabled": False}); assert st == 200 and b["enabled"] is False, f"{st} {b}"
     return f"{len(checks)} governance actions → 403 naming the capability; pack import and source sync → 200"
 step("c  segregation of duties: the admin flag grants no governance right", sc)
 

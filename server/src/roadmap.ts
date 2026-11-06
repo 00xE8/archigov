@@ -27,6 +27,21 @@ const daysTo = (d: string | null, now: number) => (d ? (Date.parse(d) - now) / D
 const laneByDate = (due: string | null, now: number): Lane => { const n = daysTo(due, now); return n === null ? "next" : n <= 90 ? "now" : n <= 180 ? "next" : "later"; };
 const RECENT_DAYS = 90;
 
+/**
+ * How far the estate has realised one decision: the resources of a type its constraint allows, in the applications it
+ * covers, against the open drift findings it raised. Null for a decision without a checkable constraint.
+ */
+export function realisationOf(d: any, apps: { id: string }[] = listElements("application")): { conforming: number; drift: number } | null {
+  const allowed: string[] = (j(d.constraint_json, null)?.allowedTypes || []).map((t: string) => t.toLowerCase());
+  if (!allowed.length) return null;
+  const scope: string[] = j(d.application_ids_json, []) || [];
+  const known = new Set(apps.map((a) => a.id));
+  const inScope = scope.length ? scope.filter((id) => known.has(id)) : apps.map((a) => a.id);
+  const conforming = inScope.flatMap((id) => resourcesOf(id)).filter((r) => allowed.includes((r.subtype || "").toLowerCase())).length;
+  const drift = (db.prepare("SELECT count(*) n FROM findings WHERE decision_id=? AND status='open'").get(d.id) as any).n as number;
+  return { conforming, drift };
+}
+
 export function roadmap(opts: { application?: string | null } = {}) {
   const now = Date.now(), nowStr = nowIso();
   const apps = listElements("application");
@@ -43,13 +58,12 @@ export function roadmap(opts: { application?: string | null } = {}) {
     const changes = (db.prepare("SELECT id, title, external_id, state FROM work_items WHERE decision_id=? AND COALESCE(state,'') <> 'Removed' ORDER BY external_id").all(d.id) as any[]);
     changes.forEach((c) => linkedChanges.add(c.id));
     const activeChange = changes.some((c) => c.state === "Active");
-    const allowed: string[] = (j(d.constraint_json, null)?.allowedTypes || []).map((t: string) => t.toLowerCase());
+    const real = d.status === "proposed" ? null : realisationOf(d, apps);
     let status: string, lane: Lane, progress: RoadmapItem["progress"] = null, detail: string;
     if (d.status === "proposed") { status = "proposed"; lane = "next"; detail = "Proposed: realisation starts once it is accepted."; }
-    else if (!allowed.length) { status = "not_checkable"; lane = activeChange ? "now" : "next"; detail = "No checkable constraint: realisation is evidenced through reviews, not measured."; }
+    else if (!real) { status = "not_checkable"; lane = activeChange ? "now" : "next"; detail = "No checkable constraint: realisation is evidenced through reviews, not measured."; }
     else {
-      const conforming = inScope.flatMap((id) => resourcesOf(id)).filter((r) => allowed.includes((r.subtype || "").toLowerCase())).length;
-      const drift = (db.prepare("SELECT count(*) n FROM findings WHERE decision_id=? AND status='open'").get(d.id) as any).n;
+      const { conforming, drift } = real;
       progress = { done: conforming, total: conforming + drift };
       if (conforming > 0 && drift === 0) { status = "realised"; lane = "done"; detail = `${conforming} resource${conforming === 1 ? "" : "s"} of an allowed type; no drift.`; }
       else if (conforming > 0) { status = "in_progress"; lane = "now"; detail = `${drift} resource${drift === 1 ? " still drifts" : "s still drift"} from it.`; }

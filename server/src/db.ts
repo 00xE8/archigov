@@ -74,7 +74,17 @@ export function audit(actor: string, action: string, entity: string, entityId: s
     db.prepare("INSERT INTO audit_log(id, at, actor, role, action, entity, entity_id, data_json, prev_hash, hash) VALUES (?,?,?,?,?,?,?,?,?,?)")
       .run(uid(), row.at, actor, row.role, action, entity, entityId, JSON.stringify(details), prev, chainHash(prev, row));
   })();
+  for (const told of auditListeners) { try { told({ action, entity, entity_id: entityId }); } catch { /* a listener never breaks the act it hears about */ } }
 }
+
+/**
+ * Everything that matters writes an audit row, so the log is also the one place to hear that something changed.
+ * A listener is told after the row is written and must only note it (write-back schedules a sweep); it never
+ * writes in the same breath, and what it throws is dropped.
+ */
+type AuditListener = (row: { action: string; entity: string; entity_id: string | null }) => void;
+const auditListeners: AuditListener[] = [];
+export const onAudit = (fn: AuditListener) => { auditListeners.push(fn); };
 
 const chainRows = (where = "") => db.prepare(`SELECT rowid, id, at, actor, role, action, entity, entity_id, data_json, prev_hash, hash FROM audit_log ${where} ORDER BY rowid`).all() as any[];
 const rowBody = (r: any) => ({ at: r.at, actor: r.actor, role: r.role ?? null, action: r.action, entity: r.entity, entity_id: r.entity_id, details: j(r.data_json, {}) });

@@ -6,6 +6,8 @@ Connectors collect an estate or a backlog: today Azure Resource Graph, Defender 
 
 **What stays core.** The connector's own folder is Apache-2.0. Wiring it in is core (AGPL): the source kinds in `server/src/sync.ts`, the routes in `server/src/routes/integrations.ts`, and the cards in Settings · Sources. Either leave the wiring to the maintainer, or agree to the CLA for those files.
 
+**Connectors read.** The one connector that also writes is Azure DevOps, whose optional write-back shows a change's lifecycle stage on the work item ([docs/features/ado-write-back.md](../features/ado-write-back.md)): off by default, an administrator's switch, and never touching what the source owns. Writing to a source is a product decision of that kind, so raise it in the issue first; a new connector does not write.
+
 ```text
 Read AGENTS.md, then study the pattern in server/src/azure/:
 - client.ts: auth from environment variables, throttling, paging;

@@ -12,6 +12,7 @@ import { authMode, entraConfigured } from "../auth/entra.js";
 import { currentPrincipal } from "../auth/context.js";
 import { workQueueFor, IN_FLIGHT_SQL } from "../boards/work.js";
 import { VERSION } from "../about.js";
+import { writebackStatus } from "../writeback.js";
 
 export const system = new Hono();
 
@@ -193,7 +194,9 @@ system.get("/settings", (c) => {
     azure: { configured: azureConfigured() || fixtures, subscriptions, fixtures }, azure_configured: azureConfigured(),
     defender: { configured: azureConfigured() || fixtures, fixtures },
     policy: { configured: azureConfigured() || fixtures, fixtures },
-    ado: { configured: adoConfigured || fixtures, org: process.env.ADO_ORG || null, project: process.env.ADO_PROJECT || null, hook_url: "/api/hooks/ado", hook_secret_configured: !!process.env.ADO_HOOK_SECRET, fixtures },
+    ado: { configured: adoConfigured || fixtures, org: process.env.ADO_ORG || null, project: process.env.ADO_PROJECT || null, hook_url: "/api/hooks/ado", hook_secret_configured: !!process.env.ADO_HOOK_SECRET, fixtures,
+      // write-back: off unless an admin turned it on; the switches and how the last writes went (writeback.ts)
+      writeback: writebackStatus() },
   });
 });
 system.post("/settings", async (c) => {

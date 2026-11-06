@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Table, TableHead, TableRow, TableHeader, TableBody, TableCell, TableContainer, Tag, DataTableSkeleton, Button, Modal, InlineLoading, Select, SelectItem, Search, RadioButtonGroup, RadioButton, ContentSwitcher, Switch, TextInput, TextArea } from "@carbon/react";
 import { MachineLearningModel, Task, Checkmark, Link as LinkIcon, Add, Edit as EditIcon } from "@carbon/icons-react";
-import { get, post, put, fmtDate, sentence } from "../api";
+import { get, post, put, fmtDate, fmtDateTime, sentence } from "../api";
 import { PageIntro, useLoad, OriginTag, LoadError, RLink, StatusTag, EmptyState, Empty, useDocTitle } from "../components";
 import { DecisionForm, parseOptions, emptyDecision } from "./Decisions";
 import { Gated } from "../auth";
@@ -67,16 +67,22 @@ export default function Backlog() {
           <TableHead><TableRow>{HEADERS.map((h) => <TableHeader key={h}>{h}</TableHeader>)}</TableRow></TableHead>
           <TableBody>{visible.map((w) => (
             <TableRow key={w.id}>
-              <TableCell><div><span className="ag-muted">{w.type} {w.external_id}</span> · <span className="ag-strong">{w.title}</span>{w.source_kind === "manual" && <> <Tag size="sm" type="gray"><span title="Logged by hand: a potential change not yet in any backlog source — origin human, author recorded in the audit log.">Manual</span></Tag></>}</div><div className="ag-muted ag-label ag-wrap">{w.description}</div><div className="ag-row tight ag-mt-02">{w.tags.map((t: string) => <Tag key={t} size="sm" type="gray"><span title="Tag carried over from the backlog source.">{t}</span></Tag>)}</div></TableCell>
+              <TableCell><div><span className="ag-muted">{w.type} {w.external_id}</span> · <span className="ag-strong">{w.title}</span>{w.source_kind === "manual" && <> <Tag size="sm" type="gray"><span title="Logged by hand: a potential change not yet in any backlog source — origin human, author recorded in the audit log.">Manual</span></Tag></>}</div><div className="ag-muted ag-label ag-wrap">{w.description}</div><div className="ag-row tight ag-mt-02">{/* the stage tag archigov itself wrote comes back with the feed: it is shown once, as the stage, not again as the team's tag */}{w.tags.filter((t: string) => t.toLowerCase() !== String(w.writeback?.tag || "").toLowerCase()).map((t: string) => <Tag key={t} size="sm" type="gray"><span title="Tag carried over from the backlog source.">{t}</span></Tag>)}</div></TableCell>
               <TableCell>{w.application_id ? <RLink to={`/applications/${w.application_id}`}>{w.application_name}</RLink> : <span className="ag-muted">Unlinked</span>}</TableCell>
               <TableCell><StatusTag kind="work" value={w.state} /></TableCell>
               <TableCell>
+                {/* one word for where the change stands, the same one written to the backlog when write-back is on; then the records behind it */}
                 <div className="ag-row tight">
-                  {w.needs_decision && <StatusTag kind="attention" value="decision" label="No decision" />}
+                  {w.lifecycle_stage && <StatusTag kind="change_stage" value={w.lifecycle_stage} />}
+                  {/* the text moved under a review that has not approved anything yet: not "after approval", and still worth a person's eye */}
+                  {!!w.material_change && w.lifecycle_stage !== "changed_after_approval" && <StatusTag kind="attention" value="changed_in_review" />}
                   {w.decision_code && <RLink to={`/decisions/${w.decision_id}`}>{w.decision_code}</RLink>}
                   {w.review_code && <><RLink to={`/reviews/${w.review_id}`}>{w.review_code}</RLink> <span className="ag-muted">({sentence(w.review_stage).toLowerCase()})</span></>}
-                  {w.material_change ? <StatusTag kind="attention" value="changed" /> : null}
                 </div>
+                {/* write-back, when an admin has it on: the same stage is on the work item itself, as the tag named on hover */}
+                {w.writeback?.error ? <div className="ag-muted ag-label ag-mt-02"><span title={w.writeback.error}>Could not be written to Azure DevOps; it is tried again automatically.</span></div>
+                  : w.writeback?.tag ? <div className="ag-muted ag-label ag-mt-02"><span title={`On the work item as the tag ${w.writeback.tag}${w.writeback.links ? ", with a link to the records above" : ""}.`}>Shown in Azure DevOps · {fmtDateTime(w.writeback.written_at)}</span></div>
+                  : w.writeback?.links ? <div className="ag-muted ag-label ag-mt-02"><span title="A link to the records above is on the work item.">Linked in Azure DevOps · {fmtDateTime(w.writeback.written_at)}</span></div> : null}
               </TableCell>
               <TableCell>{fmtDate(w.changed_at)}</TableCell>
               <TableCell>

@@ -219,6 +219,32 @@ def l():
     return f"{len(syncs)} recent sync runs incl. {sorted(n for n in names if n)[:4]}"
 step("l  runs record each integration sync with its source", l)
 
+# ---------- m. write-back to Azure DevOps ----------
+def m():
+    s, st = get("/sources/ado/writeback"); assert s == 200 and st["enabled"] is False and st["available"] and st["shown"] == 0, f"off by default: {s} {st}"
+    s, r = post("/sources/ado/writeback", {"enabled": True}, headers={"x-user": "s.patel"}); assert s == 403, f"an author must not turn write-back on: {s} {r}"
+    s, pv = get("/sources/ado/writeback/preview"); assert s == 200 and len(pv["items"]) >= 5, f"{s} {pv}"
+    s, t = post("/sources/ado/writeback/test"); assert s == 200 and t.get("ok"), f"{s} {t}"
+    s, st = get("/sources/ado/writeback"); assert st["shown"] == 0, f"the preview and the access check write nothing: {st}"
+    s, on = post("/sources/ado/writeback", {"enabled": True}); assert s == 200 and on["enabled"] and on["sweep"]["failed"] == 0 and on["sweep"]["written"] >= 5, f"{s} {on}"
+    mutations.append("write-back turned on, then off (links and comments remain on the fixture work items)")
+    s, items = get("/work-items"); by = {x["external_id"]: x for x in items}
+    assert by["1042"]["lifecycle_stage"] == "changed_after_approval" and by["1042"]["writeback"]["tag"] == "arch:changed-after-approval", by["1042"]
+    assert by["1051"]["lifecycle_stage"] == "needs_decision" and by["1051"]["writeback"]["tag"] == "arch:needs-decision", by["1051"]
+    # the tag comes back with the feed, beside the team's own, and is not mistaken for a change to the requirement
+    s, r = post("/sources/ado/sync"); assert s == 200 and r.get("ok"), f"{s} {r}"
+    s, items = get("/work-items"); w = next(x for x in items if x["external_id"] == "1051")
+    assert "arch:needs-decision" in w["tags"] and "clinical-safety" in w["tags"] and not w["material_change"], w
+    s, again = post("/sources/ado/writeback/run"); assert s == 200 and again["written"] == 0 and again["failed"] == 0, f"a second sweep sends nothing: {again}"
+    s, off = post("/sources/ado/writeback", {"enabled": False}); assert s == 200 and off["enabled"] is False and off["cleanup"]["removed"] >= 5 and off["cleanup"]["failed"] == 0 and off["tagged"] == 0, f"{s} {off}"
+    s, r = post("/sources/ado/sync"); s, items = get("/work-items")
+    left = [t for x in items for t in x["tags"] if t.startswith("arch:")]; assert not left, f"turning it off takes the stage tags off: {left}"
+    s, r = post("/sources/ado/writeback/run"); assert s == 409, f"off means off: {s} {r}"
+    s, au = get("/audit?q=writeback:&limit=1000"); acts = {a["action"] for a in (au if isinstance(au, list) else au.get("rows", au.get("items", [])))}
+    for want in ["writeback:enable", "writeback:write", "writeback:disable", "writeback:cleanup"]: assert want in acts, f"{want} missing from the audit log: {sorted(a for a in acts if a.startswith('writeback'))}"
+    return f"off by default; author 403; preview of {len(pv['items'])} and the access check write nothing; on → {on['sweep']['written']} written and the tag back through the feed; second sweep 0; off → {off['cleanup']['removed']} tags removed; all audited"
+step("m  write-back: off by default, the admin's switch, writes once, tags gone when turned off", m)
+
 # ---------- summary ----------
 passed = sum(1 for _, ok in results if ok); failed = len(results) - passed
 print(f"\n{passed} passed, {failed} failed  ({BASE})")
