@@ -17,7 +17,10 @@ function wiql(query: string) {
   if (tag) {
     if (fixtureState.unreachable) throw new Error("fetch failed");
     const has = (v: unknown) => String(v ?? "").split(";").map((t) => t.trim().toLowerCase()).includes(tag.toLowerCase());
-    return { queryType: "flat", queryResultType: "workItem", asOf: CHANGED, columns: [], workItems: [...CREATED.values()].filter((i) => has(i.fields["System.Tags"]) && !fixtureState.gone.includes(String(i.id))).map((i) => ({ id: i.id, url: i.url })) };
+    // every work item of the project carrying it, whatever its type: those made here, the backlog's own, and the ones the backlog query does not reach
+    const backlog = [...DEMO_WORK_ITEMS, ...EXTRA.values()].map((w) => fixtureWorkItem(w.external_id)!).filter((i) => has(i.fields["System.Tags"]) && !/removed/i.test(String(i.fields["System.State"])));
+    return { queryType: "flat", queryResultType: "workItem", asOf: CHANGED, columns: [],
+      workItems: [...[...CREATED.values()].filter((i) => has(i.fields["System.Tags"])), ...backlog].filter((i) => !fixtureState.gone.includes(String(i.id))).map((i) => ({ id: i.id, url: i.url })) };
   }
   return { queryType: "flat", queryResultType: "workItem", asOf: CHANGED, columns: [{ referenceName: "System.Id", name: "ID", url: `https://dev.azure.com/${ORG}/_apis/wit/fields/System.Id` }],
     workItems: DEMO_WORK_ITEMS.filter((w) => !/Removed/.test(query) || w.state !== "Removed").map((w) => ({ id: Number(w.external_id), url: url(w.external_id) })) };
@@ -38,8 +41,13 @@ const WRITTEN = new Map<string, Written>();
 const FIRST_WRITTEN_REV = 20;
 const baseRev = (externalId: string) => (externalId === "1042" ? 7 : 3);
 
+/**
+ * Work items of the project that the backlog query does not return (a user story, a bug): there in the service, and
+ * reached only by asking for them, as a query on a tag does. Tests add them.
+ */
+const EXTRA = new Map<string, (typeof DEMO_WORK_ITEMS)[number]>();
 export function fixtureWorkItem(externalId: string) {
-  const w = DEMO_WORK_ITEMS.find((x) => x.external_id === externalId);
+  const w = DEMO_WORK_ITEMS.find((x) => x.external_id === externalId) ?? EXTRA.get(externalId);
   if (!w) return null;
   const written = WRITTEN.get(externalId);
   return {
@@ -155,6 +163,10 @@ function setState(externalId: string, state: string) {
   item.rev += 1; item.fields["System.State"] = state; item.fields["System.ChangedDate"] = new Date().toISOString();
 }
 const created = () => [...CREATED.values()];
+/** For tests: a work item the backlog query does not reach (a story the team tags to ask for a review). */
+const addItem = (w: { external_id: string; type: string; title: string; state?: string; area?: string; description?: string; tags?: string[] }) => {
+  EXTRA.set(w.external_id, { state: "New", area: "Integration", description: "", tags: [], ...w } as (typeof DEMO_WORK_ITEMS)[number]);
+};
 /** For tests: the team moves a made work item under another parent (its hyperlinks go with it). */
 function reparent(externalId: string, toParent: string) {
   const item = CREATED.get(externalId);
@@ -217,6 +229,6 @@ function touch(externalId: string, tags?: string) {
 }
 /** For tests: what was written to an item, and a clean slate. */
 const written = (externalId: string) => WRITTEN.get(externalId) ?? null;
-const reset = () => { WRITTEN.clear(); CREATED.clear(); Object.assign(fixtureState, { denyWrites: false, loseAnswers: 0, thenUnreachable: false, saveLateMs: 0, failWrites: 0, unreachable: false, throttled: false, gone: [], latencyMs: 0 }); };
+const reset = () => { WRITTEN.clear(); CREATED.clear(); EXTRA.clear(); Object.assign(fixtureState, { denyWrites: false, loseAnswers: 0, thenUnreachable: false, saveLateMs: 0, failWrites: 0, unreachable: false, throttled: false, gone: [], latencyMs: 0 }); };
 
-export const ADO_FIXTURES = { org: ORG, project: PROJECT, wiql, batch, get, list, update, create, touch, setState, reparent, written, created, reset, state: fixtureState, hookSample: HOOK_SAMPLE };
+export const ADO_FIXTURES = { org: ORG, project: PROJECT, wiql, batch, get, list, update, create, touch, setState, reparent, addItem, written, created, reset, state: fixtureState, hookSample: HOOK_SAMPLE };

@@ -8,6 +8,7 @@ import { importResourcesCsv, importRelationsCsv, importArtefactsCsv, csvTemplate
 import { importArchimate } from "../importers/archimate.js";
 import { writebackStatus, writebackSettings, saveWritebackSettings, sweep, removeStageTags, forgetFailures, testWriteAccess, TAG_PREFIX, RAISE_TYPE, type WritebackSettings } from "../writeback.js";
 import { testRaiseAccess, refreshRaised } from "../raise.js";
+import { reconcileRequests } from "../requests.js";
 import { adoConfigured } from "../ado/client.js";
 import { audit } from "../db.js";
 
@@ -25,7 +26,11 @@ integrations.post("/sources/policy/sync", async (c) => { const r = await syncPol
 // ---------- Azure DevOps ----------
 integrations.post("/sources/ado/test", async (c) => c.json(await testAdo()));
 integrations.post("/sources/ado/sync", async (c) => {
-  try { const r = await syncAdo(actorOf(c)); return c.json(r, r.ok ? 200 : 502); } catch (e: any) { return fail(c, e); }
+  try {
+    const r = await syncAdo(actorOf(c));
+    if (r.ok) reconcileRequests(actorOf(c)); // what the backfill brought of asks for a review
+    return c.json(r, r.ok ? 200 : 502);
+  } catch (e: any) { return fail(c, e); }
 });
 
 /**
@@ -44,14 +49,19 @@ integrations.post("/hooks/ado", async (c) => {
   const basic = c.req.header("authorization");
   if (!given && basic?.toLowerCase().startsWith("basic ")) { try { given = Buffer.from(basic.slice(6), "base64").toString("utf8").split(":").slice(1).join(":"); } catch { given = null; } }
   if (!secretOk(given)) return c.json({ error: "unauthorised" }, 401);
-  try { const payload = await c.req.json(); return c.json(handleAdoHook(payload, "ado-hook")); } catch (e: any) { return fail(c, e, 400); }
+  try {
+    const payload = await c.req.json(); const out = handleAdoHook(payload, "ado-hook");
+    // a tag put on or taken off is an ask for a review made or withdrawn; the hook itself was taken in either way
+    try { reconcileRequests("ado-hook"); } catch (e) { console.error("reconciling review requests failed", e); }
+    return c.json(out);
+  } catch (e: any) { return fail(c, e, 400); }
 });
 
 // ---------- Azure DevOps write-back ----------
 // Off until a platform admin turns it on (every mutation here is unlisted in ROUTE_RULES, so it needs manage_platform);
 // the status is readable by anyone who can read, like the other source summaries: it holds no secret.
 integrations.get("/sources/ado/writeback", (c) => c.json(writebackStatus()));
-const WritebackIn = z.object({ enabled: z.boolean().optional(), link: z.boolean().optional(), stage: z.boolean().optional(), comment: z.boolean().optional(), raise: z.boolean().optional(),
+const WritebackIn = z.object({ enabled: z.boolean().optional(), link: z.boolean().optional(), stage: z.boolean().optional(), comment: z.boolean().optional(), raise: z.boolean().optional(), request: z.boolean().optional(),
   tag_prefix: z.string().optional(), raise_type: z.string().optional(), remove_tags: z.boolean().optional() });
 integrations.post("/sources/ado/writeback", async (c) => {
   const b = WritebackIn.parse(await c.req.json().catch(() => ({})));
@@ -59,10 +69,10 @@ integrations.post("/sources/ado/writeback", async (c) => {
   if (b.tag_prefix !== undefined && !TAG_PREFIX.test(b.tag_prefix)) return c.json({ error: "tag_prefix is 2 to 20 characters, starts with a letter or digit and ends in : / or - (for example arch:), so archigov's tags stay apart from the team's own" }, 400);
   const raiseType = b.raise_type === undefined ? undefined : b.raise_type.trim();
   if (raiseType !== undefined && !RAISE_TYPE.test(raiseType)) return c.json({ error: "raise_type is the name of a work item type in the project, for example Task, Issue or Product Backlog Item" }, 400);
-  const next: WritebackSettings = { enabled: b.enabled ?? before.enabled, link: b.link ?? before.link, stage: b.stage ?? before.stage, comment: b.comment ?? before.comment, raise: b.raise ?? before.raise,
+  const next: WritebackSettings = { enabled: b.enabled ?? before.enabled, link: b.link ?? before.link, stage: b.stage ?? before.stage, comment: b.comment ?? before.comment, raise: b.raise ?? before.raise, request: b.request ?? before.request,
     tag_prefix: b.tag_prefix ?? before.tag_prefix, raise_type: raiseType ?? before.raise_type };
   if (next.enabled && !status.available) return c.json({ error: "Azure DevOps is not connected: write-back needs the backlog source it writes to" }, 409);
-  if (next.enabled && !next.link && !next.stage && !next.comment && !next.raise) return c.json({ error: "turn on at least one of link, stage, comment and raise, or turn write-back off" }, 400);
+  if (next.enabled && !next.link && !next.stage && !next.comment && !next.raise && !next.request) return c.json({ error: "turn on at least one of link, stage, comment, raise and request, or turn write-back off" }, 400);
   const actor = actorOf(c), turningOff = before.enabled && !next.enabled;
   // Saved first: once it is off no sweep starts, and one in flight stops at its next item, so the clean-up below is
   // not undone behind its back.
@@ -73,6 +83,8 @@ integrations.post("/sources/ado/writeback", async (c) => {
   let cleanup: Awaited<ReturnType<typeof removeStageTags>> | null = null;
   if (!next.enabled && (turningOff ? b.remove_tags !== false : b.remove_tags === true)) cleanup = await removeStageTags(actor);
   if (turningOff) forgetFailures();
+  // asks for a review already on the backlog are heard from the moment that is switched on
+  if (next.enabled && next.request) reconcileRequests(actor);
   // turning it on (or changing what is shown) writes everything that is already true, so the backlog is not waiting for the next change
   const first = next.enabled ? await sweep({ actor, force: true }) : null;
   return c.json({ ok: true, ...writebackStatus(), ...(cleanup ? { cleanup } : {}), ...(first ? { sweep: { written: first.written, failed: first.failed, unchanged: first.unchanged } } : {}) });
@@ -94,6 +106,7 @@ integrations.get("/sources/ado/writeback/preview", async (c) => {
 });
 integrations.post("/sources/ado/writeback/run", async (c) => {
   if (!writebackSettings().enabled) return c.json({ error: "write-back is off" }, 409);
+  reconcileRequests(actorOf(c));
   const swept = await sweep({ actor: actorOf(c), force: true });
   // and what the source now says of the work items raised for conditions
   const raised = await refreshRaised(actorOf(c)).catch(() => null);

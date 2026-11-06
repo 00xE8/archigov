@@ -6,6 +6,7 @@ import { reviewRow, userName } from "../reviews.js";
 import { sessionItems } from "./sessions.js";
 import { signOffsDueFor } from "../signoffs.js";
 import { raisedOf, conditionsToConfirm } from "../raise.js";
+import { requestsFor } from "../requests.js";
 
 /**
  * The work queue of one principal: what the workflow is waiting on them for, derived from the same rules the
@@ -18,8 +19,8 @@ export const sessionRef = (s: SessionRow | null) => (s ? { id: s.id, code: s.cod
 const IN_FLIGHT = ["submitted", "pre_review", "in_review", "changes_requested", "approved_pending_dependencies", "approved_subject_to_circulation"];
 export const IN_FLIGHT_SQL = `(${IN_FLIGHT.map((s) => `'${s}'`).join(",")})`;
 
-interface WorkLists { positions: any[]; declare: any[]; resolve: any[]; assessments: any[]; sessions: any[]; conditions: any[]; confirm: any[]; circulations: any[]; resubmit: any[]; changed: any[]; no_decision: any[]; sign_offs: any[] }
-const empty = (): WorkLists => ({ positions: [], declare: [], resolve: [], assessments: [], sessions: [], conditions: [], confirm: [], circulations: [], resubmit: [], changed: [], no_decision: [], sign_offs: [] });
+interface WorkLists { positions: any[]; declare: any[]; resolve: any[]; assessments: any[]; sessions: any[]; conditions: any[]; confirm: any[]; circulations: any[]; resubmit: any[]; changed: any[]; no_decision: any[]; requested: any[]; sign_offs: any[] }
+const empty = (): WorkLists => ({ positions: [], declare: [], resolve: [], assessments: [], sessions: [], conditions: [], confirm: [], circulations: [], resubmit: [], changed: [], no_decision: [], requested: [], sign_offs: [] });
 const countsOf = (l: WorkLists) => { const c: Record<string, number> = {}; let total = 0; for (const k of Object.keys(l) as (keyof WorkLists)[]) { c[k] = l[k].length; total += l[k].length; } return { total, ...c }; };
 /** Holds a governance identity: a system role that acts (author) or at least one seat; never an auditor or a service account. */
 export const governs = (p: Principal | null): p is Principal => !!p && p.user_type !== "auditor" && p.user_type !== "service" && (p.user_type === "author" || p.boards.length > 0);
@@ -85,6 +86,8 @@ export function workQueueFor(p: Principal | null) {
   // epics nobody has decided on yet: an author's prompt to draft a decision or submit a design
   if (p.user_type === "author") for (const w of db.prepare("SELECT w.id, w.external_id, w.type, w.title, w.application_id, e.name application_name FROM work_items w LEFT JOIN elements e ON e.id=w.application_id WHERE w.type='Epic' AND w.state<>'Closed' AND w.decision_id IS NULL AND w.review_id IS NULL ORDER BY w.external_id").all() as any[])
     lists.no_decision.push({ work_item: { id: w.id, external_id: w.external_id, type: w.type, title: w.title, application_id: w.application_id ?? null, application_name: w.application_name ?? null } });
+  // reviews a delivery team asked for by tagging a work item: an author's to open (a named person submits, never the tag)
+  for (const q of requestsFor(p)) lists.requested.push(q);
   // periodic sign-offs due soon or overdue on the boards I chair
   for (const s of signOffsDueFor(p)) lists.sign_offs.push({ subject: s.subject, board: s.board, due: s.due, status: s.status, revision_needed: s.revision_needed });
   return { user, counts: countsOf(lists), ...lists };

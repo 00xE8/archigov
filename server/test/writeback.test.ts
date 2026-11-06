@@ -110,14 +110,14 @@ test("a patch is built against the item as it stands, revision tested first", ()
 });
 
 test("off by default: nothing is written, whoever asks", async () => {
-  assert.deepEqual(writebackSettings(), { enabled: false, link: true, stage: true, comment: true, raise: false, tag_prefix: "arch:", raise_type: "Task" });
+  assert.deepEqual(writebackSettings(), { enabled: false, link: true, stage: true, comment: true, raise: false, request: false, tag_prefix: "arch:", raise_type: "Task" });
   const r = await sweep();
   assert.equal(r.enabled, false); assert.equal(r.written, 0);
   assert.equal(fx("1042"), null); assert.equal(audits("writeback:write"), 0);
   assert.equal((await call("POST", "/sources/ado/writeback/run", "ops.admin")).status, 409);
   const st = (await call("GET", "/sources/ado/writeback", "s.patel")).body;
   assert.equal(st.enabled, false); assert.equal(st.available, true); assert.equal(st.in_scope, 7); assert.equal(st.shown, 0);
-  assert.deepEqual(st.capabilities.map((c: any) => [c.id, c.enabled, c.available]), [["link", true, true], ["stage", true, true], ["comment", true, true], ["raise", false, true]]);
+  assert.deepEqual(st.capabilities.map((c: any) => [c.id, c.enabled, c.available]), [["link", true, true], ["stage", true, true], ["comment", true, true], ["raise", false, true], ["request", false, true]]);
   assert.equal(st.stages.find((s: any) => s.id === "in_review").tag, "arch:in-review");
   assert.equal((await call("GET", "/settings", "ops.admin")).body.ado.writeback.enabled, false);
 });

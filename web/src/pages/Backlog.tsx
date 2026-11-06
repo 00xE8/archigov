@@ -9,8 +9,9 @@ import { Gated } from "../auth";
 
 // "Covered by": the decision or review that stands behind the item — the column the page exists for.
 const HEADERS = ["Work item", "Application", "State", "Covered by", "Changed", "Actions"];
-// ?filter= as the Overview tiles link here: the epics with no decision, or the items that changed after approval.
-const FILTERS = ["all", "no_decision", "changed"];
+// ?filter= as the Overview tiles link here: the epics with no decision, the items that changed after approval, or the
+// reviews a delivery team asked for by tagging a work item.
+const FILTERS = ["all", "no_decision", "changed", "requested"];
 
 export default function Backlog() {
   const [items, reload, err] = useLoad<any[]>(() => get("/work-items"));
@@ -32,7 +33,7 @@ export default function Backlog() {
   const states = Array.from(new Set(items.map((w) => w.state))).sort();
   const ql = q.trim().toLowerCase();
   const visible = items.filter((w) => (state === "all" || w.state === state) && (app === "all" || w.application_id === app)
-    && (filter === "all" || (filter === "no_decision" ? !!w.needs_decision : !!w.material_change))
+    && (filter === "all" || (filter === "no_decision" ? !!w.needs_decision : filter === "requested" ? !!w.review_requested : !!w.material_change))
     && (!ql || [w.type, w.external_id, w.title, w.description, ...(w.tags || [])].join(" ").toLowerCase().includes(ql)));
   const startDraft = async (w: any) => {
     setDrafting(w.id);
@@ -52,17 +53,21 @@ export default function Backlog() {
         </EmptyState>
       ) : (<>
         {/* The two governance signals this feed exists for, as a counted switcher (the Overview tiles deep-link here). */}
-        <ContentSwitcher className="ag-kind-switcher ag-mb-03" size="md" selectedIndex={FILTERS.indexOf(filter)} onChange={({ index }: any) => setFilter(FILTERS[index ?? 0])}>
-          <Switch name="all" text={`All (${items.length})`} />
-          <Switch name="no_decision" text={`Needs a Decision (${items.filter((w) => w.needs_decision).length})`} />
-          <Switch name="changed" text={`Changed After Approval (${items.filter((w) => w.material_change).length})`} />
+        <ContentSwitcher className={`ag-kind-switcher ag-mb-03${filter === "requested" || items.some((w) => w.review_requested) ? " wide" : ""}`} size="md" selectedIndex={FILTERS.indexOf(filter)} onChange={({ index }: any) => setFilter(FILTERS[index ?? 0])}>
+          {[
+            <Switch key="all" name="all" text={`All (${items.length})`} />,
+            <Switch key="no_decision" name="no_decision" text={`Needs a Decision (${items.filter((w) => w.needs_decision).length})`} />,
+            <Switch key="changed" name="changed" text={`Changed After Approval (${items.filter((w) => w.material_change).length})`} />,
+            // asks from the backlog: there only where a team has made one (or the link came here for them)
+            ...(filter === "requested" || items.some((w) => w.review_requested) ? [<Switch key="requested" name="requested" text={`Review Requested (${items.filter((w) => w.review_requested).length})`} />] : []),
+          ]}
         </ContentSwitcher>
         <div className="ag-row ag-mb-05 end">
           <Select id="bl-state" labelText="State" inline value={state} onChange={(e) => setState(e.target.value)}><SelectItem value="all" text="All" />{states.map((s) => <SelectItem key={s} value={s} text={sentence(s)} />)}</Select>
           <Select id="bl-app" labelText="Application" inline value={app} onChange={(e) => setApp(e.target.value)}><SelectItem value="all" text="All" />{apps.map((a) => <SelectItem key={a.id} value={a.id} text={a.name} />)}</Select>
           <Search id="bl-q" size="md" labelText="Filter backlog" placeholder="e.g. 1042 or referrals" value={q} onChange={(e) => setQ(e.target.value)} onClear={() => setQ("")} />
         </div>
-        {visible.length === 0 ? <Empty>{filter === "no_decision" ? "Every open epic has a decision." : filter === "changed" ? "Nothing has changed since approval." : "No backlog items match these filters."}</Empty> : (
+        {visible.length === 0 ? <Empty>{filter === "no_decision" ? "Every open epic has a decision." : filter === "changed" ? "Nothing has changed since approval." : filter === "requested" ? "No review is being asked for from the backlog." : "No backlog items match these filters."}</Empty> : (
         <TableContainer><Table size="md">
           <TableHead><TableRow>{HEADERS.map((h) => <TableHeader key={h}>{h}</TableHeader>)}</TableRow></TableHead>
           <TableBody>{visible.map((w) => (
@@ -76,6 +81,8 @@ export default function Backlog() {
                   {w.lifecycle_stage && <StatusTag kind="change_stage" value={w.lifecycle_stage} />}
                   {/* the text moved under a review that has not approved anything yet: not "after approval", and still worth a person's eye */}
                   {!!w.material_change && w.lifecycle_stage !== "changed_after_approval" && <StatusTag kind="attention" value="changed_in_review" />}
+                  {/* asked about again after a board has spoken: the outcome stands as the stage, and the ask shows beside it */}
+                  {!!w.review_requested && w.lifecycle_stage !== "review_requested" && <StatusTag kind="attention" value="review_requested" />}
                   {w.decision_code && <RLink to={`/decisions/${w.decision_id}`}>{w.decision_code}</RLink>}
                   {w.review_code && <><RLink to={`/reviews/${w.review_id}`}>{w.review_code}</RLink> <span className="ag-muted">({sentence(w.review_stage).toLowerCase()})</span></>}
                 </div>
@@ -89,7 +96,7 @@ export default function Backlog() {
                 <div className="ag-actions">
                   {/* Row actions are hidden, not disabled, for roles that lack them: a row of greyed buttons is noise. */}
                   {w.needs_decision && (drafting === w.id ? <InlineLoading description="Drafting" /> : <Gated cap="create_decision" mode="hide"><Button size="sm" kind="ghost" renderIcon={MachineLearningModel} onClick={() => startDraft(w)}>Draft Decision</Button></Gated>)}
-                  {w.needs_decision && <Gated cap="submit_design_review" mode="hide"><Button size="sm" kind="ghost" renderIcon={Task} onClick={async () => { const r: any = await post("/reviews", { type: "design", title: w.title, application_id: w.application_id, work_item_id: w.id, risk_tier: w.tags.includes("clinical-safety") || w.tags.includes("ai") ? "high" : "medium", summary: w.description, design_md: "## Design\n\n_To be completed by the submitter._\n" }); nav(`/reviews/${r.id}`); }}>Open Review</Button></Gated>}
+                  {(w.needs_decision || w.review_requested) && <Gated cap="submit_design_review" mode="hide"><Button size="sm" kind="ghost" renderIcon={Task} onClick={async () => { const r: any = await post("/reviews", { type: "design", title: w.title, application_id: w.application_id, work_item_id: w.id, risk_tier: w.tags.includes("clinical-safety") || w.tags.includes("ai") ? "high" : "medium", summary: w.description, design_md: "## Design\n\n_To be completed by the submitter._\n" }); nav(`/reviews/${r.id}`); }}>Open Review</Button></Gated>}
                   {w.material_change ? <Gated cap="comment" mode="hide"><Button size="sm" kind="ghost" renderIcon={Checkmark} onClick={async () => { await post(`/work-items/${w.id}/acknowledge-change`); reload(); }}>Acknowledge</Button></Gated> : null}
                   {w.source_kind === "manual" && <Gated cap="log_change" mode="hide"><Button size="sm" kind="ghost" renderIcon={EditIcon} onClick={() => setManual({ id: w.id, type: w.type, title: w.title, description: w.description || "", application_id: w.application_id || "", state: w.state })}>Edit</Button></Gated>}
                   {(!w.decision_id || !w.review_id) && w.state !== "Closed" && <Gated cap="comment" mode="hide"><Button size="sm" kind="ghost" renderIcon={LinkIcon} onClick={() => setLink({ item: w, kind: w.decision_id ? "review" : "decision", id: "" })}>Link Decision or Review</Button></Gated>}

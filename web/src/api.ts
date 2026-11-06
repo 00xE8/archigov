@@ -195,7 +195,7 @@ export const sentence = (s?: string | null) => {
 export const LABELS: Record<string, Record<string, string>> = {
   severity: { critical: "Critical", high: "High", medium: "Medium", low: "Low", info: "Info" },
   // a planned change's place in the decision lifecycle: the same words the server writes to the backlog as tags
-  change_stage: { needs_decision: "Needs decision", decision_proposed: "Decision proposed", in_review: "In review", changes_requested: "Changes requested", approved_with_conditions: "Approved with conditions", approved: "Approved", rejected: "Rejected", changed_after_approval: "Changed after approval", drift: "Drift", built_as_approved: "Built as approved" },
+  change_stage: { needs_decision: "Needs decision", review_requested: "Review requested", decision_proposed: "Decision proposed", in_review: "In review", changes_requested: "Changes requested", approved_with_conditions: "Approved with conditions", approved: "Approved", rejected: "Rejected", changed_after_approval: "Changed after approval", drift: "Drift", built_as_approved: "Built as approved" },
   stage: { submitted: "Submitted", pre_review: "Pre-reviewed", in_review: "In review", changes_requested: "Changes requested", approved: "Approved", approved_with_conditions: "Approved with conditions", approved_pending_dependencies: "Approved pending dependencies", approved_subject_to_circulation: "Approved subject to circulation", rejected: "Rejected", withdrawn: "Withdrawn" },
   // board sessions: positions per area, how the chair resolved a conditional, session and agenda-item states, attendance, quorum, declared outcomes
   position: { yes: "Yes", no: "No", conditional: "Conditional", not_my_area: "Not my area", resolved: "Resolved", missing: "Awaiting position" },
@@ -255,7 +255,7 @@ export const LABELS: Record<string, Record<string, string>> = {
   check: { ok: "Valid", failed: "Failed", unknown: "Unknown" },
   auth_mode: { local: "Local sign-in (PoC)", entra: "Microsoft Entra ID" },
   role: ROLE_LABELS,
-  attention: { open: "Open", overdue: "Overdue", expired: "Expired", decision: "Needs decision", changed: "Changed after approval", changed_in_review: "Changed since submission", region: "Outside home regions" },
+  attention: { open: "Open", overdue: "Overdue", expired: "Expired", decision: "Needs decision", changed: "Changed after approval", changed_in_review: "Changed since submission", review_requested: "Review requested", region: "Outside home regions" },
   citation: { standard: "Standard", principle: "Principle", pattern: "Pattern", policy: "Policy", decision: "Decision", resource: "Resource", section: "Section" },
   run_kind: { sync: "Sync", evaluate: "Evaluate" },
   run: { done: "Done", error: "Error", running: "Running" },

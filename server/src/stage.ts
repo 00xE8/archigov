@@ -11,6 +11,7 @@ import { realisationOf } from "./roadmap.js";
  */
 export const CHANGE_STAGES = [
   { id: "needs_decision", label: "Needs decision", explain: "An open change of a kind that warrants an architecture decision, with no decision and no review covering it yet." },
+  { id: "review_requested", label: "Review requested", explain: "The delivery team asked for a review of this change by tagging it at its source; no review has been opened for it yet." },
   { id: "decision_proposed", label: "Decision proposed", explain: "A decision covering this change has been proposed and has not been decided." },
   { id: "in_review", label: "In review", explain: "The review covering this change is with its board; no outcome is in effect yet." },
   { id: "changes_requested", label: "Changes requested", explain: "The board sent the review covering this change back to its submitter." },
@@ -31,6 +32,8 @@ export interface DecisionStanding { drift: number; realised: boolean }
 export interface ChangeRow {
   type: string; state: string | null; material_change: number | boolean | null; decision_id: string | null; review_id: string | null;
   review_stage?: string | null; decision_status?: string | null; open_conditions?: number | null;
+  /** an ask for a review from the backlog is open on it (review_requests), and such asks are being heard */
+  review_requested?: boolean | number | null;
 }
 
 /** States in which the work is over, whatever the process template calls it: nothing is asked of such an item any more. */
@@ -66,8 +69,19 @@ export function changeStage(w: ChangeRow, standing?: DecisionStanding | null): C
     }
   }
   if (!stage && NEEDS_DECISION_TYPES.includes(w.type) && !DONE_STATES.includes(w.state || "") && !w.decision_id && !rs) stage = "needs_decision";
+  // The team asked for a review and none has been opened: that is where the change stands, until there is a review to
+  // speak of. An ask made of a change a board has already spoken on (a second look) leaves that outcome standing.
+  if (w.review_requested && !rs && !DONE_STATES.includes(w.state || "") && (stage === null || stage === "needs_decision" || stage === "decision_proposed")) stage = "review_requested";
   return stage;
 }
+
+/**
+ * Whether asks for a review from the backlog are being heard at all. The switch is write-back's (an administrator's);
+ * it is told here by whoever owns it, so this module needs to know nothing of settings. Off, an open ask on record is
+ * simply not shown.
+ */
+let requestsHeard: () => boolean = () => false;
+export const setRequestsHeard = (fn: () => boolean) => { requestsHeard = fn; };
 
 /** Decision standings, worked out once each for as long as the returned function is kept (one request, one sweep). */
 export function decisionStandings(): (decisionId: string | null | undefined) => DecisionStanding | null {
@@ -90,24 +104,33 @@ export function decisionStandings(): (decisionId: string | null | undefined) => 
 
 /** A work item with everything its stage is read from, and what write-back last showed at its source. */
 export const CHANGE_SELECT = `SELECT w.*, s.kind source_kind, d.code decision_code, d.title decision_title, d.status decision_status,
-    r.code review_code, r.title review_title, r.stage review_stage, r.decided_at review_decided_at, r.updated_at review_updated_at, r.resubmitted_at review_resubmitted_at, b.name review_board,
+    r.code review_code, r.title review_title, r.type review_type, r.target_id review_target_id, r.stage review_stage, r.decided_at review_decided_at, r.updated_at review_updated_at, r.resubmitted_at review_resubmitted_at, b.name review_board,
     (SELECT max(e.created_at) FROM review_events e WHERE e.review_id=r.id AND e.kind='became_effective') review_effective_at,
     (SELECT max(e.created_at) FROM review_events e WHERE e.review_id=r.id AND (e.kind='request_changes' OR (e.kind='position' AND e.data_json LIKE '%"position":"no"%'))) review_sent_back_at,
     (SELECT count(*) FROM conditions c WHERE c.review_id=r.id AND c.status IN ('open','overdue')) open_conditions,
     (SELECT count(*) FROM conditions c WHERE c.review_id=r.id) conditions,
+    (SELECT q.requested_at FROM review_requests q WHERE q.work_item_id=w.id AND q.answered_at IS NULL AND q.withdrawn_at IS NULL ORDER BY q.requested_at DESC LIMIT 1) request_open_since,
+    (SELECT q.id FROM review_requests q WHERE q.work_item_id=w.id AND q.answered_review_id=w.review_id ORDER BY q.answered_at DESC LIMIT 1) request_answered,
     wb.tag wb_tag, wb.links_json wb_links, wb.written_at wb_written_at, wb.error wb_error
   FROM work_items w LEFT JOIN sources s ON s.id=w.source_id LEFT JOIN decisions d ON d.id=w.decision_id LEFT JOIN reviews r ON r.id=w.review_id
     LEFT JOIN boards b ON b.id=r.board_id LEFT JOIN work_item_writeback wb ON wb.work_item_id=w.id`;
+
+/** Whether an ask for a review is open on a row of CHANGE_SELECT: on record, being heard, and the work still open. */
+export const requestOpen = (r: any) => !!r.request_open_since && requestsHeard() && !DONE_STATES.includes(r.state || "");
 
 /** Planned changes in the shape the API returns: the row, its stage, and what its source was last shown. */
 export function plannedChanges(where = "ORDER BY w.external_id", ...params: unknown[]) {
   const standing = decisionStandings();
   return (db.prepare(`${CHANGE_SELECT} ${where}`).all(...params) as any[]).map((r) => {
-    const { wb_tag, wb_links, wb_written_at, wb_error, ...row } = r;
-    const stage = changeStage(r, standing(r.decision_id));
+    const { wb_tag, wb_links, wb_written_at, wb_error, request_open_since, request_answered, ...row } = r;
+    const requested = requestOpen(r), st = standing(r.decision_id);
+    const unasked = changeStage({ ...r, review_requested: false }, st); // where it stands leaving the ask aside: an epic asked about still needs its decision
+    const stage = requested ? changeStage({ ...r, review_requested: true }, st) : unasked;
     let links = 0; try { links = (JSON.parse(wb_links || "[]") as unknown[]).length; } catch { links = 0; }
     // needs_decision follows the stage here, so the page's filter and actions agree with what the row says
-    return { ...wi(row), needs_decision: stage === "needs_decision", lifecycle_stage: stage,
+    return { ...wi(row), needs_decision: unasked === "needs_decision", lifecycle_stage: stage,
+      // asked for from the backlog and not yet answered by a review (shown beside the stage when a board has already spoken on the change)
+      review_requested: requested, review_requested_at: requested ? request_open_since : null,
       writeback: wb_written_at || wb_error ? { tag: wb_tag ?? null, links, written_at: wb_written_at ?? null, error: wb_error ?? null } : null };
   });
 }

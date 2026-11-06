@@ -12,11 +12,14 @@ It is off by default, and each of the three is switched on separately. Nothing e
 
 A fourth capability, also switched on separately and off even when write-back is turned on, lets a person raise a condition of an approval as a work item: see [Conditions as work items](ado-conditions-as-work-items.md). It is the only thing here that creates anything, and only on a person's click.
 
+A fifth, [Review requests](ado-review-requests.md), listens the other way: a team asks for a review by putting a tag on a work item, and the work item is told when a review has been opened. It too is switched on separately and stays off when write-back is turned on.
+
 The stage is one vocabulary, used identically on **Planned Changes** and as the tag:
 
 | Stage | Tag (default prefix) | Means |
 | --- | --- | --- |
 | Needs decision | `arch:needs-decision` | an open epic, project, initiative or change with no decision and no review covering it (a withdrawn review covers nothing). Open means not Closed, Resolved, Done or Removed |
+| Review requested | `arch:review-requested` | the delivery team asked for a review by tagging the work item, and no review has been opened for it yet. Only while [review requests](ado-review-requests.md) are switched on |
 | Decision proposed | `arch:decision-proposed` | a decision covering it is proposed and not yet decided |
 | In review | `arch:in-review` | the review covering it is with its board; an approval held on a dependency or on circulation counts as in review until it takes effect |
 | Changes requested | `arch:changes-requested` | the board sent the review back to its submitter |
@@ -65,7 +68,7 @@ Everything here is deterministic and derived on read.
 | Route | Capability | Does |
 | --- | --- | --- |
 | `GET /sources/ado/writeback` | read | the switches, whether each kind can work, the stage vocabulary with its tags, and counts: in scope, shown, tagged (a write still unanswered counts, since it may have left a tag), errors, and `prefix_in_use`, the work items carrying a tag under the prefix that archigov did not write |
-| `POST /sources/ado/writeback` | manage_platform | `{enabled?, link?, stage?, comment?, raise?, tag_prefix?, raise_type?, remove_tags?}` (`raise` and `raise_type` belong to [conditions as work items](ado-conditions-as-work-items.md)). Turning it on (or changing what is shown) runs a sweep at once, and tries again now anything an earlier failure had put off. Turning it off is saved first, then takes the stage tags off unless `remove_tags` is `false`; the answer's `cleanup` says how many were removed and how many could not be reached. Already off, `remove_tags: true` tries again for the tags still out there. 409 for "on" without a connected backlog; 400 for a bad prefix or for "on" with nothing to write |
+| `POST /sources/ado/writeback` | manage_platform | `{enabled?, link?, stage?, comment?, raise?, request?, tag_prefix?, raise_type?, remove_tags?}` (`raise` and `raise_type` belong to [conditions as work items](ado-conditions-as-work-items.md), `request` to [review requests](ado-review-requests.md)). Turning it on (or changing what is shown) runs a sweep at once, and tries again now anything an earlier failure had put off. Turning it off is saved first, then takes the stage tags off unless `remove_tags` is `false`; the answer's `cleanup` says how many were removed and how many could not be reached. Already off, `remove_tags: true` tries again for the tags still out there. 409 for "on" without a connected backlog; 400 for a bad prefix or for "on" with nothing to write |
 | `POST /sources/ado/writeback/test` | manage_platform | whether the identity may edit a work item, asked with `validateOnly` so nothing is saved |
 | `GET /sources/ado/writeback/preview` | read | what would be written now and to which items, with the saved switches or with `?link=&stage=&comment=&tag_prefix=`, and `prefix_in_use` for that prefix; sends nothing |
 | `POST /sources/ado/writeback/run` | manage_platform | a sweep now, failures put off included (the page's Try Again Now); 409 when write-back is off |

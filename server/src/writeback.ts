@@ -4,7 +4,9 @@ import { adoConfigured } from "./ado/client.js";
 import { adoSource } from "./ado/sync.js";
 import { writeToWorkItem, readWorkItem, showsWrite, checkWriteAccess, type WorkItemWrite } from "./ado/write.js";
 import type { AdoWorkItemFull } from "./ado/client.js";
-import { CHANGE_SELECT, CHANGE_STAGES, STAGE_LABEL, changeStage, decisionStandings, type ChangeStage } from "./stage.js";
+import { CHANGE_SELECT, CHANGE_STAGES, STAGE_LABEL, changeStage, decisionStandings, requestOpen, setRequestsHeard, type ChangeStage } from "./stage.js";
+import { rulesPreReview } from "./ai.js";
+import { decisionPreReview } from "./reviews.js";
 
 /**
  * Write-back: showing a planned change's place in the decision lifecycle on the work item at its source, so the
@@ -21,15 +23,19 @@ import { CHANGE_SELECT, CHANGE_STAGES, STAGE_LABEL, changeStage, decisionStandin
  * was last written (work_item_writeback), and only the difference is sent. A failed write is tried again later, a
  * change made while the source was unreachable is not lost, and turning it on writes everything that is already true.
  */
-export interface WritebackSettings { enabled: boolean; link: boolean; stage: boolean; comment: boolean; raise: boolean; tag_prefix: string; raise_type: string }
-// `raise` creates work items, so unlike the three that only show a stage it stays off until it is chosen
-const DEFAULTS: WritebackSettings = { enabled: false, link: true, stage: true, comment: true, raise: false, tag_prefix: "arch:", raise_type: "Task" };
+export interface WritebackSettings { enabled: boolean; link: boolean; stage: boolean; comment: boolean; raise: boolean; request: boolean; tag_prefix: string; raise_type: string }
+// `raise` creates work items and `request` listens for a tag the team types, so unlike the three that only show a
+// stage they stay off until they are chosen
+const DEFAULTS: WritebackSettings = { enabled: false, link: true, stage: true, comment: true, raise: false, request: false, tag_prefix: "arch:", raise_type: "Task" };
 export const CAPABILITIES = [
   { id: "link", label: "Links", writes: "A hyperlink on the work item to the decision and to the review that cover it." },
   { id: "stage", label: "Lifecycle Stage", writes: "One tag naming where the change stands, replaced as it moves. It works in queries, board filters and card styles." },
   { id: "comment", label: "Outcome Comments", writes: "A comment when a board declares an outcome on the review, and when the item changes after approval. Followers of the item are notified by Azure DevOps." },
   { id: "raise", label: "Conditions as Work Items", writes: "Lets a person raise a condition of an approval as a work item under the change it belongs to, one click at a time. Nothing is created on its own, and from then on Azure DevOps owns the work." },
+  { id: "request", label: "Review Requests", writes: "A team asks for a review by putting the request tag on a work item. The ask is listed for authors here, and when one of them opens a review the work item is told, with the counts of the automatic checks. Nothing is submitted on anyone's behalf." },
 ] as const;
+/** The tag a delivery team puts on a work item to ask for a review: the prefix followed by `review`. It is theirs to put on and take off; archigov only reads it. */
+export const requestTagOf = (prefix: string) => `${prefix}review`;
 /** The work item type a condition is raised as: a type name of the project's process (Task, Issue, Product Backlog Item…). */
 export const RAISE_TYPE = /^\p{L}[\p{L}\p{N} ._-]{0,48}$/u; // a process may name its types in any language
 /** A prefix keeps archigov's tags apart from the team's own, and lets it take its own tags off again: it must end in a separator. */
@@ -43,13 +49,15 @@ export const WRITEBACK_TIMING = { settleAfterMs: 30_000 };
 let enabledNow: boolean | null = null; // read on every audit row, so kept in memory; saveWritebackSettings refreshes it
 export function writebackSettings(): WritebackSettings {
   const s = j(getSetting("ado.writeback"), null) || {};
-  const out = { enabled: !!s.enabled, link: s.link ?? DEFAULTS.link, stage: s.stage ?? DEFAULTS.stage, comment: s.comment ?? DEFAULTS.comment, raise: s.raise ?? DEFAULTS.raise,
+  const out = { enabled: !!s.enabled, link: s.link ?? DEFAULTS.link, stage: s.stage ?? DEFAULTS.stage, comment: s.comment ?? DEFAULTS.comment, raise: s.raise ?? DEFAULTS.raise, request: s.request ?? DEFAULTS.request,
     tag_prefix: typeof s.tag_prefix === "string" && TAG_PREFIX.test(s.tag_prefix) ? s.tag_prefix : DEFAULTS.tag_prefix,
     raise_type: typeof s.raise_type === "string" && RAISE_TYPE.test(s.raise_type) ? s.raise_type : DEFAULTS.raise_type };
   enabledNow = out.enabled;
   return out;
 }
 export function saveWritebackSettings(next: WritebackSettings) { setSetting("ado.writeback", JSON.stringify(next)); enabledNow = next.enabled; }
+// asks for a review are heard while write-back is on with that capability; the stage (stage.ts) asks here
+setRequestsHeard(() => { const s = writebackSettings(); return s.enabled && s.request; });
 
 const esc = (s: unknown) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 const day = (iso: string | null | undefined) => new Date(iso || Date.now()).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
@@ -73,7 +81,7 @@ const coveringReview = (w: any) => (w.review_id && w.review_code && w.review_sta
  */
 export function shownFor(w: any, s: WritebackSettings, standing: ReturnType<typeof decisionStandings>, base = appBaseUrl(), was?: any) {
   const gone = w.state === "Removed";
-  const stage = changeStage(w, standing(w.decision_id));
+  const stage = changeStage({ ...w, review_requested: requestOpen(w) }, standing(w.decision_id));
   const links: { url: string; comment: string }[] = [];
   if (s.link && base && !gone) {
     if (w.decision_id && w.decision_code) links.push({ url: `${base}/decisions/${w.decision_id}`, comment: `archigov decision ${w.decision_code}: ${w.decision_title}`.slice(0, 250) });
@@ -88,7 +96,43 @@ export function shownFor(w: any, s: WritebackSettings, standing: ReturnType<type
     // A key that differs from the one last written is said, even if the record never saw the one in between.
     outcome: !speaks ? (was?.outcome ?? null) : w.review_id && OUTCOME_STAGES.includes(w.review_stage) ? `${w.review_id}:${w.review_stage}:${w.review_resubmitted_at || ""}` : null,
     changed: !speaks ? (was?.changed_hash ?? null) : stage === "changed_after_approval" ? `since:${w.approved_hash || ""}` : null,
+    // the answer to an ask for a review: said once per ask, when the review that answers it covers the item. It belongs
+    // to the request capability, not to the outcome comments, and once said it stays said.
+    answered: s.request && !gone && w.request_answered && coveringReview(w) ? `answered:${w.request_answered}` : (was?.answered ?? null),
   };
+}
+
+/**
+ * What the automatic checks say of a review, for the work item: counts, and the codes of the catalogue items they
+ * cite. Only the deterministic checks are asked (the rules pre-review, always available), afresh, whatever pre-review
+ * is stored on the review: nothing an AI wrote crosses, and no finding's words either. The detail is behind the link.
+ */
+function automaticChecks(w: any): string {
+  try {
+    if (w.review_type === "design") {
+      // Only what is checked against the record: a catalogue item's rule on the application's estate, or an accepted
+      // decision. What the template says is missing from the design text is left out: when the answer is given the
+      // design may be no more than the work item's own words, and a count of its gaps would say nothing of the change.
+      const cites = (f: { citations?: { kind: string; ref: string }[] }) => (f.citations || []).filter((c) => c.kind === "standard" || c.kind === "decision");
+      const found = rulesPreReview(w.review_id).findings.filter((f) => cites(f).length);
+      if (!found.length) return "The automatic checks against the catalogue and the accepted decisions found nothing to address.";
+      const by = ["critical", "high", "medium", "low", "info"].map((sev) => [sev, found.filter((f) => f.severity === sev).length] as const).filter(([, n]) => n).map(([sev, n]) => `${n} ${sev}`);
+      const codes = [...new Set(found.flatMap((f) => cites(f).map((c) => String(c.ref))))].slice(0, 6);
+      return `The automatic checks against the catalogue and the accepted decisions found ${found.length} point${found.length === 1 ? "" : "s"} to address (${by.join(", ")}): ${esc(codes.join(", "))}.`;
+    }
+    if (w.review_type === "decision" && w.review_target_id) {
+      const d = db.prepare("SELECT * FROM decisions WHERE id=?").get(w.review_target_id);
+      if (!d) return "";
+      const checks = decisionPreReview(d).checks as { state: string }[], n = (st: string) => checks.filter((k) => k.state === st).length;
+      return `Automatic checks on the decision: ${n("pass")} passed${n("warn") ? `, ${n("warn")} to look at` : ""}${n("fail") ? `, ${n("fail")} failed` : ""}.`;
+    }
+  } catch { /* the checks could not be run: the fact that a review was opened is still said */ }
+  return "";
+}
+/** The answer to an ask for a review: that it was opened, with which board, what the automatic checks counted, and where it is. */
+function answerComment(w: any, base: string): string {
+  const checks = automaticChecks(w);
+  return `<div><b>archigov</b>: the review asked for on this item is open as ${esc(w.review_code)} and is with ${esc(w.review_board || "its board")}.${checks ? ` ${checks}` : ""}${base ? ` <a href="${esc(`${base}/reviews/${w.review_id}`)}">Open the review</a>.` : ""}</div>`;
 }
 
 /** The comment for a declared outcome: who, what, when, and where the record is. A fact, never a verdict on the design. */
@@ -124,29 +168,30 @@ function pending(w: any, s: WritebackSettings, standing: ReturnType<typeof decis
   const newLinks = want.links.filter((l) => !had.includes(l.url));
   if (newLinks.length) write.addLinks = newLinks;
   const notes: string[] = [], said: string[] = [];
+  if (want.answered && want.answered !== (was?.answered ?? null)) { notes.push(answerComment(w, base)); said.push("review_opened"); }
   if (want.outcome && want.outcome !== (was?.outcome ?? null)) { notes.push(outcomeComment(w, base)); said.push(`outcome:${w.review_stage}`); }
   if (want.changed && want.changed !== (was?.changed_hash ?? null)) { notes.push(changedComment(w, base)); said.push("changed_after_approval"); }
   if (notes.length) write.comment = notes.join("");
   const sends = retags || !!write.addLinks || !!write.comment;
   // what was said stays said until the fact itself is gone (a resubmission, an acknowledged change): then it is forgotten
-  const settles = !sends && ((was?.outcome ?? null) !== want.outcome || (was?.changed_hash ?? null) !== want.changed || (was?.stage ?? null) !== want.stage);
+  const settles = !sends && ((was?.outcome ?? null) !== want.outcome || (was?.changed_hash ?? null) !== want.changed || (was?.answered ?? null) !== want.answered || (was?.stage ?? null) !== want.stage);
   return { want, was, write, said, sends, settles, retags, links: [...had, ...newLinks.map((l) => l.url)] };
 }
 const remember = (id: string, p: ReturnType<typeof pending>, rev: number | null, wrote: boolean) =>
-  db.prepare(`INSERT INTO work_item_writeback(work_item_id, stage, tag, links_json, outcome, changed_hash, rev, written_at, error, attempts, retry_after, pending_json) VALUES (?,?,?,?,?,?,?,?,NULL,0,NULL,NULL)
-    ON CONFLICT(work_item_id) DO UPDATE SET stage=excluded.stage, tag=excluded.tag, links_json=excluded.links_json, outcome=excluded.outcome, changed_hash=excluded.changed_hash,
+  db.prepare(`INSERT INTO work_item_writeback(work_item_id, stage, tag, links_json, outcome, changed_hash, answered, rev, written_at, error, attempts, retry_after, pending_json) VALUES (?,?,?,?,?,?,?,?,?,NULL,0,NULL,NULL)
+    ON CONFLICT(work_item_id) DO UPDATE SET stage=excluded.stage, tag=excluded.tag, links_json=excluded.links_json, outcome=excluded.outcome, changed_hash=excluded.changed_hash, answered=excluded.answered,
       rev=COALESCE(excluded.rev, rev), written_at=COALESCE(excluded.written_at, written_at), error=NULL, attempts=0, retry_after=NULL, pending_json=NULL`)
-    .run(id, p.want.stage, p.want.tag, JSON.stringify(p.links), p.want.outcome, p.want.changed, rev, wrote ? nowIso() : null);
+    .run(id, p.want.stage, p.want.tag, JSON.stringify(p.links), p.want.outcome, p.want.changed, p.want.answered, rev, wrote ? nowIso() : null);
 
 /**
  * A document on its way: kept from just before it is sent until its answer comes. It holds the item's revision at that
  * moment, the tags and links the document carries, and what the record becomes if it is saved (the facts its comment
  * states among them). An answer clears it; no answer leaves it for `settle` to work out.
  */
-interface Sent { rev: number; at: string; write: Pick<WorkItemWrite, "addTags" | "removeTags"> & { addLinks?: { url: string }[] }; stage: string | null; tag: string | null; links: string[]; outcome: string | null; changed: string | null; said: string[] }
+interface Sent { rev: number; at: string; write: Pick<WorkItemWrite, "addTags" | "removeTags"> & { addLinks?: { url: string }[] }; stage: string | null; tag: string | null; links: string[]; outcome: string | null; changed: string | null; answered?: string | null; said: string[] }
 const keep = (id: string, rev: number, p: ReturnType<typeof pending>) => {
   const sent: Sent = { rev, at: nowIso(), write: { addTags: p.write.addTags, removeTags: p.write.removeTags, addLinks: (p.write.addLinks || []).map((l) => ({ url: l.url })) },
-    stage: p.want.stage, tag: p.want.tag, links: p.links, outcome: p.want.outcome, changed: p.want.changed, said: p.said };
+    stage: p.want.stage, tag: p.want.tag, links: p.links, outcome: p.want.outcome, changed: p.want.changed, answered: p.want.answered, said: p.said };
   db.prepare("INSERT INTO work_item_writeback(work_item_id, pending_json) VALUES (?,?) ON CONFLICT(work_item_id) DO UPDATE SET pending_json=excluded.pending_json").run(id, JSON.stringify(sent));
 };
 const drop = (id: string) => db.prepare("UPDATE work_item_writeback SET pending_json=NULL WHERE work_item_id=?").run(id);
@@ -168,8 +213,8 @@ function settle(id: string, sent: Sent, item: AdoWorkItemFull, actor: string): "
     drop(id); return "not_saved";
   }
   if (showsWrite(item, sent.write) === false) { drop(id); return "not_saved"; }
-  db.prepare("UPDATE work_item_writeback SET stage=?, tag=?, links_json=?, outcome=?, changed_hash=?, rev=?, written_at=?, pending_json=NULL, error=NULL, attempts=0, retry_after=NULL WHERE work_item_id=?")
-    .run(sent.stage, sent.tag, JSON.stringify(sent.links || []), sent.outcome, sent.changed, item.rev, sent.at, id);
+  db.prepare("UPDATE work_item_writeback SET stage=?, tag=?, links_json=?, outcome=?, changed_hash=?, answered=COALESCE(?, answered), rev=?, written_at=?, pending_json=NULL, error=NULL, attempts=0, retry_after=NULL WHERE work_item_id=?")
+    .run(sent.stage, sent.tag, JSON.stringify(sent.links || []), sent.outcome, sent.changed, sent.answered ?? null, item.rev, sent.at, id);
   audit(actor, "writeback:write", "work_items", id, { stage: sent.stage, tag: sent.tag, comments: sent.said || [], rev: item.rev, confirmed_later: true });
   return "saved";
 }
@@ -310,11 +355,13 @@ export async function testWriteAccess() {
 function prefixInUse(prefix: string): number {
   const src = adoSource(false);
   if (!src) return 0;
+  const hears = writebackSettings().request; // only then is `<prefix>review` the request tag; otherwise it is a tag of the team's like any other
   const low = prefix.toLowerCase(), mine = new Set(stageTags(prefix).map((t) => t.toLowerCase()));
   let n = 0;
   for (const r of db.prepare("SELECT w.tags_json, wb.tag, wb.written_at FROM work_items w LEFT JOIN work_item_writeback wb ON wb.work_item_id=w.id WHERE w.source_id=? AND COALESCE(w.state,'') <> 'Removed'").all(src.id) as any[]) {
     const tags: string[] = j(r.tags_json, []) || [];
-    if (tags.some((t) => { const x = String(t).toLowerCase(); return x.startsWith(low) && x !== String(r.tag || "").toLowerCase() && !(r.written_at && mine.has(x)); })) n++;
+    // the request tag is the team's to type, under this prefix by design: it is not a clash
+    if (tags.some((t) => { const x = String(t).toLowerCase(); return x.startsWith(low) && !(hears && x === requestTagOf(prefix).toLowerCase()) && x !== String(r.tag || "").toLowerCase() && !(r.written_at && mine.has(x)); })) n++;
   }
   return n;
 }
@@ -339,6 +386,9 @@ export function writebackStatus() {
     tagged: n("SELECT count(*) n FROM work_item_writeback wb JOIN work_items w ON w.id=wb.work_item_id WHERE w.source_id=? AND (wb.tag IS NOT NULL OR wb.pending_json IS NOT NULL)"),
     errors: n("SELECT count(*) n FROM work_item_writeback wb JOIN work_items w ON w.id=wb.work_item_id WHERE w.source_id=? AND wb.error IS NOT NULL"),
     prefix_in_use: prefixInUse(s.tag_prefix),
+    // the tag a team puts on a work item to ask for a review, and how many such asks are open
+    request_tag: requestTagOf(s.tag_prefix),
+    requests_open: s.enabled && s.request ? n("SELECT count(*) n FROM review_requests q JOIN work_items w ON w.id=q.work_item_id WHERE w.source_id=? AND q.answered_at IS NULL AND q.withdrawn_at IS NULL AND COALESCE(w.state,'') NOT IN ('Closed','Resolved','Done','Removed')") : 0,
     last_written_at: last?.at ?? null, last_error: lastError ? { external_id: lastError.external_id, error: lastError.error } : null,
   };
 }

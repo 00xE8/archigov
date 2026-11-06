@@ -204,8 +204,8 @@ function SourceTile({ k, row, busy, run, hookUrl }: { k: Kind; row: any; busy: s
  */
 function WriteBack({ wb, onMsg, onDone }: { wb: any; onMsg: (m: Msg) => void; onDone: () => void }) {
   const canManage = useCan("manage_platform");
-  const saved = React.useMemo(() => ({ enabled: !!wb.enabled, link: !!wb.link, stage: !!wb.stage, comment: !!wb.comment, raise: !!wb.raise, tag_prefix: String(wb.tag_prefix || "arch:"), raise_type: String(wb.raise_type || "Task") }),
-    [wb.enabled, wb.link, wb.stage, wb.comment, wb.raise, wb.tag_prefix, wb.raise_type]);
+  const saved = React.useMemo(() => ({ enabled: !!wb.enabled, link: !!wb.link, stage: !!wb.stage, comment: !!wb.comment, raise: !!wb.raise, request: !!wb.request, tag_prefix: String(wb.tag_prefix || "arch:"), raise_type: String(wb.raise_type || "Task") }),
+    [wb.enabled, wb.link, wb.stage, wb.comment, wb.raise, wb.request, wb.tag_prefix, wb.raise_type]);
   const [form, setForm] = React.useState(saved);
   React.useEffect(() => { setForm(saved); }, [saved]);
   const [busy, setBusy] = React.useState<"save" | "test" | "preview" | null>(null);
@@ -214,7 +214,7 @@ function WriteBack({ wb, onMsg, onDone }: { wb: any; onMsg: (m: Msg) => void; on
   const [off, setOff] = React.useState<{ remove: boolean } | null>(null); // the confirmation for turning it off
   const prefixOk = /^[A-Za-z0-9][A-Za-z0-9._ -]{0,18}[:/-]$/.test(form.tag_prefix);
   const typeOk = /^\p{L}[\p{L}\p{N} ._-]{0,48}$/u.test(form.raise_type.trim());
-  const nothing = form.enabled && !form.link && !form.stage && !form.comment && !form.raise;
+  const nothing = form.enabled && !form.link && !form.stage && !form.comment && !form.raise && !form.request;
   const dirty = JSON.stringify(form) !== JSON.stringify(saved);
   const locked = !canManage || !wb.available;
   // on, with its source gone (credentials removed at a redeploy): nothing can be written, and turning it off must still work
@@ -246,7 +246,7 @@ function WriteBack({ wb, onMsg, onDone }: { wb: any; onMsg: (m: Msg) => void; on
     try { setPreview(await get(`/sources/ado/writeback/preview?link=${form.link ? 1 : 0}&stage=${form.stage ? 1 : 0}&comment=${form.comment ? 1 : 0}${prefixOk ? `&tag_prefix=${encodeURIComponent(form.tag_prefix)}` : ""}`)); }
     catch (e) { onMsg(asMsg(e)); } finally { setBusy(null); }
   };
-  const said = (c: string) => (c === "changed_after_approval" ? "Changed after approval" : `Outcome: ${labelFor("stage", c.replace(/^outcome:/, "")).toLowerCase()}`);
+  const said = (c: string) => (c === "review_opened" ? "Review opened" : c === "changed_after_approval" ? "Changed after approval" : `Outcome: ${labelFor("stage", c.replace(/^outcome:/, "")).toLowerCase()}`);
   return (
     <section className="ag-section ag-mt-07">
       <h2>Write Back to Azure DevOps</h2>
@@ -258,11 +258,11 @@ function WriteBack({ wb, onMsg, onDone }: { wb: any; onMsg: (m: Msg) => void; on
         <Toggle id="wb-enabled" labelText="Write Back" labelA="Off" labelB="On" toggled={form.enabled} disabled={locked && !(canManage && stranded)} onToggle={(on) => setForm({ ...form, enabled: on })} />
         <CheckboxGroup legendText="What Is Written" helperText="Each kind is switched on its own. The identity archigov uses needs permission to edit work items; Azure DevOps' own area permissions limit where it may write.">
           {(wb.capabilities || []).map((c: any) => (
-            <Checkbox key={c.id} id={`wb-${c.id}`} labelText={c.label} helperText={c.available ? c.writes : `${c.writes} ${c.unavailable_reason || ""}`} checked={!!(form as any)[c.id] && c.available}
+            <Checkbox key={c.id} id={`wb-${c.id}`} labelText={c.label} helperText={c.id === "request" ? `${c.writes} The tag: ${(prefixOk ? form.tag_prefix : wb.tag_prefix)}review.` : c.available ? c.writes : `${c.writes} ${c.unavailable_reason || ""}`} checked={!!(form as any)[c.id] && c.available}
               disabled={locked || !form.enabled || !c.available} onChange={(_, { checked }) => setForm({ ...form, [c.id]: checked })} />))}
         </CheckboxGroup>
-        <TextInput id="wb-prefix" labelText="Tag Prefix" helperText="Keeps archigov's stage tags apart from the team's own, so they can be found, styled and taken off again." value={form.tag_prefix}
-          invalid={!prefixOk} invalidText="2 to 20 characters, starting with a letter or digit and ending in : / or - (for example arch:)" disabled={locked || !form.enabled || !form.stage} onChange={(e) => setForm({ ...form, tag_prefix: e.target.value })} />
+        <TextInput id="wb-prefix" labelText="Tag Prefix" helperText="Keeps archigov's tags apart from the team's own, so they can be found, styled and taken off again. The request tag and the condition tag start with it too." value={form.tag_prefix}
+          invalid={!prefixOk} invalidText="2 to 20 characters, starting with a letter or digit and ending in : / or - (for example arch:)" disabled={locked || !form.enabled || !(form.stage || form.request || form.raise)} onChange={(e) => setForm({ ...form, tag_prefix: e.target.value })} />
         {form.raise && <TextInput id="wb-raise-type" labelText="Work Item Type for Conditions" helperText="What a condition is raised as: a type of your project's process, such as Task, Issue or Product Backlog Item. Test Write Access checks that it can be created." value={form.raise_type}
           invalid={!typeOk} invalidText="The name of a work item type, for example Task" disabled={locked || !form.enabled} onChange={(e) => setForm({ ...form, raise_type: e.target.value })} />}
         {(() => { const inUse = preview?.prefix_in_use ?? wb.prefix_in_use ?? 0; return inUse > 0 && (
@@ -287,6 +287,7 @@ function WriteBack({ wb, onMsg, onDone }: { wb: any; onMsg: (m: Msg) => void; on
       <p className="ag-muted ag-label ag-mt-05">
         {wb.enabled ? `On · ${wb.shown} of ${n(wb.in_scope, "work item")} carry something archigov wrote${wb.last_written_at ? ` · last write ${fmtDateTime(wb.last_written_at)}` : ""}` : `Off · nothing is written to Azure DevOps${wb.shown ? `; links and comments from when it was on remain on ${n(wb.shown, "work item")}` : ""}${wb.tagged ? `; ${n(wb.tagged, "work item")} still ${wb.tagged === 1 ? "carries" : "carry"} a stage tag` : ""}`}
         {wb.raised ? ` · ${n(wb.raised, "condition")} raised as ${wb.raised === 1 ? "a work item" : "work items"}` : ""}
+        {wb.requests_open ? ` · ${n(wb.requests_open, "review")} asked for from the backlog` : ""}
         {wb.errors ? ` · ${n(wb.errors, "work item")} could not be written${wb.last_error ? ` (${wb.last_error.external_id}: ${String(wb.last_error.error).slice(0, 120)})` : ""}; they are tried again automatically` : ""}
       </p>
       {preview && (preview.items.length === 0 ? <p className="ag-body ag-muted ag-mt-05">Nothing would be written now: every work item in scope already shows what these switches ask for.</p> : (

@@ -111,10 +111,10 @@ const count = (n: number) => <Tag size="sm" type="gray"><span title="How many it
 function MyWork({ w }: { w: any }) {
   if (!w) return null;
   const list = (k: string): any[] => (Array.isArray(w[k]) ? w[k] : []);
-  const positions = list("positions"), declare = list("declare"), resolve = list("resolve"), assessments = list("assessments"), sessions = list("sessions"), circulations = list("circulations"), resubmit = list("resubmit"), changed = list("changed"), noDecision = list("no_decision"), signOffs = list("sign_offs"), confirm = list("confirm");
+  const positions = list("positions"), declare = list("declare"), resolve = list("resolve"), assessments = list("assessments"), sessions = list("sessions"), circulations = list("circulations"), resubmit = list("resubmit"), changed = list("changed"), noDecision = list("no_decision"), signOffs = list("sign_offs"), confirm = list("confirm"), requested = list("requested");
   // Overdue conditions first, then by due date.
   const conditions = [...list("conditions")].sort((a, b) => Number(b.status === "overdue") - Number(a.status === "overdue") || String(a.due_at || "").localeCompare(String(b.due_at || "")));
-  const total = positions.length + declare.length + resolve.length + assessments.length + sessions.length + conditions.length + confirm.length + circulations.length + resubmit.length + changed.length + noDecision.length + signOffs.length;
+  const total = positions.length + declare.length + resolve.length + assessments.length + sessions.length + conditions.length + confirm.length + requested.length + circulations.length + resubmit.length + changed.length + noDecision.length + signOffs.length;
   if (total === 0) return null;
   const head = (title: string, n: number) => <span className="ag-work-head">{title}{count(n)}</span>;
   const queue = (key: string, title: string, rows: any[], row: (x: any, i: number) => React.ReactNode) => rows.length === 0 ? null : (
@@ -136,6 +136,7 @@ function MyWork({ w }: { w: any }) {
         {queue("resubmit", "Sent back to you", resubmit, (x) => <>{reviewLink(x.review)}<span className="ag-muted ag-label">{x.review?.title}</span><StatusTag kind="stage" value="changes_requested" size="sm" /><span className="ag-muted ag-label">by {x.requested_by}{x.requested_at ? ` · ${fmtDate(x.requested_at)}` : ""}{x.text ? ` · ${x.text}` : ""}</span></>)}
         {queue("changed", "Planned changes · changed after approval", changed, (x) => <><RLink to="/backlog?filter=changed">{x.work_item?.type} {x.work_item?.external_id}</RLink><span>{x.work_item?.title}</span><StatusTag kind="attention" value="changed" size="sm" />{x.review?.id && <span className="ag-muted ag-label">review {reviewLink(x.review)}</span>}</>)}
         {queue("sign_offs", "Reaffirmations due", signOffs, (x) => <><RLink to={x.subject?.kind === "decision" ? `/decisions/${x.subject.id}` : artefactLink(x.subject?.id)}>{x.subject?.code}</RLink><span className="ag-muted ag-label">{x.subject?.title}</span><span className="ag-muted ag-label">due {fmtDate(x.due)}</span><StatusTag kind="signoff_status" value={x.status} /></>)}
+        {queue("requested", "Reviews requested from the backlog", requested, (x) => <><RLink to="/backlog?filter=requested">{x.work_item?.type} {x.work_item?.external_id}</RLink><span>{x.work_item?.title}</span>{x.work_item?.application_name && <span className="ag-muted ag-label">{x.work_item.application_name}</span>}<span className="ag-muted ag-label">asked {fmtDate(x.requested_at)}{x.again_after ? ` · again after ${x.again_after}` : ""}</span></>)}
         {queue("no_decision", "Epics without a decision", noDecision, (x) => <><RLink to="/backlog?filter=no_decision">{x.work_item?.type} {x.work_item?.external_id}</RLink><span>{x.work_item?.title}</span>{x.work_item?.application_name && <span className="ag-muted ag-label">{x.work_item.application_name}</span>}<StatusTag kind="attention" value="decision" size="sm" label="No decision" /></>)}
       </div>
     </section>

@@ -274,6 +274,34 @@ def n():
     return f"off by default with the reason; admin and onlooker 403; raised as Task {ext}, once; closed by a hook → evidence and a prompt to the chair, who marks it met; audited"
 step("n  a condition raised as a work item: a person's click, read back as evidence, met by the chair", n)
 
+# ---------- o. a review asked for by tagging a work item ----------
+def o():
+    author = {"x-user": "s.patel"}
+    def tag(tags, rev):  # the team puts tags on epic 1051 at its source; the service hook says so
+        return post("/hooks/ado", {"eventType": "workitem.updated", "resource": {"workItemId": 1051, "rev": rev, "revision": {"rev": rev, "fields": {"System.Title": "Patient self check-in kiosks", "System.WorkItemType": "Epic", "System.State": "New", "System.Tags": tags,
+            "System.Description": "<div>Kiosks in outpatient reception that integrate with PatientFlow arrivals. Needs offline tolerance and NHS login.</div>"}}}}, headers={"x-archigov-hook-secret": SECRET})
+    def epic(): s, items = get("/work-items", headers=author); return next(x for x in items if x["external_id"] == "1051")
+    s, h = tag("clinical-safety; arch:review", 90); assert s == 200, f"{s} {h}"
+    assert epic()["review_requested"] is False, "while it is off the request tag is just a tag"
+    s, on = post("/sources/ado/writeback", {"enabled": True, "link": True, "stage": True, "comment": True, "raise": False, "request": True}); assert s == 200 and on["request"] and on["request_tag"] == "arch:review" and on["requests_open"] == 1, f"{s} {on}"
+    mutations.append("a review asked for on epic 1051 by tag, withdrawn, asked for again, then opened by s.patel")
+    w = epic(); assert w["review_requested"] and w["lifecycle_stage"] == "review_requested" and w["needs_decision"], w
+    s, work = get("/me/work", headers=author); assert any(x["work_item"]["external_id"] == "1051" for x in work["requested"]), f"the ask is in an author's queue: {work['requested']}"
+    s, work = get("/me/work", headers={"x-user": "m.hughes"}); assert not work["requested"], "and in nobody else's"
+    s, h = tag("clinical-safety", 91); assert s == 200 and not epic()["review_requested"], "taking the tag off withdraws the ask"
+    s, h = tag("clinical-safety; arch:review", 92); assert s == 200 and epic()["review_requested"], "putting it back asks again"
+    w = epic()
+    s, rev = post("/reviews", {"type": "design", "title": w["title"], "application_id": w["application_id"], "work_item_id": w["id"], "risk_tier": "medium", "summary": w["description"],
+        "design_md": "## Design\n\nKiosks at reception.\n\n## Data\n\nArrivals only.\n\n## Security\n\nNHS login.\n\n## Resilience\n\nOffline tolerant."}, headers=author); assert s in (200, 201), f"an author opens the review: {s} {rev}"
+    w = epic(); assert not w["review_requested"] and w["lifecycle_stage"] == "in_review", f"a review opened for the item answers the ask: {w['lifecycle_stage']}"
+    s, run = post("/sources/ado/writeback/run"); assert s == 200 and run["failed"] == 0, f"{s} {run}"
+    w = epic(); assert w["writeback"]["tag"] == "arch:in-review" and "arch:review" in w["tags"], f"the stage moves on at the source and the team's own tag is left alone: {w['writeback']} {w['tags']}"
+    s, off = post("/sources/ado/writeback", {"enabled": False}); assert s == 200, f"{s} {off}"
+    s, au = get("/audit?q=request:&limit=1000"); acts = {a["action"] for a in (au if isinstance(au, list) else au.get("rows", au.get("items", [])))}
+    for want in ["request:seen", "request:withdrawn", "request:answered"]: assert want in acts, f"{want} missing from the audit log: {sorted(acts)}"
+    return f"just a tag while off; on → heard, in the author's queue only; withdrawn and asked again by tag; opened by an author as {rev.get('code')} → answered, stage on at the source; audited"
+step("o  a review asked for by tagging a work item: heard, an author's to open, answered at the source", o)
+
 # ---------- summary ----------
 passed = sum(1 for _, ok in results if ok); failed = len(results) - passed
 print(f"\n{passed} passed, {failed} failed  ({BASE})")

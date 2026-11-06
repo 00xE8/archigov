@@ -242,6 +242,8 @@ h1.ag-brand { gap: sp.$spacing-03; } h1.ag-brand .ag-mark { width: 2.5rem; heigh
 .ag-persona .cds--list-box__menu { min-inline-size: 26rem; inset-inline-start: auto; inset-inline-end: 0; }
 // Catalogue kind filter: a ContentSwitcher (a filter, not tabbed content), kept at a readable width.
 .ag-kind-switcher { max-width: 46rem; margin-bottom: sp.$spacing-05; }
+// four counted filters with long labels need the room, or a label is cut short
+.ag-kind-switcher.wide { max-width: 60rem; }
 
 // "About this page": an info icon beside the page title; the explanation appears on hover or focus.
 .ag-title-row { display: flex; align-items: center; gap: sp.$spacing-02; }

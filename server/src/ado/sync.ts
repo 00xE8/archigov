@@ -71,6 +71,14 @@ const claimers: ((w: SourceItem) => boolean)[] = [];
 export const claimWorkItems = (fn: (w: SourceItem) => boolean) => { claimers.push(fn); };
 const claimed = (w: SourceItem) => claimers.some((fn) => { try { return fn(w); } catch { return false; } });
 
+/**
+ * Work items the feed takes in beside its configured query: something else in the product may want items the query
+ * does not reach (those a team tagged to ask for a review, whatever their type). Each source of such queries is asked
+ * at every backfill; a query the service will not run is passed over, and the backlog query itself is never affected.
+ */
+const also: (() => string[])[] = [];
+export const feedAlso = (fn: () => string[]) => { also.push(fn); };
+
 export type UpsertOutcome = { outcome: "created" | "updated" | "unchanged" | "skipped_old_rev"; material_change: boolean; id: string };
 
 /**
@@ -106,6 +114,9 @@ export async function syncAdo(actor: string) {
   try {
     const { wiql: query } = adoConfig();
     const ids = (await wiql(query)).workItems.map((w) => w.id);
+    for (const q of also.flatMap((fn) => { try { return fn(); } catch { return []; } })) {
+      try { for (const w of (await wiql(q)).workItems) if (!ids.includes(w.id)) ids.push(w.id); } catch { /* an extra query the service refuses must not stop the backlog's own */ }
+    }
     const items = (await workItemsBatch(ids)).filter((w) => !claimed({ id: w.id, rev: w.rev, fields: w.fields }));
     const stats = { fetched: items.length, created: 0, updated: 0, unchanged: 0, skipped_old_rev: 0, material_changes: 0 };
     db.transaction(() => { for (const w of items) { const r = upsertWorkItem(src.id, w, actor, "sync"); stats[r.outcome]++; if (r.material_change) stats.material_changes++; } })();
