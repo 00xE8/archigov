@@ -126,7 +126,7 @@ The documentation site has the long form: [Continuous replication](https://archi
 | `PORT` | HTTP port | `8080` |
 | `DATA_DIR` | SQLite file, blobs, backups, evidence packs | `/data` |
 | `SEED_DEMO` | load the demo tenant on first boot of an empty database | `true` (`docker-compose.yml`), `false` in production |
-| `APP_BASE_URL` | public URL used for sign-in redirects and links | — |
+| `APP_BASE_URL` | public URL used for sign-in redirects and links, including the links write-back adds to Azure DevOps work items (without it, write-back cannot add links) | — |
 | `SOURCE_URL` | where the app's About and sign-in notices offer the source (AGPL-3.0 §13). Set it when you host a modified or untagged build for others | the release on GitHub that the version names |
 | `ARCHIGOV_FIXTURES` | `1` makes the Azure / Azure DevOps connectors read recorded responses instead of calling the APIs (demos, CI) | unset |
 | **Sign-in** | | |
@@ -137,8 +137,8 @@ The documentation site has the long form: [Continuous replication](https://archi
 | `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` | service principal with **Reader** on the subscriptions (Resource Graph, Defender for Cloud assessments, Azure Policy states); a managed identity works without the secret | — |
 | `AZURE_SUBSCRIPTIONS` | comma-separated subscription ids in scope | all visible |
 | **Azure DevOps feed** | | |
-| `ADO_ORG`, `ADO_PROJECT` | organisation and project for the WIQL backfill and service hooks | — |
-| `ADO_PAT` | personal access token (work items read); or rely on the Entra identity | — |
+| `ADO_ORG`, `ADO_PROJECT` | organisation and project for the WIQL backfill and service hooks. Give the project by name: write-back checks each work item's project against it and writes nowhere else (an ID cannot be compared) | — |
+| `ADO_PAT` | personal access token (work items read; read and write, `vso.work_write`, only if write-back is turned on in Settings · Sources); or rely on the Entra identity, which then needs the same permission in the project | — |
 | `ADO_HOOK_SECRET` | shared secret the service hook must present to `POST /api/hooks/ado` | — |
 | `ADO_WIQL` | override the backfill query | epics + features, active |
 | **AI pre-review** | | |

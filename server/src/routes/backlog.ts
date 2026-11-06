@@ -2,14 +2,14 @@ import { Hono } from "hono";
 import { db, uid, nowIso, audit } from "../db.js";
 import { listElements, hashOf } from "../model.js";
 import { draftDecisionFromWorkItem } from "../ai.js";
-import { actorOf, wi } from "../http.js";
+import { actorOf } from "../http.js";
+import { plannedChanges } from "../stage.js";
 
 export const backlog = new Hono();
 
 backlog.get("/work-items", (c) => {
   const apps = new Map(listElements("application").map((a) => [a.id, a.name]));
-  const rows = db.prepare("SELECT w.*, s.kind source_kind, d.code decision_code, r.code review_code, r.stage review_stage FROM work_items w LEFT JOIN sources s ON s.id=w.source_id LEFT JOIN decisions d ON d.id=w.decision_id LEFT JOIN reviews r ON r.id=w.review_id ORDER BY w.external_id").all().map(wi);
-  return c.json(rows.map((w: any) => ({ ...w, application_name: apps.get(w.application_id) || null })));
+  return c.json(plannedChanges().map((w: any) => ({ ...w, application_name: apps.get(w.application_id) || null })));
 });
 
 /**
@@ -41,7 +41,7 @@ backlog.post("/work-items", async (c) => {
     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`)
     .run(id, manualSource(), external_id, b.type, title, "Proposed", description, JSON.stringify(Array.isArray(b.tags) ? b.tags.map(String) : []), b.application_id || null, hashOf([title, description]), now, now);
   audit(actorOf(c), "log_change", "work_items", id, { external_id, type: b.type, title, application_id: b.application_id || null });
-  return c.json(wi(db.prepare("SELECT w.*, s.kind source_kind FROM work_items w LEFT JOIN sources s ON s.id=w.source_id WHERE w.id=?").get(id)));
+  return c.json(plannedChanges("WHERE w.id=?", id)[0]);
 });
 
 backlog.put("/work-items/:id", async (c) => {
@@ -62,7 +62,7 @@ backlog.put("/work-items/:id", async (c) => {
   db.prepare("UPDATE work_items SET title=?, description=?, state=?, application_id=?, content_hash=?, changed_at=?, material_change=CASE WHEN approved_hash IS NOT NULL AND approved_hash<>? THEN 1 ELSE material_change END WHERE id=?")
     .run(title, description, state, application_id, h, nowIso(), h, w.id);
   audit(actorOf(c), "work_item_changed", "work_items", w.id, { external_id: w.external_id, manual: true, state, material_change: material });
-  return c.json(wi(db.prepare("SELECT w.*, s.kind source_kind FROM work_items w LEFT JOIN sources s ON s.id=w.source_id WHERE w.id=?").get(w.id)));
+  return c.json(plannedChanges("WHERE w.id=?", w.id)[0]);
 });
 backlog.post("/work-items/:id/link", async (c) => {
   const b = await c.req.json().catch(() => ({})); const id = c.req.param("id");
@@ -71,7 +71,7 @@ backlog.post("/work-items/:id/link", async (c) => {
   if (b.review_id && !db.prepare("SELECT 1 FROM reviews WHERE id=?").get(b.review_id)) return c.json({ error: "review not found" }, 404);
   db.prepare("UPDATE work_items SET application_id=COALESCE(?,application_id), decision_id=COALESCE(?,decision_id), review_id=COALESCE(?,review_id) WHERE id=?").run(b.application_id || null, b.decision_id || null, b.review_id || null, id);
   audit(actorOf(c), "link", "work_items", id, { application_id: b.application_id || null, decision_id: b.decision_id || null, review_id: b.review_id || null });
-  return c.json(wi(db.prepare("SELECT w.*, d.code decision_code, r.code review_code, r.stage review_stage FROM work_items w LEFT JOIN decisions d ON d.id=w.decision_id LEFT JOIN reviews r ON r.id=w.review_id WHERE w.id=?").get(id)));
+  return c.json(plannedChanges("WHERE w.id=?", id)[0]);
 });
 backlog.post("/work-items/:id/acknowledge-change", (c) => {
   const w = db.prepare("SELECT * FROM work_items WHERE id=?").get(c.req.param("id")) as any;

@@ -4,11 +4,18 @@ import { fixturesEnabled, sleep } from "../azure/client.js";
 import { ADO_FIXTURES } from "./fixtures.js";
 
 /**
- * Azure DevOps REST 7.1 client for the work-item feed.
+ * Azure DevOps REST 7.1 client for the work-item feed, and for writing back onto a work item when an administrator
+ * has turned that on (write.ts builds the document; the core decides what it says).
  *   WIQL:  POST https://dev.azure.com/{org}/{project}/_apis/wit/wiql?api-version=7.1   body { query } → { workItems: [{ id, url }] }
  *          https://learn.microsoft.com/rest/api/azure/devops/wit/wiql/query-by-wiql?view=azure-devops-rest-7.1
  *   Batch: POST https://dev.azure.com/{org}/_apis/wit/workitemsbatch?api-version=7.1   body { ids (≤200), fields } → { count, value: [{ id, rev, fields, url }] }
  *          https://learn.microsoft.com/rest/api/azure/devops/wit/work-items/get-work-items-batch?view=azure-devops-rest-7.1
+ *   Get:   GET https://dev.azure.com/{org}/{project}/_apis/wit/workitems/{id}?$expand=relations&api-version=7.1 → { id, rev, fields, relations: [{ rel, url, attributes }] }
+ *          https://learn.microsoft.com/rest/api/azure/devops/wit/work-items/get-work-item?view=azure-devops-rest-7.1
+ *   Patch: PATCH https://dev.azure.com/{org}/{project}/_apis/wit/workitems/{id}?api-version=7.1   body a JSON Patch document, media type
+ *          application/json-patch+json; validateOnly=true checks without saving, suppressNotifications=true tells no follower.
+ *          Needs vso.work_write, where everything above needs vso.work.
+ *          https://learn.microsoft.com/rest/api/azure/devops/wit/work-items/update?view=azure-devops-rest-7.1
  * Auth: a PAT as HTTP basic (empty user, PAT as password), or a Microsoft Entra token for the Azure DevOps resource
  *   (scope https://app.vssps.visualstudio.com/.default — the resource id form 499b84ac-1321-427f-aa17-267ca6975798/.default
  *   is the same audience) via DefaultAzureCredential.
@@ -39,17 +46,18 @@ async function authHeader(): Promise<string> {
   return `Bearer ${t.token}`;
 }
 
-async function adoFetch(url: string, init: RequestInit = {}, maxAttempts = 4): Promise<any> {
+/** `retryServerErrors: false` is for a write: a 5xx may have been answered after the change was saved, so sending it again is the caller's call (a 429 was refused before anything happened, and is always retried). */
+async function adoFetch(url: string, init: RequestInit = {}, maxAttempts = 4, retryServerErrors = true): Promise<any> {
   const auth = await authHeader();
   let last: Response | undefined;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const res = await fetch(url, { ...init, headers: { Authorization: auth, "Content-Type": "application/json", Accept: "application/json", ...(init.headers as any || {}) } });
-    if (res.status === 429 || res.status >= 500) { last = res; if (attempt < maxAttempts) { await sleep((Number(res.headers.get("Retry-After") || 2 ** attempt) * 1000)); continue; } break; }
-    if (res.status === 203 || res.status === 401 || res.status === 403) throw new Error(`Azure DevOps ${res.status}: not authorised — check the PAT / Entra identity and its access level`);
-    if (!res.ok) throw new Error(`Azure DevOps ${res.status}: ${(await res.text()).slice(0, 500)}`);
+    if (res.status === 429 || res.status >= 500) { last = res; if (attempt < maxAttempts && (res.status === 429 || retryServerErrors)) { await sleep((Number(res.headers.get("Retry-After") || 2 ** attempt) * 1000)); continue; } break; }
+    if (res.status === 203 || res.status === 401 || res.status === 403) throw Object.assign(new Error(`Azure DevOps ${res.status}: not authorised — check the PAT / Entra identity and its access level`), { status: res.status });
+    if (!res.ok) throw Object.assign(new Error(`Azure DevOps ${res.status}: ${(await res.text()).slice(0, 500)}`), { status: res.status });
     return res.json();
   }
-  throw new Error(`Azure DevOps ${last!.status}: ${(await last!.text()).slice(0, 300)}`);
+  throw Object.assign(new Error(`Azure DevOps ${last!.status}: ${(await last!.text()).slice(0, 300)}`), { status: last!.status });
 }
 
 export async function wiql(query: string): Promise<{ workItems: { id: number; url: string }[]; asOf?: string; queryType?: string }> {
@@ -67,4 +75,28 @@ export async function workItemsBatch(ids: number[], fields = ADO_FIELDS): Promis
     out.push(...(body.value || []));
   }
   return out;
+}
+
+// ---------- writing back onto a work item ----------
+export const ADO_PATCH_TYPE = "application/json-patch+json";
+export interface JsonPatchOp { op: "add" | "replace" | "remove" | "test"; path: string; value?: unknown }
+export interface AdoRelation { rel: string; url: string; attributes?: Record<string, any> }
+export interface AdoWorkItemFull { id: number; rev: number; fields: Record<string, any>; relations?: AdoRelation[]; url?: string }
+const itemUrl = (id: number | string) => { const { org, project } = adoConfig(); return `https://dev.azure.com/${encodeURIComponent(org)}/${encodeURIComponent(project)}/_apis/wit/workitems/${encodeURIComponent(String(id))}`; };
+
+/** One work item as it stands now, with its links. ($expand cannot be combined with a field list, so every field comes back.) */
+export async function getWorkItem(id: number | string): Promise<AdoWorkItemFull> {
+  if (fixturesEnabled()) return ADO_FIXTURES.get(String(id));
+  return adoFetch(`${itemUrl(id)}?$expand=relations&api-version=${ADO_API_VERSION}`, {}, 2);
+}
+
+/**
+ * Apply a JSON Patch document to a work item. `validateOnly` changes nothing; `suppressNotifications` tells no follower.
+ * Sent once: a server error is not retried here, because the change may have been saved before the answer was lost
+ * (write.ts looks at the item again before deciding).
+ */
+export async function patchWorkItem(id: number | string, ops: JsonPatchOp[], opts: { validateOnly?: boolean; suppressNotifications?: boolean } = {}): Promise<AdoWorkItemFull> {
+  if (fixturesEnabled()) { if (ADO_FIXTURES.state.latencyMs) await sleep(ADO_FIXTURES.state.latencyMs); return ADO_FIXTURES.update(String(id), ops, opts); }
+  const q = `${opts.validateOnly ? "validateOnly=true&" : ""}${opts.suppressNotifications ? "suppressNotifications=true&" : ""}api-version=${ADO_API_VERSION}`;
+  return adoFetch(`${itemUrl(id)}?${q}`, { method: "PATCH", body: JSON.stringify(ops), headers: { "Content-Type": ADO_PATCH_TYPE } }, 3, false);
 }

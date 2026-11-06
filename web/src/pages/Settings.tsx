@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, SkeletonText, TextInput, PasswordInput, InlineNotification, Table, TableHead, TableRow, TableHeader, TableBody, TableCell, CodeSnippet, NumberInput, Select, SelectItem, TextArea, InlineLoading, Tabs, TabList, Tab, TabPanels, TabPanel, Tile, Tag, RadioButtonGroup, RadioButton, FileUploaderDropContainer, FileUploaderItem, Dropdown, Toggle } from "@carbon/react";
+import { Button, SkeletonText, TextInput, PasswordInput, InlineNotification, Table, TableHead, TableRow, TableHeader, TableBody, TableCell, CodeSnippet, NumberInput, Select, SelectItem, TextArea, InlineLoading, Tabs, TabList, Tab, TabPanels, TabPanel, Tile, Tag, RadioButtonGroup, RadioButton, FileUploaderDropContainer, FileUploaderItem, Dropdown, Toggle, Checkbox, CheckboxGroup, Modal } from "@carbon/react";
 import { CloudDownload, Save, Renew, Play, Edit, Upload, Download, Connect, Add, MachineLearningModel } from "@carbon/icons-react";
 import { get, post, put, postRaw, download, fmtDateTime, labelFor, shortType, USER_TYPE_LABELS, USER_TYPE_ITEMS, NO_SYSTEM_ROLE, LEGACY_ROLE_FOR_TYPE, normaliseUserType } from "../api";
 import { PageIntro, About, useLoad, useAiFeatures, LoadError, StatusTag, useTabParam, RLink, KindTag, useDocTitle, PackImporter } from "../components";
@@ -157,6 +157,7 @@ function SourcesTab({ s, sources, demoLoaded, onMsg, onDone }: { s: any; sources
         </Tile>
         {kinds.map((k) => <SourceTile key={k.key} k={k} row={sources.find((x) => x.kind === k.sourceKind)} busy={busy} run={run} hookUrl={k.key === "ado" ? s.ado?.hook_url : undefined} />)}
       </div>
+      {s.ado?.writeback && <WriteBack wb={s.ado.writeback} onMsg={onMsg} onDone={onDone} />}
       <section className="ag-section ag-mt-07"><h2>Source Runs</h2>
         <Table size="sm"><TableHead><TableRow><TableHeader>Source</TableHeader><TableHeader>Kind</TableHeader><TableHeader>Status</TableHeader><TableHeader>Last Sync</TableHeader></TableRow></TableHead>
           <TableBody>{sources.length === 0 ? <TableRow><TableCell colSpan={4}><span className="ag-muted">No sources yet. Load the demo estate or connect a source above.</span></TableCell></TableRow> : sources.map((x) => <TableRow key={x.id}><TableCell>{x.name}</TableCell><TableCell>{labelFor("source_kind", x.kind)}</TableCell><TableCell><StatusTag kind="source" value={["ok", "error", "idle"].includes(x.status) ? x.status : "never"} />{x.last_error && <div className="ag-muted ag-label">{String(x.last_error).split("\n")[0].slice(0, 160)}</div>}</TableCell><TableCell>{fmtDateTime(x.last_sync_at)}</TableCell></TableRow>)}</TableBody></Table>
@@ -193,6 +194,112 @@ function SourceTile({ k, row, busy, run, hookUrl }: { k: Kind; row: any; busy: s
       {testErr && <InlineNotification kind="error" lowContrast hideCloseButton title="Connection test failed" subtitle={testErr} />}
       <div className="ag-muted ag-label"><StatusTag kind="source" value={status} size="sm" /> {row?.last_sync_at ? `last sync ${fmtDateTime(row.last_sync_at)}` : "never synced"}{row?.last_error ? ` · ${String(row.last_error).split("\n")[0].slice(0, 120)}` : ""}</div>
     </Tile>
+  );
+}
+
+/**
+ * Write-back to Azure DevOps (server writeback.ts): showing where each planned change stands on the work item itself.
+ * Optional, and off until a platform admin turns it on here, one kind of write at a time. Saving sends the switches;
+ * turning it off asks first, because the stage tags already written are then taken off the work items.
+ */
+function WriteBack({ wb, onMsg, onDone }: { wb: any; onMsg: (m: Msg) => void; onDone: () => void }) {
+  const canManage = useCan("manage_platform");
+  const saved = React.useMemo(() => ({ enabled: !!wb.enabled, link: !!wb.link, stage: !!wb.stage, comment: !!wb.comment, tag_prefix: String(wb.tag_prefix || "arch:") }), [wb.enabled, wb.link, wb.stage, wb.comment, wb.tag_prefix]);
+  const [form, setForm] = React.useState(saved);
+  React.useEffect(() => { setForm(saved); }, [saved]);
+  const [busy, setBusy] = React.useState<"save" | "test" | "preview" | null>(null);
+  const [test, setTest] = React.useState<any>(null);
+  const [preview, setPreview] = React.useState<any>(null);
+  const [off, setOff] = React.useState<{ remove: boolean } | null>(null); // the confirmation for turning it off
+  const prefixOk = /^[A-Za-z0-9][A-Za-z0-9._ -]{0,18}[:/-]$/.test(form.tag_prefix);
+  const nothing = form.enabled && !form.link && !form.stage && !form.comment;
+  const dirty = JSON.stringify(form) !== JSON.stringify(saved);
+  const locked = !canManage || !wb.available;
+  // on, with its source gone (credentials removed at a redeploy): nothing can be written, and turning it off must still work
+  const stranded = saved.enabled && !wb.available;
+  const n = (count: number, one: string) => `${count} ${one}${count === 1 ? "" : "s"}`;
+  const send = async (body: Record<string, unknown>) => {
+    setBusy("save");
+    try {
+      const r: any = await post("/sources/ado/writeback", body);
+      onMsg(r.sweep ? { kind: r.sweep.failed ? "warning" : "success", text: `Write-back is on: ${n(r.sweep.written, "work item")} updated${r.sweep.failed ? `, ${r.sweep.failed} could not be written and will be tried again` : ""}` }
+        : !r.enabled && body.enabled === false ? (r.cleanup?.failed
+          ? { kind: "warning", text: `Write-back is off. Stage tags were removed from ${n(r.cleanup.removed, "work item")}; ${r.cleanup.failed} could not be reached and still ${r.cleanup.failed === 1 ? "carries its" : "carry their"} tag. Remove Stage Tags tries again.` }
+          : { kind: "success", text: `Write-back is off${r.cleanup ? `: stage tags removed from ${n(r.cleanup.removed, "work item")}` : ""}` })
+        : { kind: "success", text: "Write-back settings saved" });
+      setPreview(null);
+    } catch (e) { onMsg(asMsg(e)); } finally { setBusy(null); setOff(null); onDone(); }
+  };
+  // a person asks for the failed writes to be tried now, without waiting out the delay (they have probably just fixed the cause)
+  const retry = async () => {
+    setBusy("save");
+    try { const r: any = await post("/sources/ado/writeback/run"); onMsg({ kind: r.failed ? "warning" : "success", text: `${n(r.written, "work item")} updated${r.failed ? `; ${r.failed} still could not be written` : ""}` }); }
+    catch (e) { onMsg(asMsg(e)); } finally { setBusy(null); onDone(); }
+  };
+  const doTest = async () => { setBusy("test"); setTest(null); try { setTest(await post("/sources/ado/writeback/test")); } catch (e: any) { setTest({ ok: false, error: String(e.message || e).split("\n")[0] }); } finally { setBusy(null); } };
+  const doPreview = async () => {
+    setBusy("preview");
+    try { setPreview(await get(`/sources/ado/writeback/preview?link=${form.link ? 1 : 0}&stage=${form.stage ? 1 : 0}&comment=${form.comment ? 1 : 0}${prefixOk ? `&tag_prefix=${encodeURIComponent(form.tag_prefix)}` : ""}`)); }
+    catch (e) { onMsg(asMsg(e)); } finally { setBusy(null); }
+  };
+  const said = (c: string) => (c === "changed_after_approval" ? "Changed after approval" : `Outcome: ${labelFor("stage", c.replace(/^outcome:/, "")).toLowerCase()}`);
+  return (
+    <section className="ag-section ag-mt-07">
+      <h2>Write Back to Azure DevOps</h2>
+      <p className="ag-body ag-muted ag-mb-05">Optional, and off until it is turned on here. When it is on, each planned change shows where it stands on the work item itself, so the people planning the work see what the boards said without leaving Azure DevOps. archigov never changes a work item's state, assignee, title or description, and nothing in Azure DevOps is blocked by it.</p>
+      {!wb.available && (stranded
+        ? <InlineNotification kind="warning" lowContrast hideCloseButton className="ag-notice" title="Azure DevOps is no longer connected" subtitle="Write-back is on and nothing can be written. Restore the connection, or turn write-back off here." />
+        : <InlineNotification kind="info" lowContrast hideCloseButton className="ag-notice" title="Connect Azure DevOps first" subtitle="Write-back needs the backlog source it writes to." />)}
+      <div className="ag-form">
+        <Toggle id="wb-enabled" labelText="Write Back" labelA="Off" labelB="On" toggled={form.enabled} disabled={locked && !(canManage && stranded)} onToggle={(on) => setForm({ ...form, enabled: on })} />
+        <CheckboxGroup legendText="What Is Written" helperText="Each kind is switched on its own. The identity archigov uses needs permission to edit work items; Azure DevOps' own area permissions limit where it may write.">
+          {(wb.capabilities || []).map((c: any) => (
+            <Checkbox key={c.id} id={`wb-${c.id}`} labelText={c.label} helperText={c.available ? c.writes : `${c.writes} ${c.unavailable_reason || ""}`} checked={!!(form as any)[c.id] && c.available}
+              disabled={locked || !form.enabled || !c.available} onChange={(_, { checked }) => setForm({ ...form, [c.id]: checked })} />))}
+        </CheckboxGroup>
+        <TextInput id="wb-prefix" labelText="Tag Prefix" helperText="Keeps archigov's stage tags apart from the team's own, so they can be found, styled and taken off again." value={form.tag_prefix}
+          invalid={!prefixOk} invalidText="2 to 20 characters, starting with a letter or digit and ending in : / or - (for example arch:)" disabled={locked || !form.enabled || !form.stage} onChange={(e) => setForm({ ...form, tag_prefix: e.target.value })} />
+        {(() => { const inUse = preview?.prefix_in_use ?? wb.prefix_in_use ?? 0; return inUse > 0 && (
+          <InlineNotification kind="warning" lowContrast hideCloseButton title="This prefix is already in use"
+            subtitle={`${n(inUse, "work item")} ${inUse === 1 ? "carries" : "carry"} a tag starting with ${preview ? form.tag_prefix : wb.tag_prefix} that archigov did not write (as of the last sync). Those tags are left alone, and would be read beside the stage tags: choose another prefix if that would confuse.`} />); })()}
+        <div>
+          <div className="ag-label ag-muted ag-mb-03">The stage tags, one at a time on a work item</div>
+          <div className="ag-row tight">{(wb.stages || []).map((st: any) => <Tag key={st.id} size="sm" type="gray"><span title={st.explain}>{(prefixOk ? form.tag_prefix : wb.tag_prefix) + st.id.replace(/_/g, "-")}</span></Tag>)}</div>
+        </div>
+        {nothing && <InlineNotification kind="warning" lowContrast hideCloseButton title="Nothing would be written" subtitle="Choose at least one kind of write, or turn write-back off." />}
+        <div className="ag-row snug">
+          {busy === "save" ? <InlineLoading description="Saving and writing" /> : <Gated cap="manage_platform"><Button size="md" renderIcon={Save} disabled={(!wb.available && form.enabled) || !dirty || !prefixOk || nothing} onClick={() => (saved.enabled && !form.enabled ? setOff({ remove: true }) : send(form))}>Save</Button></Gated>}
+          {busy === "test" ? <InlineLoading description="Checking write access" /> : <Gated cap="manage_platform"><Button size="md" kind="tertiary" renderIcon={Connect} disabled={!wb.available || !!busy} onClick={doTest}>Test Write Access</Button></Gated>}
+          {busy === "preview" ? <InlineLoading description="Working out what would be written" /> : <Button size="md" kind="tertiary" disabled={!wb.available || !!busy || !prefixOk} onClick={doPreview}>Preview</Button>}
+          {wb.enabled && wb.errors > 0 && busy !== "save" && <Gated cap="manage_platform"><Button size="md" kind="tertiary" disabled={!wb.available || !!busy} onClick={retry}>Try Again Now</Button></Gated>}
+          {/* off, with stage tags still out there (kept on purpose, or a clean-up that could not reach them): one click takes them off */}
+          {!wb.enabled && wb.tagged > 0 && busy !== "save" && <Gated cap="manage_platform"><Button size="md" kind="tertiary" disabled={!wb.available || !!busy} onClick={() => send({ enabled: false, remove_tags: true })}>Remove Stage Tags</Button></Gated>}
+        </div>
+        {test && <InlineNotification kind={test.ok ? "success" : "error"} lowContrast hideCloseButton title={test.ok ? "This identity can edit work items" : "This identity cannot edit work items"} subtitle={test.ok ? `Checked against work item ${test.checked}; nothing was saved.` : test.error} />}
+      </div>
+      <p className="ag-muted ag-label ag-mt-05">
+        {wb.enabled ? `On · ${wb.shown} of ${n(wb.in_scope, "work item")} carry something archigov wrote${wb.last_written_at ? ` · last write ${fmtDateTime(wb.last_written_at)}` : ""}` : `Off · nothing is written to Azure DevOps${wb.shown ? `; links and comments from when it was on remain on ${n(wb.shown, "work item")}` : ""}${wb.tagged ? `; ${n(wb.tagged, "work item")} still ${wb.tagged === 1 ? "carries" : "carry"} a stage tag` : ""}`}
+        {wb.errors ? ` · ${n(wb.errors, "work item")} could not be written${wb.last_error ? ` (${wb.last_error.external_id}: ${String(wb.last_error.error).slice(0, 120)})` : ""}; they are tried again automatically` : ""}
+      </p>
+      {preview && (preview.items.length === 0 ? <p className="ag-body ag-muted ag-mt-05">Nothing would be written now: every work item in scope already shows what these switches ask for.</p> : (
+        <div className="ag-mt-05">
+          <div className="ag-label ag-muted ag-mb-03">What saving these switches would write now, to {n(preview.items.length, "work item")} of {preview.in_scope}. Nothing has been sent.</div>
+          <Table size="sm"><TableHead><TableRow><TableHeader>Work Item</TableHeader><TableHeader>Stage Tag</TableHeader><TableHeader>Links</TableHeader><TableHeader>Comment</TableHeader></TableRow></TableHead>
+            <TableBody>{preview.items.map((i: any) => <TableRow key={i.external_id}>
+              <TableCell><span className="ag-muted">{i.external_id}</span> · {i.title}</TableCell>
+              <TableCell>{i.tag ? <>{i.tag.from && <><span className="ag-mono ag-nowrap ag-muted">{i.tag.from}</span> → </>}<span className="ag-mono ag-nowrap">{i.tag.to || "removed"}</span></> : <span className="ag-muted">Unchanged</span>}</TableCell>
+              <TableCell className="ag-nowrap">{i.links.length ? n(i.links.length, "link") : <span className="ag-muted">None</span>}</TableCell>
+              <TableCell>{i.comments.length ? i.comments.map(said).join(" · ") : <span className="ag-muted">None</span>}</TableCell>
+            </TableRow>)}</TableBody></Table>
+        </div>))}
+      {off && <Modal open danger modalHeading="Turn Off Write-Back?" primaryButtonText="Turn Off Write-Back" secondaryButtonText="Cancel" onRequestClose={() => setOff(null)}
+        onRequestSubmit={() => send({ ...form, enabled: false, remove_tags: off.remove })}>
+        <div className="ag-form">
+          <p className="ag-body">archigov stops writing to Azure DevOps. The links and comments it added stay on the work items as history. A stage tag says what is true now, so one left behind would go on saying it after it stopped being kept up to date.</p>
+          <Checkbox id="wb-remove-tags" labelText={`Take the stage tags off the ${n(wb.tagged || 0, "work item")} that carry one`} checked={off.remove} onChange={(_, { checked }) => setOff({ remove: checked })} />
+        </div>
+      </Modal>}
+    </section>
   );
 }
 

@@ -22,14 +22,25 @@ const DESCRIPTION_OVERRIDES: Record<string, string> = {
   "1042": "<div>Move referral attachments from storage account to a managed document service with retention and audit. Must support 10-year retention, eDiscovery <b>and bulk export to the national record</b>.</div>",
 };
 
+/**
+ * What has been written back onto the fixture items in this process: the project standing in for Azure DevOps has to
+ * remember a tag, a link and a comment the way the real one does, so the write path runs end to end offline. A written
+ * item's revision starts above the recorded hook sample's, since in the real service every change is a later revision.
+ */
+interface Written { rev: number; tags: string | null; relations: { rel: string; url: string; attributes?: Record<string, any> }[]; history: string[] }
+const WRITTEN = new Map<string, Written>();
+const FIRST_WRITTEN_REV = 20;
+const baseRev = (externalId: string) => (externalId === "1042" ? 7 : 3);
+
 export function fixtureWorkItem(externalId: string) {
   const w = DEMO_WORK_ITEMS.find((x) => x.external_id === externalId);
   if (!w) return null;
+  const written = WRITTEN.get(externalId);
   return {
-    id: Number(w.external_id), rev: w.external_id === "1042" ? 7 : 3,
+    id: Number(w.external_id), rev: written ? written.rev : baseRev(externalId),
     fields: {
-      "System.Id": Number(w.external_id), "System.Title": w.title, "System.WorkItemType": w.type, "System.State": w.state,
-      "System.Tags": w.tags.join("; "), "System.Description": DESCRIPTION_OVERRIDES[w.external_id] ?? `<div>${w.description}</div>`,
+      "System.Id": Number(w.external_id), "System.TeamProject": PROJECT, "System.Title": w.title, "System.WorkItemType": w.type, "System.State": w.state,
+      "System.Tags": written?.tags ?? w.tags.join("; "), "System.Description": DESCRIPTION_OVERRIDES[w.external_id] ?? `<div>${w.description}</div>`,
       "System.ChangedDate": CHANGED, "System.CreatedDate": "2026-09-01T09:00:00Z", "System.AreaPath": `${PROJECT}\\${w.area}`, "System.IterationPath": `${PROJECT}\\Q4`,
       "Microsoft.VSTS.Common.Priority": 2, ...(w.app ? { "Custom.Application": w.app } : {}),
     },
@@ -60,4 +71,66 @@ export const HOOK_SAMPLE = {
   createdDate: CHANGED,
 };
 
-export const ADO_FIXTURES = { org: ORG, project: PROJECT, wiql, batch, hookSample: HOOK_SAMPLE };
+/** GET one work item with its relations. */
+function get(externalId: string) {
+  if (fixtureState.unreachable) throw new Error("fetch failed"); // a network failure carries no HTTP status
+  if (fixtureState.throttled) throw Object.assign(new Error("Azure DevOps 429: too many requests"), { status: 429 });
+  if (fixtureState.gone.includes(externalId)) throw Object.assign(new Error(`Azure DevOps 404: TF401232: work item ${externalId} does not exist, or you do not have permissions to read it`), { status: 404 });
+  const item = fixtureWorkItem(externalId);
+  if (!item) throw Object.assign(new Error(`Azure DevOps 404: work item ${externalId} does not exist`), { status: 404 });
+  return { ...item, relations: [...(WRITTEN.get(externalId)?.relations || [])] };
+}
+
+/**
+ * PATCH one work item with a JSON Patch document, as the service does: a failed `test` of the revision refuses the
+ * whole document, `validateOnly` checks it and saves nothing, anything saved is a new revision. Tags follow the
+ * reference's own examples: `add` MERGES the given tags into those already there ("Add a tag": Tag0 + "Tag1; Tag2" →
+ * "Tag0; Tag1; Tag2"), `replace` sets the whole list ("Update a tag"), and nothing documents `remove` on a field, so
+ * it is refused here. For tests: `denyWrites` fails every write the way an identity without write access does,
+ * `loseAnswers` saves the next n writes and then fails as a server error would (the answer never arrives; with
+ * `thenUnreachable` the service is gone from that moment, with `saveLateMs` the save itself lands that much after
+ * the error), `failWrites` fails the next n writes as a server error with nothing saved, `unreachable` fails every call as a network error, `throttled` as a 429, `gone` lists items that
+ * were deleted (404), `latencyMs` makes a write take that long (client.ts waits).
+ */
+const fixtureState = { denyWrites: false, loseAnswers: 0, thenUnreachable: false, saveLateMs: 0, failWrites: 0, unreachable: false, throttled: false, gone: [] as string[], latencyMs: 0 };
+const mergeTags = (have: string, add: string) => {
+  const split = (v: string) => v.split(";").map((t) => t.trim()).filter(Boolean);
+  const out = split(have);
+  for (const t of split(add)) if (!out.some((x) => x.toLowerCase() === t.toLowerCase())) out.push(t);
+  return out.join("; ");
+};
+function update(externalId: string, ops: { op: string; path: string; value?: any }[], opts: { validateOnly?: boolean } = {}) {
+  const item = get(externalId);
+  if (fixtureState.denyWrites) throw Object.assign(new Error("Azure DevOps 403: not authorised — check the PAT / Entra identity and its access level"), { status: 403 });
+  const next: Written = { rev: item.rev, tags: String(item.fields["System.Tags"] ?? ""), relations: item.relations, history: [...(WRITTEN.get(externalId)?.history || [])] };
+  for (const o of ops) {
+    if (o.op === "test" && o.path === "/rev") { if (Number(o.value) !== item.rev) throw Object.assign(new Error(`Azure DevOps 412: TF26071: this work item has been changed by someone else since you opened it (rev ${item.rev}, expected ${o.value})`), { status: 412 }); }
+    else if (o.op === "add" && o.path === "/fields/System.Tags") next.tags = mergeTags(next.tags ?? "", String(o.value ?? ""));
+    else if (o.op === "replace" && o.path === "/fields/System.Tags") next.tags = String(o.value ?? "");
+    else if (o.op === "add" && o.path === "/fields/System.History") next.history.push(String(o.value ?? ""));
+    else if (o.op === "add" && o.path === "/relations/-") next.relations.push({ rel: o.value.rel, url: o.value.url, attributes: { ...(o.value.attributes || {}) } });
+    else if (o.op === "remove" && /^\/relations\/\d+$/.test(o.path)) next.relations.splice(Number(o.path.split("/")[2]), 1);
+    else throw Object.assign(new Error(`Azure DevOps 400: unsupported operation ${o.op} ${o.path}`), { status: 400 });
+  }
+  if (opts.validateOnly) return item;
+  next.rev = Math.max(item.rev + 1, FIRST_WRITTEN_REV);
+  if (fixtureState.failWrites > 0) { fixtureState.failWrites--; throw Object.assign(new Error("Azure DevOps 503: the service is temporarily unavailable"), { status: 503 }); }
+  if (fixtureState.loseAnswers > 0) {
+    fixtureState.loseAnswers--;
+    if (fixtureState.saveLateMs) setTimeout(() => WRITTEN.set(externalId, next), fixtureState.saveLateMs); else WRITTEN.set(externalId, next);
+    if (fixtureState.thenUnreachable) fixtureState.unreachable = true;
+    throw Object.assign(new Error("Azure DevOps 503: the service is temporarily unavailable"), { status: 503 });
+  }
+  WRITTEN.set(externalId, next);
+  return get(externalId);
+}
+/** For tests: somebody else edits the item at the source (a new revision, optionally with other tags). */
+function touch(externalId: string, tags?: string) {
+  const item = get(externalId), was = WRITTEN.get(externalId);
+  WRITTEN.set(externalId, { rev: Math.max(item.rev + 1, FIRST_WRITTEN_REV), tags: tags ?? String(item.fields["System.Tags"] ?? ""), relations: item.relations, history: [...(was?.history || [])] });
+}
+/** For tests: what was written to an item, and a clean slate. */
+const written = (externalId: string) => WRITTEN.get(externalId) ?? null;
+const reset = () => { WRITTEN.clear(); Object.assign(fixtureState, { denyWrites: false, loseAnswers: 0, thenUnreachable: false, saveLateMs: 0, failWrites: 0, unreachable: false, throttled: false, gone: [], latencyMs: 0 }); };
+
+export const ADO_FIXTURES = { org: ORG, project: PROJECT, wiql, batch, get, update, touch, written, reset, state: fixtureState, hookSample: HOOK_SAMPLE };
