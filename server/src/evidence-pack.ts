@@ -76,6 +76,12 @@ const dependsOn = (decisionId: string) => (db.prepare("SELECT d.code FROM decisi
 const dependents = (decisionId: string) => (db.prepare("SELECT r.code, x.resolved_state FROM review_dependencies x JOIN reviews r ON r.id=x.review_id WHERE x.decision_id=? ORDER BY r.code").all(decisionId) as any[]).map((r) => ({ review: r.code, resolved_state: r.resolved_state ?? null }));
 
 /** Assemble the pack content for the tenant or one application. Returns null when the application does not exist. */
+/** A condition raised as a work item at its source: where the work is tracked and what the source last said of it. Evidence of the work, never of the condition being met. */
+const raisedEvidence = (conditionId: string) => {
+  const r = db.prepare("SELECT external_id, type, state, closed_at, seen_at, gone FROM condition_work_items WHERE condition_id=? AND external_id IS NOT NULL").get(conditionId) as any;
+  return r ? { work_item: { source: "azure_devops", id: r.external_id, type: r.type, state: r.state, closed_at: r.closed_at, seen_at: r.seen_at, ...(r.gone ? { gone: true } : {}) } } : {};
+};
+
 export function buildEvidencePack(appId: string | null): Record<string, any> | null {
   const apps = listElements("application").filter((a) => !appId || a.id === appId);
   if (appId && apps.length === 0) return null;
@@ -108,7 +114,7 @@ export function buildEvidencePack(appId: string | null): Record<string, any> | n
           positions: db.prepare("SELECT area, position, user_id, on_behalf_of, text, at, resolution, resolution_text, resolved_by FROM review_positions WHERE review_id=? AND superseded=0 ORDER BY at").all(r.id),
           // the due diligence conducted for the submission: who asked, who recorded the result, and the result itself
           assessments: db.prepare("SELECT type, title, area, requested_by, assigned_to, due_at, status, result, result_md, reference, completed_by, completed_at, waived_by, waived_reason, stale FROM review_assessments WHERE review_id=? ORDER BY created_at").all(r.id),
-          conditions: conditions.filter((x) => x.review_id === r.id).map((x) => ({ text: x.text, owner: x.owner, due_at: x.due_at, status: x.status, closed_at: x.closed_at, area: x.area ?? null })) })),
+          conditions: conditions.filter((x) => x.review_id === r.id).map((x) => ({ text: x.text, owner: x.owner, due_at: x.due_at, status: x.status, closed_at: x.closed_at, area: x.area ?? null, ...raisedEvidence(x.id) })) })),
         findings: findings.map((f: any) => ({ standard: f.standard_code, severity: f.severity, status: f.status, message: f.message, evidence: f.evidence, first_seen: f.first_seen, last_seen: f.last_seen })),
         exceptions,
       };

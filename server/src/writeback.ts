@@ -21,13 +21,17 @@ import { CHANGE_SELECT, CHANGE_STAGES, STAGE_LABEL, changeStage, decisionStandin
  * was last written (work_item_writeback), and only the difference is sent. A failed write is tried again later, a
  * change made while the source was unreachable is not lost, and turning it on writes everything that is already true.
  */
-export interface WritebackSettings { enabled: boolean; link: boolean; stage: boolean; comment: boolean; tag_prefix: string }
-const DEFAULTS: WritebackSettings = { enabled: false, link: true, stage: true, comment: true, tag_prefix: "arch:" };
+export interface WritebackSettings { enabled: boolean; link: boolean; stage: boolean; comment: boolean; raise: boolean; tag_prefix: string; raise_type: string }
+// `raise` creates work items, so unlike the three that only show a stage it stays off until it is chosen
+const DEFAULTS: WritebackSettings = { enabled: false, link: true, stage: true, comment: true, raise: false, tag_prefix: "arch:", raise_type: "Task" };
 export const CAPABILITIES = [
   { id: "link", label: "Links", writes: "A hyperlink on the work item to the decision and to the review that cover it." },
   { id: "stage", label: "Lifecycle Stage", writes: "One tag naming where the change stands, replaced as it moves. It works in queries, board filters and card styles." },
   { id: "comment", label: "Outcome Comments", writes: "A comment when a board declares an outcome on the review, and when the item changes after approval. Followers of the item are notified by Azure DevOps." },
+  { id: "raise", label: "Conditions as Work Items", writes: "Lets a person raise a condition of an approval as a work item under the change it belongs to, one click at a time. Nothing is created on its own, and from then on Azure DevOps owns the work." },
 ] as const;
+/** The work item type a condition is raised as: a type name of the project's process (Task, Issue, Product Backlog Item…). */
+export const RAISE_TYPE = /^\p{L}[\p{L}\p{N} ._-]{0,48}$/u; // a process may name its types in any language
 /** A prefix keeps archigov's tags apart from the team's own, and lets it take its own tags off again: it must end in a separator. */
 export const TAG_PREFIX = /^[A-Za-z0-9][A-Za-z0-9._ -]{0,18}[:/-]$/;
 const OUTCOME_STAGES = ["approved", "approved_with_conditions", "changes_requested", "rejected"];
@@ -39,7 +43,9 @@ export const WRITEBACK_TIMING = { settleAfterMs: 30_000 };
 let enabledNow: boolean | null = null; // read on every audit row, so kept in memory; saveWritebackSettings refreshes it
 export function writebackSettings(): WritebackSettings {
   const s = j(getSetting("ado.writeback"), null) || {};
-  const out = { enabled: !!s.enabled, link: s.link ?? DEFAULTS.link, stage: s.stage ?? DEFAULTS.stage, comment: s.comment ?? DEFAULTS.comment, tag_prefix: typeof s.tag_prefix === "string" && TAG_PREFIX.test(s.tag_prefix) ? s.tag_prefix : DEFAULTS.tag_prefix };
+  const out = { enabled: !!s.enabled, link: s.link ?? DEFAULTS.link, stage: s.stage ?? DEFAULTS.stage, comment: s.comment ?? DEFAULTS.comment, raise: s.raise ?? DEFAULTS.raise,
+    tag_prefix: typeof s.tag_prefix === "string" && TAG_PREFIX.test(s.tag_prefix) ? s.tag_prefix : DEFAULTS.tag_prefix,
+    raise_type: typeof s.raise_type === "string" && RAISE_TYPE.test(s.raise_type) ? s.raise_type : DEFAULTS.raise_type };
   enabledNow = out.enabled;
   return out;
 }
@@ -323,7 +329,9 @@ export function writebackStatus() {
     ...s, available: adoConfigured(), source: src ? { id: src.id, name: src.name } : null,
     // links (and the link in a comment) need this instance's public address; a tag does not
     base_url: base || null,
-    capabilities: CAPABILITIES.map((c) => ({ ...c, enabled: s[c.id], available: c.id === "link" ? !!base : true, ...(c.id === "link" && !base ? { unavailable_reason: "Set APP_BASE_URL to this instance's address, so links lead here." } : {}) })),
+    capabilities: CAPABILITIES.map((c) => { const needsAddress = c.id === "link" || c.id === "raise"; // both write a link back to this instance
+      return { ...c, enabled: s[c.id], available: needsAddress ? !!base : true, ...(needsAddress && !base ? { unavailable_reason: "Set APP_BASE_URL to this instance's address, so links lead here." } : {}) }; }),
+    raised: n("SELECT count(*) n FROM condition_work_items cw JOIN work_items w ON w.id=cw.parent_work_item_id WHERE w.source_id=? AND cw.external_id IS NOT NULL"),
     stages: CHANGE_STAGES.map((st) => ({ id: st.id, label: st.label, explain: st.explain, tag: tagOf(s.tag_prefix, st.id) })),
     in_scope: n("SELECT count(*) n FROM work_items WHERE source_id=? AND COALESCE(state,'') <> 'Removed'"),
     shown: n("SELECT count(*) n FROM work_item_writeback wb JOIN work_items w ON w.id=wb.work_item_id WHERE w.source_id=? AND wb.written_at IS NOT NULL"),

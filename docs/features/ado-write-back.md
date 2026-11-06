@@ -10,6 +10,8 @@ An optional way to show, on the work item itself, where a planned change stands 
 
 It is off by default, and each of the three is switched on separately. Nothing else on a work item is ever touched: not its state, assignee, title or description.
 
+A fourth capability, also switched on separately and off even when write-back is turned on, lets a person raise a condition of an approval as a work item: see [Conditions as work items](ado-conditions-as-work-items.md). It is the only thing here that creates anything, and only on a person's click.
+
 The stage is one vocabulary, used identically on **Planned Changes** and as the tag:
 
 | Stage | Tag (default prefix) | Means |
@@ -63,7 +65,7 @@ Everything here is deterministic and derived on read.
 | Route | Capability | Does |
 | --- | --- | --- |
 | `GET /sources/ado/writeback` | read | the switches, whether each kind can work, the stage vocabulary with its tags, and counts: in scope, shown, tagged (a write still unanswered counts, since it may have left a tag), errors, and `prefix_in_use`, the work items carrying a tag under the prefix that archigov did not write |
-| `POST /sources/ado/writeback` | manage_platform | `{enabled?, link?, stage?, comment?, tag_prefix?, remove_tags?}`. Turning it on (or changing what is shown) runs a sweep at once, and tries again now anything an earlier failure had put off. Turning it off is saved first, then takes the stage tags off unless `remove_tags` is `false`; the answer's `cleanup` says how many were removed and how many could not be reached. Already off, `remove_tags: true` tries again for the tags still out there. 409 for "on" without a connected backlog; 400 for a bad prefix or for "on" with nothing to write |
+| `POST /sources/ado/writeback` | manage_platform | `{enabled?, link?, stage?, comment?, raise?, tag_prefix?, raise_type?, remove_tags?}` (`raise` and `raise_type` belong to [conditions as work items](ado-conditions-as-work-items.md)). Turning it on (or changing what is shown) runs a sweep at once, and tries again now anything an earlier failure had put off. Turning it off is saved first, then takes the stage tags off unless `remove_tags` is `false`; the answer's `cleanup` says how many were removed and how many could not be reached. Already off, `remove_tags: true` tries again for the tags still out there. 409 for "on" without a connected backlog; 400 for a bad prefix or for "on" with nothing to write |
 | `POST /sources/ado/writeback/test` | manage_platform | whether the identity may edit a work item, asked with `validateOnly` so nothing is saved |
 | `GET /sources/ado/writeback/preview` | read | what would be written now and to which items, with the saved switches or with `?link=&stage=&comment=&tag_prefix=`, and `prefix_in_use` for that prefix; sends nothing |
 | `POST /sources/ado/writeback/run` | manage_platform | a sweep now, failures put off included (the page's Try Again Now); 409 when write-back is off |
@@ -90,7 +92,7 @@ Everything here is deterministic and derived on read.
 ## What it deliberately does not do
 
 - **It does not gate.** No state transition is blocked, no policy is installed, and no status is required of anything.
-- **It does not manage work.** It never changes a work item's state, assignee, title, description or iteration, and creates no work items.
+- **It does not manage work.** It never changes a work item's state, assignee, title, description or iteration, and creates no work items on its own (a person may raise a condition as one: [Conditions as work items](ado-conditions-as-work-items.md)).
 - **It does not carry reasoning.** Rationale, findings and conditions stay in archigov, reached by the link; a work item is visible to everyone who can see the backlog.
 - **It does not write to manually logged changes.** They have no source to write to.
 - **It does not remove links or comments** when it is turned off. They are history; only the stage tag, which claims to be current, is taken off.

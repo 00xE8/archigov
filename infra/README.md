@@ -138,7 +138,7 @@ The documentation site has the long form: [Continuous replication](https://archi
 | `AZURE_SUBSCRIPTIONS` | comma-separated subscription ids in scope | all visible |
 | **Azure DevOps feed** | | |
 | `ADO_ORG`, `ADO_PROJECT` | organisation and project for the WIQL backfill and service hooks. Give the project by name: write-back checks each work item's project against it and writes nowhere else (an ID cannot be compared) | — |
-| `ADO_PAT` | personal access token (work items read; read and write, `vso.work_write`, only if write-back is turned on in Settings · Sources); or rely on the Entra identity, which then needs the same permission in the project | — |
+| `ADO_PAT` | personal access token (work items read; read and write, `vso.work_write`, only if write-back is turned on in Settings · Sources: it edits work items and, where conditions are raised as work items, creates them); or rely on the Entra identity, which then needs the same permission in the project | — |
 | `ADO_HOOK_SECRET` | shared secret the service hook must present to `POST /api/hooks/ado` | — |
 | `ADO_WIQL` | override the backfill query | epics + features, active |
 | **AI pre-review** | | |

@@ -11,8 +11,14 @@ const ORG = "sehealth", PROJECT = "Clinical-Platform";
 const CHANGED = new Date(Date.now() - 3600 * 1000).toISOString();
 const url = (id: number | string) => `https://dev.azure.com/${ORG}/_apis/wit/workItems/${id}`;
 
-/** What ADO returns for the backlog WIQL. */
+/** What ADO returns for the backlog WIQL; and, for a query on a tag, the work items made here that carry it. */
 function wiql(query: string) {
+  const tag = /\[System\.Tags\]\s+CONTAINS\s+'((?:[^']|'')*)'/i.exec(query)?.[1]?.replace(/''/g, "'");
+  if (tag) {
+    if (fixtureState.unreachable) throw new Error("fetch failed");
+    const has = (v: unknown) => String(v ?? "").split(";").map((t) => t.trim().toLowerCase()).includes(tag.toLowerCase());
+    return { queryType: "flat", queryResultType: "workItem", asOf: CHANGED, columns: [], workItems: [...CREATED.values()].filter((i) => has(i.fields["System.Tags"]) && !fixtureState.gone.includes(String(i.id))).map((i) => ({ id: i.id, url: i.url })) };
+  }
   return { queryType: "flat", queryResultType: "workItem", asOf: CHANGED, columns: [{ referenceName: "System.Id", name: "ID", url: `https://dev.azure.com/${ORG}/_apis/wit/fields/System.Id` }],
     workItems: DEMO_WORK_ITEMS.filter((w) => !/Removed/.test(query) || w.state !== "Removed").map((w) => ({ id: Number(w.external_id), url: url(w.external_id) })) };
 }
@@ -48,8 +54,19 @@ export function fixtureWorkItem(externalId: string) {
   };
 }
 
+/**
+ * Work items made in this process (a condition raised as a work item): the project standing in for Azure DevOps keeps
+ * them the way the real one does, with their fields, their links and the web address a person opens.
+ */
+interface Created { id: number; rev: number; fields: Record<string, any>; relations: { rel: string; url: string; attributes?: Record<string, any> }[]; url: string; _links: { html: { href: string } } }
+const CREATED = new Map<string, Created>();
+let nextCreatedId = 9001;
+/** The types this pretend project has (the Agile process, as the demo backlog uses Epics and Features). */
+const TYPES = ["Epic", "Feature", "User Story", "Task", "Issue", "Bug"];
+
 function batch(ids: number[]) {
-  const value = ids.map((i) => fixtureWorkItem(String(i))).filter(Boolean);
+  // errorPolicy "omit": an item that is gone is simply not in the answer
+  const value = ids.filter((i) => !fixtureState.gone.includes(String(i))).map((i) => CREATED.get(String(i)) ?? fixtureWorkItem(String(i))).filter(Boolean);
   return { count: value.length, value };
 }
 
@@ -76,9 +93,78 @@ function get(externalId: string) {
   if (fixtureState.unreachable) throw new Error("fetch failed"); // a network failure carries no HTTP status
   if (fixtureState.throttled) throw Object.assign(new Error("Azure DevOps 429: too many requests"), { status: 429 });
   if (fixtureState.gone.includes(externalId)) throw Object.assign(new Error(`Azure DevOps 404: TF401232: work item ${externalId} does not exist, or you do not have permissions to read it`), { status: 404 });
+  const made = CREATED.get(externalId);
+  if (made) return { ...made, fields: { ...made.fields }, relations: [...made.relations] };
   const item = fixtureWorkItem(externalId);
   if (!item) throw Object.assign(new Error(`Azure DevOps 404: work item ${externalId} does not exist`), { status: 404 });
   return { ...item, relations: [...(WRITTEN.get(externalId)?.relations || [])] };
+}
+/** GET several work items with their relations; one that is gone is left out (errorPolicy "omit"). */
+function list(ids: string[]) {
+  if (fixtureState.unreachable) throw new Error("fetch failed");
+  if (fixtureState.throttled) throw Object.assign(new Error("Azure DevOps 429: too many requests"), { status: 429 });
+  return ids.flatMap((id) => { try { return [get(id)]; } catch (e: any) { if (e?.status === 404) return []; throw e; } });
+}
+
+/**
+ * POST a new work item of a type, from a JSON Patch document of `add` operations, as the service does: the type must
+ * exist in the project, a title is required, `validateOnly` checks and makes nothing. A link to a parent
+ * (System.LinkTypes.Hierarchy-Reverse) shows on the parent as the forward link and is a new revision of it too. The
+ * test switches of `update` apply here as well.
+ */
+function create(type: string, ops: { op: string; path: string; value?: any }[], opts: { validateOnly?: boolean } = {}) {
+  if (fixtureState.unreachable) throw new Error("fetch failed");
+  if (fixtureState.throttled) throw Object.assign(new Error("Azure DevOps 429: too many requests"), { status: 429 });
+  if (fixtureState.denyWrites) throw Object.assign(new Error("Azure DevOps 403: not authorised — check the PAT / Entra identity and its access level"), { status: 403 });
+  const known = TYPES.find((t) => t.toLowerCase() === type.toLowerCase());
+  if (!known) throw Object.assign(new Error(`Azure DevOps 404: VS402323: Work item type ${type} does not exist in project ${PROJECT}, or you do not have permission to access it.`), { status: 404 });
+  const id = opts.validateOnly ? 0 : nextCreatedId++, now = new Date().toISOString();
+  const item: Created = { id, rev: 1, url: url(id), _links: { html: { href: `https://dev.azure.com/${ORG}/${encodeURIComponent(PROJECT)}/_workitems/edit/${id}` } }, relations: [],
+    fields: { "System.Id": id, "System.TeamProject": PROJECT, "System.WorkItemType": known, "System.State": "New", "System.AreaPath": PROJECT, "System.IterationPath": PROJECT, "System.CreatedDate": now, "System.ChangedDate": now } };
+  for (const o of ops) {
+    if (o.op !== "add") throw Object.assign(new Error(`Azure DevOps 400: unsupported operation ${o.op} ${o.path}`), { status: 400 });
+    if (o.path === "/relations/-") item.relations.push({ rel: o.value.rel, url: o.value.url, attributes: { ...(o.value.attributes || {}) } });
+    else if (o.path.startsWith("/fields/")) item.fields[o.path.slice("/fields/".length)] = o.value;
+    else throw Object.assign(new Error(`Azure DevOps 400: unsupported operation ${o.op} ${o.path}`), { status: 400 });
+  }
+  if (!String(item.fields["System.Title"] ?? "").trim()) throw Object.assign(new Error("Azure DevOps 400: TF401320: Rule Error for field Title. Error code: Required, InvalidEmpty."), { status: 400 });
+  const parents = item.relations.filter((r) => r.rel === "System.LinkTypes.Hierarchy-Reverse").map((r) => r.url.split("/").pop() as string);
+  for (const p of parents) get(p); // a parent that does not exist refuses the whole document
+  if (opts.validateOnly) return item;
+  if (fixtureState.failWrites > 0) { fixtureState.failWrites--; throw Object.assign(new Error("Azure DevOps 503: the service is temporarily unavailable"), { status: 503 }); }
+  const save = () => {
+    CREATED.set(String(id), item);
+    for (const p of parents) { // the same link, seen from the parent: a new revision of it
+      const parent = get(p), was = WRITTEN.get(p);
+      WRITTEN.set(p, { rev: Math.max(parent.rev + 1, FIRST_WRITTEN_REV), tags: String(parent.fields["System.Tags"] ?? ""), relations: [...parent.relations, { rel: "System.LinkTypes.Hierarchy-Forward", url: url(id), attributes: {} }], history: [...(was?.history || [])] });
+    }
+  };
+  if (fixtureState.loseAnswers > 0) {
+    fixtureState.loseAnswers--;
+    if (fixtureState.saveLateMs) setTimeout(save, fixtureState.saveLateMs); else save();
+    if (fixtureState.thenUnreachable) fixtureState.unreachable = true;
+    throw Object.assign(new Error("Azure DevOps 503: the service is temporarily unavailable"), { status: 503 });
+  }
+  save();
+  return get(String(id));
+}
+/** For tests: the team moves a made work item on (a new revision in a new state). */
+function setState(externalId: string, state: string) {
+  const item = CREATED.get(externalId);
+  if (!item) throw new Error(`fixture: work item ${externalId} was not made here`);
+  item.rev += 1; item.fields["System.State"] = state; item.fields["System.ChangedDate"] = new Date().toISOString();
+}
+const created = () => [...CREATED.values()];
+/** For tests: the team moves a made work item under another parent (its hyperlinks go with it). */
+function reparent(externalId: string, toParent: string) {
+  const item = CREATED.get(externalId);
+  if (!item) throw new Error(`fixture: work item ${externalId} was not made here`);
+  const drop = (p: string) => { const w = WRITTEN.get(p); if (w) w.relations = w.relations.filter((r) => !(r.rel === "System.LinkTypes.Hierarchy-Forward" && r.url.endsWith(`/${externalId}`))); };
+  for (const r of item.relations.filter((x) => x.rel === "System.LinkTypes.Hierarchy-Reverse")) drop(r.url.split("/").pop() as string);
+  const parent = get(toParent), was = WRITTEN.get(toParent);
+  WRITTEN.set(toParent, { rev: Math.max(parent.rev + 1, FIRST_WRITTEN_REV), tags: String(parent.fields["System.Tags"] ?? ""), relations: [...parent.relations, { rel: "System.LinkTypes.Hierarchy-Forward", url: url(externalId), attributes: {} }], history: [...(was?.history || [])] });
+  item.relations = [...item.relations.filter((x) => x.rel !== "System.LinkTypes.Hierarchy-Reverse"), { rel: "System.LinkTypes.Hierarchy-Reverse", url: url(toParent), attributes: {} }];
+  item.rev += 1;
 }
 
 /**
@@ -131,6 +217,6 @@ function touch(externalId: string, tags?: string) {
 }
 /** For tests: what was written to an item, and a clean slate. */
 const written = (externalId: string) => WRITTEN.get(externalId) ?? null;
-const reset = () => { WRITTEN.clear(); Object.assign(fixtureState, { denyWrites: false, loseAnswers: 0, thenUnreachable: false, saveLateMs: 0, failWrites: 0, unreachable: false, throttled: false, gone: [], latencyMs: 0 }); };
+const reset = () => { WRITTEN.clear(); CREATED.clear(); Object.assign(fixtureState, { denyWrites: false, loseAnswers: 0, thenUnreachable: false, saveLateMs: 0, failWrites: 0, unreachable: false, throttled: false, gone: [], latencyMs: 0 }); };
 
-export const ADO_FIXTURES = { org: ORG, project: PROJECT, wiql, batch, get, update, touch, written, reset, state: fixtureState, hookSample: HOOK_SAMPLE };
+export const ADO_FIXTURES = { org: ORG, project: PROJECT, wiql, batch, get, list, update, create, touch, setState, reparent, written, created, reset, state: fixtureState, hookSample: HOOK_SAMPLE };

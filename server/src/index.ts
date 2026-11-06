@@ -16,6 +16,7 @@ import { authMode, entraConfigured } from "./auth/entra.js";
 import { migrateLegacyRoles } from "./auth/users.js";
 import { seedBoards } from "./boards/seed.js";
 import { startWriteback, sweep as writebackSweep } from "./writeback.js";
+import { startRaise, refreshRaised } from "./raise.js";
 
 await migrate();
 backfillHashes();
@@ -37,6 +38,7 @@ if (legacyUsers) console.log(`users: migrated ${legacyUsers} legacy role setting
 console.log("boards:", JSON.stringify(seedBoards("bootstrap")));
 // write-back hears every audit row from here on; it does nothing until a platform admin turns it on
 startWriteback();
+startRaise();
 
 const app = new Hono();
 app.use("*", logger((s) => { if (!s.includes("/assets/")) console.log(s); }));
@@ -82,6 +84,8 @@ const scheduleCollection = () => {
     catch (e) { console.error("scheduled collection failed", e); }
     // a write that failed is tried again here, and what a collection changed (drift, a decision now built) reaches the backlog
     try { await writebackSweep({ actor: "scheduler" }); } catch (e) { console.error("scheduled write-back failed", e); }
+    // what the source now says of the work items raised for conditions: read back as evidence, whether or not write-back is on
+    try { await refreshRaised("scheduler"); } catch (e) { console.error("reading back raised work items failed", e); }
     scheduleCollection();
   }, collectIntervalMinutes() * 60 * 1000);
   t.unref();

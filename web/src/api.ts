@@ -245,7 +245,7 @@ export const LABELS: Record<string, Record<string, string>> = {
   radar: { adopt: "Adopt", trial: "Trial", assess: "Assess", hold: "Hold", retire: "Retire" },
   origin: { derived: "Derived", inferred: "Inferred", human: "Human", ai: "AI", rules: "Rules engine", template: "Template" },
   verification: { verified: "Human verified", unverified: "Not human verified" },
-  work: { Active: "Active", Closed: "Closed", New: "New", Proposed: "Proposed", Resolved: "Resolved", Removed: "Removed" },
+  work: { Active: "Active", Closed: "Closed", Done: "Done", New: "New", Proposed: "Proposed", Resolved: "Resolved", Removed: "Removed" },
   source: { ok: "OK", error: "Error", never: "Never synced", idle: "Idle" },
   source_kind: { "demo-azure": "Demo Azure estate", "demo-ado": "Demo Azure DevOps", azure: "Azure Resource Graph", defender: "Defender for Cloud", azure_policy: "Azure Policy", ado: "Azure DevOps", csv: "CSV import", archimate: "ArchiMate import", manual: "Manual entry" },
   evidence: { pass: "Pass", fail: "Fail", unknown: "Unknown" },

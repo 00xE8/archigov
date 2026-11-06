@@ -6,6 +6,7 @@ import { get, post, put, fmtDate, fmtDateTime, labelFor, sentence, currentUser, 
 import { PageHeader, useLoad, useAiFeatures, VerificationTag, VerifyButton, Markdown, SeverityTag, Empty, OriginTag, LoadError, RLink, Crumbs, StatusTag, DateField, CitationLink, KindTag, targetLink, AreaTag, AreaPositionTag, artefactLink, progressText, progressShort, useDocTitle } from "../components";
 import { Gated, useCan, useAuth } from "../auth";
 import { DeclareModal, newCondition, DeclareCondition } from "../components/DeclareModal";
+import { RaisedWorkItem, RaiseConditionModal, RaiseButton, canRaise } from "../components/RaisedWorkItem";
 
 /** The pre-review's recommendation as a status key: "request changes" → request_changes. */
 const recKey = (s: any) => String(s || "").trim().toLowerCase().replace(/\s+/g, "_");
@@ -23,7 +24,8 @@ const ACTIVE_STAGES = [...OPEN_STAGES, "approved_subject_to_circulation"];
 const TOPICS = ["general", "hosting", "data-store", "integration", "ai-system", "security", "identity", "resilience"];
 const POSITION_HELP: Record<string, string> = { yes: "The area is content; the item can proceed as far as this area is concerned.", no: "The area objects; the item goes back to the submitter as changes requested.", conditional: "Yes if the condition is met. The item stays open until the chair resolves the condition and explains how.", not_my_area: "This area was derived wrongly; it is dropped from the item with your reason." };
 // Event kinds as the server writes them: declare events are named by verb (approve, defer, refer…), a count-mode position is an "approval".
-const EVENT_LABELS: Record<string, string> = { position: "Position recorded", approval: "Approval recorded", position_resolved: "Conditional resolved", dependency_created: "Dependent decision created", dependency_rejected: "Dependent decision rejected", became_effective: "Became effective", consent_declared: "Declared on the consent agenda", approve: "Outcome declared", request_changes: "Changes requested", defer: "Deferred", deferred: "Deferred", refer: "Referred", referred: "Referred", reject: "Rejected", withdraw: "Withdrawn", resubmitted: "Resubmitted", circulation_objection: "Objection in circulation", areas_changed: "Areas changed", patterns_changed: "Patterns claimed", declared: "Outcome declared", decided: "Outcome declared", assessment_requested: "Assessment requested", assessment_completed: "Assessment result recorded", assessment_waived: "Assessment waived" };
+const EVENT_LABELS: Record<string, string> = { position: "Position recorded", approval: "Approval recorded", position_resolved: "Conditional resolved", dependency_created: "Dependent decision created", dependency_rejected: "Dependent decision rejected", became_effective: "Became effective", consent_declared: "Declared on the consent agenda", approve: "Outcome declared", request_changes: "Changes requested", defer: "Deferred", deferred: "Deferred", refer: "Referred", referred: "Referred", reject: "Rejected", withdraw: "Withdrawn", resubmitted: "Resubmitted", circulation_objection: "Objection in circulation", areas_changed: "Areas changed", patterns_changed: "Patterns claimed", declared: "Outcome declared", decided: "Outcome declared", assessment_requested: "Assessment requested", assessment_completed: "Assessment result recorded", assessment_waived: "Assessment waived",
+  condition_raised: "Condition raised in Azure DevOps", condition_work_closed: "Work item closed in Azure DevOps", condition_work_reopened: "Work item reopened in Azure DevOps", condition_work_gone: "Work item no longer in Azure DevOps", condition_work_removed: "Work item removed from the backlog in Azure DevOps", condition_work_back: "Work item back in Azure DevOps" };
 const asAreas = (list: any): { id: string; label: string }[] => (Array.isArray(list) ? list.map((a) => (typeof a === "string" ? { id: a, label: areaLabel(a) } : { id: a.id, label: a.label || areaLabel(a.id) })) : []);
 
 export default function ReviewDetail() {
@@ -284,14 +286,21 @@ export default function ReviewDetail() {
           {((r.conditions || []).length > 0 || active) && <section className="ag-section"><h2>Conditions ({(r.conditions || []).length})</h2>
             {(r.conditions || []).length === 0 ? <Empty>No conditions.</Empty> : (
             <Table size="sm"><TableHead><TableRow><TableHeader>Condition</TableHeader><TableHeader>Area</TableHeader><TableHeader>Owner</TableHeader><TableHeader>Due</TableHeader><TableHeader>Status</TableHeader><TableHeader>Actions</TableHeader></TableRow></TableHead>
-              <TableBody>{r.conditions.map((c: any) => <TableRow key={c.id}>
+              <TableBody>{r.conditions.map((c: any) => <React.Fragment key={c.id}><TableRow>
                 <TableCell className="ag-wrap">{c.text}</TableCell>
                 <TableCell>{c.area ? <AreaTag id={c.area} boardAreas={boardAreas} /> : <span className="ag-muted">—</span>}</TableCell>
                 <TableCell>{c.owner || <span className="ag-muted">unassigned</span>}</TableCell>
                 <TableCell>{fmtDate(c.due_at)}</TableCell>
                 <TableCell><StatusTag kind="condition" value={c.status} /></TableCell>
                 <TableCell>{(c.status === "open" || c.status === "overdue") ? <Gated cap="close_condition" mode="hide"><Button size="sm" kind="ghost" renderIcon={Checkmark} onClick={() => run(c.id, () => post(`/conditions/${c.id}/close`, { status: "met" }))}>Mark Met</Button></Gated> : <span className="ag-muted">—</span>}</TableCell>
-              </TableRow>)}</TableBody></Table>)}
+              </TableRow>
+              {/* where the work is, when the condition was raised in Azure DevOps, or the action to raise it: a line of its own, so the table keeps its width */}
+              {(c.raised || canRaise(r, c)) && <TableRow className="ag-subrow"><TableCell colSpan={6}><div className="ag-row snug">
+                <span className="ag-label ag-muted">Azure DevOps</span>
+                {c.raised && <RaisedWorkItem raised={c.raised} />}
+                <RaiseButton review={r} condition={c} Gated={Gated} onRaise={() => setModal({ kind: "raise", condition: c })} />
+              </div></TableCell></TableRow>}
+              </React.Fragment>)}</TableBody></Table>)}
           </section>}
           {((r.dependencies || []).length > 0 || (r.dependents || []).length > 0 || (active && can.create_dependency)) && (
             <section className="ag-section">
@@ -315,6 +324,7 @@ export default function ReviewDetail() {
         </div>
       </div>
 
+      {modal?.kind === "raise" && <RaiseConditionModal review={r} condition={modal.condition} onClose={() => setModal(null)} onDone={reload} />}
       {modal?.kind === "vote" && (
         <Modal open modalHeading={modal.decision === "approve" ? `Approve ${r.code}` : `Request changes to ${r.code}`} primaryButtonText={modal.decision === "approve" ? "Record approval" : "Request changes"} secondaryButtonText="Cancel" danger={modal.decision === "request_changes"} primaryButtonDisabled={modal.decision === "request_changes" && !modal.comment.trim()} onRequestClose={() => setModal(null)}
           onRequestSubmit={() => { const v = modal; setModal(null); run("vote", () => post(`/reviews/${r.id}/approvals`, { decision: v.decision, comment: v.comment })); }}>

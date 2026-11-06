@@ -55,8 +55,8 @@ export function buildPatch(item: Pick<AdoWorkItemFull, "rev" | "fields" | "relat
 /** A refusal that means "the item moved under you": nothing was saved, and it is worth one more try against the item as it now stands. */
 const stale = (e: any) => [409, 412].includes(e?.status) || (e?.status === 400 && /TF26071|\/rev|test operation/i.test(String(e?.message)));
 /** A failure that is no answer at all: the network, or a server error. After a write, it does not say whether the change was saved. */
-const noAnswer = (e: any) => !e?.refused && (e?.status === undefined || e.status >= 500);
-const failure = (e: any, sent: WriteFailure["sent"]): WriteFailure => Object.assign(e instanceof Error ? e : new Error(String(e)), { sent, unreachable: noAnswer(e) || e?.status === 429 });
+export const noAnswer = (e: any) => !e?.refused && (e?.status === undefined || e.status >= 500);
+export const failure = (e: any, sent: WriteFailure["sent"]): WriteFailure => Object.assign(e instanceof Error ? e : new Error(String(e)), { sent, unreachable: noAnswer(e) || e?.status === 429 });
 
 /**
  * Only the configured project is written to, whatever the backlog query reaches. An item says which project it is in

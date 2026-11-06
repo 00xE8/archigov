@@ -14,6 +14,8 @@ import { declareOutcome, validateDeclare, DeclareIn, takePosition, resolvePositi
 import { ASSESSMENT_TYPES, ASSESSMENT_RESULTS, ASSESSMENT_TEMPLATES, assessmentsOf, assessmentsOfDecision, assessmentById, assessmentLabel, withAssessmentNames, canRequestAssessment, canWaiveAssessment, canProvideAssessment, requestAssessment, reassignAssessment, recordAssessmentResult, recordDecisionAssessmentResult, waiveAssessment, markAssessmentsStale, provideAssessment, updateProvidedAssessment, updateProvidedDecisionAssessment } from "../boards/assessments.js";
 import { artefactById } from "../artefacts.js";
 import { claimedPatterns } from "../boards/fastlane.js";
+import { raiseAvailability, raisedOf, canRaiseCondition, raiseCondition } from "../raise.js";
+import { adoConfigured } from "../ado/client.js";
 
 /**
  * Reviews are typed: a design (an application), a decision (an ADR), a governance artefact (standard, principle,
@@ -68,7 +70,9 @@ reviews.get("/reviews/:id", (c) => {
   const events = db.prepare("SELECT * FROM review_events WHERE review_id=? ORDER BY created_at").all(r.id).map(ev).map((e: any) => ({ ...e, session_code: e.session_id ? sessionCodes.get(e.session_id) ?? null : null })).map((e: any) => e.kind !== "pre_review" ? e
     : { ...e, data: { ...e.data, suggested_conditions: Array.isArray(e.data?.suggested_conditions) ? e.data.suggested_conditions : [],
         findings: (e.data?.findings || []).map((f: any) => ({ ...f, citations: (f.citations || []).map(cite) })) } });
-  const conditions = db.prepare("SELECT * FROM conditions WHERE review_id=? ORDER BY created_at").all(r.id);
+  // each condition with the work item it was raised as in Azure DevOps, if it was, and whether this person may raise it
+  const raising = raiseAvailability(r);
+  const conditions = (db.prepare("SELECT * FROM conditions WHERE review_id=? ORDER BY created_at").all(r.id) as any[]).map((cd) => ({ ...cd, owner_name: userName(cd.owner), raised: raisedOf(cd.id), can_raise: canRaiseCondition(p, r, cd).ok }));
   const decision = r.decision_id ? dec(db.prepare("SELECT * FROM decisions WHERE id=?").get(r.decision_id)) : null;
   const workItems = db.prepare("SELECT * FROM work_items WHERE review_id=?").all(r.id).map(wi);
   const approvals = approvalsOf(r.id).map((a) => ({ ...a, name: userName(a.user_id) }));
@@ -102,6 +106,8 @@ reviews.get("/reviews/:id", (c) => {
       edit_areas: bAreas.length > 0 && !!p && !FINAL_STAGES.includes(r.stage) && ((isSubmitter && open) || role === "chair" || role === "secretary"),
       request_assessment: reqAssess.ok, waive_assessment: waiveAssess.ok,
       declare_outcomes: declareOutcomes(p, r) },
+    // raising a condition as a work item: whether it is possible for this review at all (the reason says why not), its type and where it would go
+    raise: raising.ok ? { available: true, connected: true, type: raising.type, parents: raising.parents } : { available: false, connected: adoConfigured(), reason: raising.reason },
     why: { approve: approve.reason ?? null, request_changes: changes.reason ?? null, decide: decide.reason ?? null,
       record_position: frozen ? `positions are frozen: declared in ${frozen.code}, which is closed` : recordable.length ? null : approve.reason ?? null,
       request_assessment: reqAssess.reason ?? null,
@@ -389,6 +395,23 @@ reviews.post("/reviews/:id/decide", async (c) => {
   return c.json(out);
 });
 reviews.post("/review-events/:id/verify", async (c) => { const body = await c.req.json().catch(() => ({})); setVerification("review_events", c.req.param("id"), body.verified !== false, actorOf(c)); return c.json({ ok: true }); });
+/**
+ * Raise a condition as a work item in Azure DevOps: one click, one work item under the planned change the review covers.
+ * 200 with what it became; 202 when Azure DevOps gave no answer (asking again looks for it before making another);
+ * 409 when it is off, not possible for this review, already raised, or the first request may still be landing.
+ */
+reviews.post("/conditions/:id/raise", async (c) => {
+  const cond = db.prepare("SELECT * FROM conditions WHERE id=?").get(c.req.param("id")) as any;
+  if (!cond) return c.json({ error: "condition not found" }, 404);
+  const r = row(cond.review_id); const p = currentPrincipal();
+  const may = canRaiseCondition(p, r, cond);
+  if (!may.ok) return forbidden(c, "comment", p, may.reason);
+  const b = await c.req.json().catch(() => ({}));
+  try {
+    const out = await raiseCondition(cond, r, actorOf(c), { work_item_id: typeof b.work_item_id === "string" ? b.work_item_id : null, title: typeof b.title === "string" ? b.title : null });
+    return c.json(out, out.ok ? 200 : 202);
+  } catch (e: any) { const status = typeof e?.status === "number" ? e.status : 500; if (status >= 500 && status !== 502) throw e; return c.json({ error: e.message, ...(e.raised ? { raised: e.raised } : {}), ...(e.waiting ? { waiting: true } : {}) }, status as any); }
+});
 reviews.post("/conditions/:id/close", async (c) => {
   const { status } = await c.req.json().catch(() => ({ status: "met" })); const id = c.req.param("id");
   db.prepare("UPDATE conditions SET status=?, closed_at=? WHERE id=?").run(status || "met", nowIso(), id);

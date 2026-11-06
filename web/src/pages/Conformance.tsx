@@ -4,6 +4,7 @@ import { Renew } from "@carbon/icons-react";
 import { get, post, fmtDate, fmtDateTime, shortType, labelFor } from "../api";
 import { PageIntro, useLoad, SeverityTag, Empty, VerificationTag, LoadError, RLink, StatusTag, DateField, FindingEvidence, useTabParam, ExportMenu, EmptyState, KindTag, artefactLink, useDocTitle } from "../components";
 import { Gated, useCan } from "../auth";
+import { RaisedWorkItem } from "../components/RaisedWorkItem";
 
 const TABS = ["findings", "drift", "exceptions", "conditions", "changes", "runs"];
 const uniq = (xs: any[], id: string, name: string) => Array.from(new Map(xs.filter((x) => x[id]).map((x) => [x[id], x[name]])).entries()).sort((a, b) => String(a[1]).localeCompare(String(b[1])));
@@ -90,8 +91,8 @@ export default function Conformance() {
           </TabPanel>
           <TabPanel>
             {d.conditions.length === 0 ? <Empty>No open conditions. Conditions are attached when a review is approved with conditions; each has an owner and a due date.</Empty> : (
-              <Table size="sm"><TableHead><TableRow><TableHeader>Review</TableHeader><TableHeader>Condition</TableHeader><TableHeader>Owner</TableHeader><TableHeader>Due</TableHeader><TableHeader>Status</TableHeader></TableRow></TableHead>
-                <TableBody>{d.conditions.map((c: any) => <TableRow key={c.id}><TableCell><RLink to={`/reviews/${c.review_id}`}>{c.review_code}</RLink><div className="ag-muted ag-label">{c.review_title}</div></TableCell><TableCell>{c.text}</TableCell><TableCell>{c.owner}</TableCell><TableCell>{fmtDate(c.due_at)}</TableCell><TableCell><StatusTag kind="condition" value={c.status} /></TableCell></TableRow>)}</TableBody></Table>)}
+              <Table size="sm"><TableHead><TableRow><TableHeader>Review</TableHeader><TableHeader>Condition</TableHeader><TableHeader>Owner</TableHeader><TableHeader>Due</TableHeader><TableHeader>Status</TableHeader>{d.conditions.some((c: any) => c.raised) && <TableHeader>Work Item</TableHeader>}</TableRow></TableHead>
+                <TableBody>{d.conditions.map((c: any) => <TableRow key={c.id}><TableCell><RLink to={`/reviews/${c.review_id}`}>{c.review_code}</RLink><div className="ag-muted ag-label">{c.review_title}</div></TableCell><TableCell>{c.text}</TableCell><TableCell>{c.owner}</TableCell><TableCell>{fmtDate(c.due_at)}</TableCell><TableCell><StatusTag kind="condition" value={c.status} /></TableCell>{d.conditions.some((x: any) => x.raised) && <TableCell><RaisedWorkItem raised={c.raised} /></TableCell>}</TableRow>)}</TableBody></Table>)}
           </TabPanel>
           <TabPanel>
             <p className="ag-body ag-mb-05">Backlog items whose content changed after the design linked to them was approved. The approval may no longer cover what is being built.</p>

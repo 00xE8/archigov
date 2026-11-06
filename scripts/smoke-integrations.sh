@@ -245,6 +245,35 @@ def m():
     return f"off by default; author 403; preview of {len(pv['items'])} and the access check write nothing; on → {on['sweep']['written']} written and the tag back through the feed; second sweep 0; off → {off['cleanup']['removed']} tags removed; all audited"
 step("m  write-back: off by default, the admin's switch, writes once, tags gone when turned off", m)
 
+# ---------- n. a condition raised as a work item ----------
+def n():
+    s, revs = get("/reviews", headers={"x-user": "m.hughes"}); rev = next(x for x in revs if x["code"] == "REV-0006")
+    s, r = get(f"/reviews/{rev['id']}", headers={"x-user": "m.hughes"}); cond = r["conditions"][0]
+    assert r["raise"]["available"] is False and "is off" in r["raise"]["reason"] and cond["raised"] is None and cond["can_raise"], f"off by default, and the review says why: {r['raise']}"
+    s, no = post(f"/conditions/{cond['id']}/raise", {}, headers={"x-user": "m.hughes"}); assert s == 409, f"nothing is raised while it is off: {s} {no}"
+    s, on = post("/sources/ado/writeback", {"enabled": True, "link": False, "stage": False, "comment": False, "raise": True}); assert s == 200 and on["raise"] and on["raise_type"] == "Task", f"{s} {on}"
+    s, t = post("/sources/ado/writeback/test"); assert s == 200 and t.get("create", {}).get("ok"), f"the access check also asks whether a Task can be created: {t}"
+    s, no = post(f"/conditions/{cond['id']}/raise", {}); assert s == 403, f"a platform admin switches it on and raises nothing: {s} {no}"
+    s, no = post(f"/conditions/{cond['id']}/raise", {}, headers={"x-user": "s.patel"}); assert s == 403, f"an onlooker does not raise: {s} {no}"
+    s, up = post(f"/conditions/{cond['id']}/raise", {}, headers={"x-user": "m.hughes"}); assert s == 200 and up["ok"] and up["raised"]["type"] == "Task" and up["raised"]["state"] == "New", f"{s} {up}"
+    ext = up["raised"]["external_id"]
+    mutations.append(f"condition of REV-0006 raised as Task {ext} on the fixture backlog, closed there, then marked met by the chair")
+    s, again = post(f"/conditions/{cond['id']}/raise", {}, headers={"x-user": "m.hughes"}); assert s == 409 and again["raised"]["external_id"] == ext, f"asking again makes nothing: {s} {again}"
+    # the team closes it: the service hook says so, and the feed takes that as the work item's state, not as a planned change
+    hook = {"eventType": "workitem.updated", "resource": {"workItemId": int(ext), "rev": 2, "fields": {"System.State": {"oldValue": "New", "newValue": "Closed"}}, "revision": {"rev": 2, "fields": {"System.WorkItemType": "Task"}}}}
+    s, h = post("/hooks/ado", hook, headers={"x-archigov-hook-secret": SECRET}); assert s == 200 and h.get("outcome") == "claimed", f"{s} {h}"
+    s, items = get("/work-items"); assert not any(str(x["external_id"]) == str(ext) for x in items), "a raised work item is not a planned change"
+    s, r = get(f"/reviews/{rev['id']}", headers={"x-user": "j.duduka"}); c = next(x for x in r["conditions"] if x["id"] == cond["id"])
+    assert c["raised"]["closed"] and c["status"] in ("open", "overdue"), f"closed there is evidence here; the condition is still the board's: {c}"
+    s, w = get("/me/work", headers={"x-user": "j.duduka"}); assert any(x["id"] == cond["id"] for x in w["confirm"]), f"the chair is prompted to confirm: {w['confirm']}"
+    s, met = post(f"/conditions/{cond['id']}/close", {"status": "met"}, headers={"x-user": "j.duduka"}); assert s == 200, f"{s} {met}"
+    s, w = get("/me/work", headers={"x-user": "j.duduka"}); assert not w["confirm"], w["confirm"]
+    s, off = post("/sources/ado/writeback", {"enabled": False}); assert s == 200 and off["raised"] == 1, f"{s} {off}"
+    s, au = get("/audit?q=writeback:&limit=1000"); acts = {a["action"] for a in (au if isinstance(au, list) else au.get("rows", au.get("items", [])))}
+    for want in ["writeback:raise", "writeback:raised_closed"]: assert want in acts, f"{want} missing from the audit log: {sorted(a for a in acts if a.startswith('writeback'))}"
+    return f"off by default with the reason; admin and onlooker 403; raised as Task {ext}, once; closed by a hook → evidence and a prompt to the chair, who marks it met; audited"
+step("n  a condition raised as a work item: a person's click, read back as evidence, met by the chair", n)
+
 # ---------- summary ----------
 passed = sum(1 for _, ok in results if ok); failed = len(results) - passed
 print(f"\n{passed} passed, {failed} failed  ({BASE})")

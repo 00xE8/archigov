@@ -204,7 +204,8 @@ function SourceTile({ k, row, busy, run, hookUrl }: { k: Kind; row: any; busy: s
  */
 function WriteBack({ wb, onMsg, onDone }: { wb: any; onMsg: (m: Msg) => void; onDone: () => void }) {
   const canManage = useCan("manage_platform");
-  const saved = React.useMemo(() => ({ enabled: !!wb.enabled, link: !!wb.link, stage: !!wb.stage, comment: !!wb.comment, tag_prefix: String(wb.tag_prefix || "arch:") }), [wb.enabled, wb.link, wb.stage, wb.comment, wb.tag_prefix]);
+  const saved = React.useMemo(() => ({ enabled: !!wb.enabled, link: !!wb.link, stage: !!wb.stage, comment: !!wb.comment, raise: !!wb.raise, tag_prefix: String(wb.tag_prefix || "arch:"), raise_type: String(wb.raise_type || "Task") }),
+    [wb.enabled, wb.link, wb.stage, wb.comment, wb.raise, wb.tag_prefix, wb.raise_type]);
   const [form, setForm] = React.useState(saved);
   React.useEffect(() => { setForm(saved); }, [saved]);
   const [busy, setBusy] = React.useState<"save" | "test" | "preview" | null>(null);
@@ -212,7 +213,8 @@ function WriteBack({ wb, onMsg, onDone }: { wb: any; onMsg: (m: Msg) => void; on
   const [preview, setPreview] = React.useState<any>(null);
   const [off, setOff] = React.useState<{ remove: boolean } | null>(null); // the confirmation for turning it off
   const prefixOk = /^[A-Za-z0-9][A-Za-z0-9._ -]{0,18}[:/-]$/.test(form.tag_prefix);
-  const nothing = form.enabled && !form.link && !form.stage && !form.comment;
+  const typeOk = /^\p{L}[\p{L}\p{N} ._-]{0,48}$/u.test(form.raise_type.trim());
+  const nothing = form.enabled && !form.link && !form.stage && !form.comment && !form.raise;
   const dirty = JSON.stringify(form) !== JSON.stringify(saved);
   const locked = !canManage || !wb.available;
   // on, with its source gone (credentials removed at a redeploy): nothing can be written, and turning it off must still work
@@ -221,7 +223,9 @@ function WriteBack({ wb, onMsg, onDone }: { wb: any; onMsg: (m: Msg) => void; on
   const send = async (body: Record<string, unknown>) => {
     setBusy("save");
     try {
-      const r: any = await post("/sources/ado/writeback", body);
+      // a type left in the field while its box is unticked is not being asked for: the saved one stands
+      const sent = "raise_type" in body ? { ...body, raise_type: body.raise ? String(body.raise_type).trim() : saved.raise_type } : body;
+      const r: any = await post("/sources/ado/writeback", sent);
       onMsg(r.sweep ? { kind: r.sweep.failed ? "warning" : "success", text: `Write-back is on: ${n(r.sweep.written, "work item")} updated${r.sweep.failed ? `, ${r.sweep.failed} could not be written and will be tried again` : ""}` }
         : !r.enabled && body.enabled === false ? (r.cleanup?.failed
           ? { kind: "warning", text: `Write-back is off. Stage tags were removed from ${n(r.cleanup.removed, "work item")}; ${r.cleanup.failed} could not be reached and still ${r.cleanup.failed === 1 ? "carries its" : "carry their"} tag. Remove Stage Tags tries again.` }
@@ -259,6 +263,8 @@ function WriteBack({ wb, onMsg, onDone }: { wb: any; onMsg: (m: Msg) => void; on
         </CheckboxGroup>
         <TextInput id="wb-prefix" labelText="Tag Prefix" helperText="Keeps archigov's stage tags apart from the team's own, so they can be found, styled and taken off again." value={form.tag_prefix}
           invalid={!prefixOk} invalidText="2 to 20 characters, starting with a letter or digit and ending in : / or - (for example arch:)" disabled={locked || !form.enabled || !form.stage} onChange={(e) => setForm({ ...form, tag_prefix: e.target.value })} />
+        {form.raise && <TextInput id="wb-raise-type" labelText="Work Item Type for Conditions" helperText="What a condition is raised as: a type of your project's process, such as Task, Issue or Product Backlog Item. Test Write Access checks that it can be created." value={form.raise_type}
+          invalid={!typeOk} invalidText="The name of a work item type, for example Task" disabled={locked || !form.enabled} onChange={(e) => setForm({ ...form, raise_type: e.target.value })} />}
         {(() => { const inUse = preview?.prefix_in_use ?? wb.prefix_in_use ?? 0; return inUse > 0 && (
           <InlineNotification kind="warning" lowContrast hideCloseButton title="This prefix is already in use"
             subtitle={`${n(inUse, "work item")} ${inUse === 1 ? "carries" : "carry"} a tag starting with ${preview ? form.tag_prefix : wb.tag_prefix} that archigov did not write (as of the last sync). Those tags are left alone, and would be read beside the stage tags: choose another prefix if that would confuse.`} />); })()}
@@ -268,7 +274,7 @@ function WriteBack({ wb, onMsg, onDone }: { wb: any; onMsg: (m: Msg) => void; on
         </div>
         {nothing && <InlineNotification kind="warning" lowContrast hideCloseButton title="Nothing would be written" subtitle="Choose at least one kind of write, or turn write-back off." />}
         <div className="ag-row snug">
-          {busy === "save" ? <InlineLoading description="Saving and writing" /> : <Gated cap="manage_platform"><Button size="md" renderIcon={Save} disabled={(!wb.available && form.enabled) || !dirty || !prefixOk || nothing} onClick={() => (saved.enabled && !form.enabled ? setOff({ remove: true }) : send(form))}>Save</Button></Gated>}
+          {busy === "save" ? <InlineLoading description="Saving and writing" /> : <Gated cap="manage_platform"><Button size="md" renderIcon={Save} disabled={(!wb.available && form.enabled) || !dirty || !prefixOk || (form.raise && !typeOk) || nothing} onClick={() => (saved.enabled && !form.enabled ? setOff({ remove: true }) : send(form))}>Save</Button></Gated>}
           {busy === "test" ? <InlineLoading description="Checking write access" /> : <Gated cap="manage_platform"><Button size="md" kind="tertiary" renderIcon={Connect} disabled={!wb.available || !!busy} onClick={doTest}>Test Write Access</Button></Gated>}
           {busy === "preview" ? <InlineLoading description="Working out what would be written" /> : <Button size="md" kind="tertiary" disabled={!wb.available || !!busy || !prefixOk} onClick={doPreview}>Preview</Button>}
           {wb.enabled && wb.errors > 0 && busy !== "save" && <Gated cap="manage_platform"><Button size="md" kind="tertiary" disabled={!wb.available || !!busy} onClick={retry}>Try Again Now</Button></Gated>}
@@ -276,9 +282,11 @@ function WriteBack({ wb, onMsg, onDone }: { wb: any; onMsg: (m: Msg) => void; on
           {!wb.enabled && wb.tagged > 0 && busy !== "save" && <Gated cap="manage_platform"><Button size="md" kind="tertiary" disabled={!wb.available || !!busy} onClick={() => send({ enabled: false, remove_tags: true })}>Remove Stage Tags</Button></Gated>}
         </div>
         {test && <InlineNotification kind={test.ok ? "success" : "error"} lowContrast hideCloseButton title={test.ok ? "This identity can edit work items" : "This identity cannot edit work items"} subtitle={test.ok ? `Checked against work item ${test.checked}; nothing was saved.` : test.error} />}
+        {test?.create && <InlineNotification kind={test.create.ok ? "success" : "error"} lowContrast hideCloseButton title={test.create.ok ? `This identity can create a ${test.create.type}` : `This identity cannot create a ${test.create.type}`} subtitle={test.create.ok ? "Asked without creating one." : test.create.error} />}
       </div>
       <p className="ag-muted ag-label ag-mt-05">
         {wb.enabled ? `On · ${wb.shown} of ${n(wb.in_scope, "work item")} carry something archigov wrote${wb.last_written_at ? ` · last write ${fmtDateTime(wb.last_written_at)}` : ""}` : `Off · nothing is written to Azure DevOps${wb.shown ? `; links and comments from when it was on remain on ${n(wb.shown, "work item")}` : ""}${wb.tagged ? `; ${n(wb.tagged, "work item")} still ${wb.tagged === 1 ? "carries" : "carry"} a stage tag` : ""}`}
+        {wb.raised ? ` · ${n(wb.raised, "condition")} raised as ${wb.raised === 1 ? "a work item" : "work items"}` : ""}
         {wb.errors ? ` · ${n(wb.errors, "work item")} could not be written${wb.last_error ? ` (${wb.last_error.external_id}: ${String(wb.last_error.error).slice(0, 120)})` : ""}; they are tried again automatically` : ""}
       </p>
       {preview && (preview.items.length === 0 ? <p className="ag-body ag-muted ag-mt-05">Nothing would be written now: every work item in scope already shows what these switches ask for.</p> : (

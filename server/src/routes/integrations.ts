@@ -6,7 +6,9 @@ import { testAzure, syncDefender, syncPolicy, syncAdo } from "../sync.js";
 import { testAdo, handleAdoHook } from "../ado/sync.js";
 import { importResourcesCsv, importRelationsCsv, importArtefactsCsv, csvTemplate } from "../importers/csv.js";
 import { importArchimate } from "../importers/archimate.js";
-import { writebackStatus, writebackSettings, saveWritebackSettings, sweep, removeStageTags, forgetFailures, testWriteAccess, TAG_PREFIX, type WritebackSettings } from "../writeback.js";
+import { writebackStatus, writebackSettings, saveWritebackSettings, sweep, removeStageTags, forgetFailures, testWriteAccess, TAG_PREFIX, RAISE_TYPE, type WritebackSettings } from "../writeback.js";
+import { testRaiseAccess, refreshRaised } from "../raise.js";
+import { adoConfigured } from "../ado/client.js";
 import { audit } from "../db.js";
 
 /** Azure (Resource Graph test, Defender, Azure Policy), Azure DevOps (test, backfill, service hook) and the file importers. */
@@ -49,15 +51,18 @@ integrations.post("/hooks/ado", async (c) => {
 // Off until a platform admin turns it on (every mutation here is unlisted in ROUTE_RULES, so it needs manage_platform);
 // the status is readable by anyone who can read, like the other source summaries: it holds no secret.
 integrations.get("/sources/ado/writeback", (c) => c.json(writebackStatus()));
-const WritebackIn = z.object({ enabled: z.boolean().optional(), link: z.boolean().optional(), stage: z.boolean().optional(), comment: z.boolean().optional(),
-  tag_prefix: z.string().optional(), remove_tags: z.boolean().optional() });
+const WritebackIn = z.object({ enabled: z.boolean().optional(), link: z.boolean().optional(), stage: z.boolean().optional(), comment: z.boolean().optional(), raise: z.boolean().optional(),
+  tag_prefix: z.string().optional(), raise_type: z.string().optional(), remove_tags: z.boolean().optional() });
 integrations.post("/sources/ado/writeback", async (c) => {
   const b = WritebackIn.parse(await c.req.json().catch(() => ({})));
   const before = writebackSettings(), status = writebackStatus();
   if (b.tag_prefix !== undefined && !TAG_PREFIX.test(b.tag_prefix)) return c.json({ error: "tag_prefix is 2 to 20 characters, starts with a letter or digit and ends in : / or - (for example arch:), so archigov's tags stay apart from the team's own" }, 400);
-  const next: WritebackSettings = { enabled: b.enabled ?? before.enabled, link: b.link ?? before.link, stage: b.stage ?? before.stage, comment: b.comment ?? before.comment, tag_prefix: b.tag_prefix ?? before.tag_prefix };
+  const raiseType = b.raise_type === undefined ? undefined : b.raise_type.trim();
+  if (raiseType !== undefined && !RAISE_TYPE.test(raiseType)) return c.json({ error: "raise_type is the name of a work item type in the project, for example Task, Issue or Product Backlog Item" }, 400);
+  const next: WritebackSettings = { enabled: b.enabled ?? before.enabled, link: b.link ?? before.link, stage: b.stage ?? before.stage, comment: b.comment ?? before.comment, raise: b.raise ?? before.raise,
+    tag_prefix: b.tag_prefix ?? before.tag_prefix, raise_type: raiseType ?? before.raise_type };
   if (next.enabled && !status.available) return c.json({ error: "Azure DevOps is not connected: write-back needs the backlog source it writes to" }, 409);
-  if (next.enabled && !next.link && !next.stage && !next.comment) return c.json({ error: "turn on at least one of link, stage and comment, or turn write-back off" }, 400);
+  if (next.enabled && !next.link && !next.stage && !next.comment && !next.raise) return c.json({ error: "turn on at least one of link, stage, comment and raise, or turn write-back off" }, 400);
   const actor = actorOf(c), turningOff = before.enabled && !next.enabled;
   // Saved first: once it is off no sweep starts, and one in flight stops at its next item, so the clean-up below is
   // not undone behind its back.
@@ -72,7 +77,13 @@ integrations.post("/sources/ado/writeback", async (c) => {
   const first = next.enabled ? await sweep({ actor, force: true }) : null;
   return c.json({ ok: true, ...writebackStatus(), ...(cleanup ? { cleanup } : {}), ...(first ? { sweep: { written: first.written, failed: first.failed, unchanged: first.unchanged } } : {}) });
 });
-integrations.post("/sources/ado/writeback/test", async (c) => { const r = await testWriteAccess(); audit(actorOf(c), "writeback:test", "settings", null, { ok: r.ok }); return c.json(r); });
+integrations.post("/sources/ado/writeback/test", async (c) => {
+  const r = await testWriteAccess();
+  // with conditions as work items on, creating one of the configured type is asked too (validateOnly: nothing is made)
+  const create = writebackSettings().raise && adoConfigured() ? await testRaiseAccess() : null;
+  audit(actorOf(c), "writeback:test", "settings", null, { ok: r.ok, ...(create ? { create: create.ok, type: create.type } : {}) });
+  return c.json({ ...r, ...(create ? { create } : {}) });
+});
 /** What would be written now, with the saved switches or with the ones in the query (the form's, before saving). Sends nothing. */
 integrations.get("/sources/ado/writeback/preview", async (c) => {
   const q = c.req.query(); const flag = (k: string) => (q[k] === undefined ? undefined : q[k] === "1" || q[k] === "true");
@@ -83,7 +94,10 @@ integrations.get("/sources/ado/writeback/preview", async (c) => {
 });
 integrations.post("/sources/ado/writeback/run", async (c) => {
   if (!writebackSettings().enabled) return c.json({ error: "write-back is off" }, 409);
-  return c.json(await sweep({ actor: actorOf(c), force: true }));
+  const swept = await sweep({ actor: actorOf(c), force: true });
+  // and what the source now says of the work items raised for conditions
+  const raised = await refreshRaised(actorOf(c)).catch(() => null);
+  return c.json({ ...swept, ...(raised ? { raised } : {}) });
 });
 
 // ---------- importers ----------
