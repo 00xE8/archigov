@@ -4,6 +4,10 @@ All notable changes to archigov are documented here. The format follows [Keep a 
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-11-06
+
+The decision lifecycle, shown where the work is planned. Every planned change now carries a lifecycle stage, and three optional capabilities carry it to Azure DevOps and back: the stage, links and outcomes on the work item; a condition of an approval raised as a work item on a person's click; and a review asked for by putting a tag on a work item. All three are off until a platform admin turns them on, and none has yet been verified against a live Azure DevOps organisation. Three migrations (m023 to m025), applied on start; the API only gains fields and routes.
+
 ### Added
 
 - **A live demo** at [demo.archigov.com](https://demo.archigov.com), linked from the README and the landing page's header: the released UI on the demo estate, with View as persona switching, search and the exports. It is read-only, with no server or AI behind it, and is refreshed at every release.
