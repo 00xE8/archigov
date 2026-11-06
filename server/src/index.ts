@@ -17,6 +17,7 @@ import { migrateLegacyRoles } from "./auth/users.js";
 import { seedBoards } from "./boards/seed.js";
 import { startWriteback, sweep as writebackSweep } from "./writeback.js";
 import { startRaise, refreshRaised } from "./raise.js";
+import { startRequests, reconcileRequests } from "./requests.js";
 
 await migrate();
 backfillHashes();
@@ -39,6 +40,7 @@ console.log("boards:", JSON.stringify(seedBoards("bootstrap")));
 // write-back hears every audit row from here on; it does nothing until a platform admin turns it on
 startWriteback();
 startRaise();
+startRequests();
 
 const app = new Hono();
 app.use("*", logger((s) => { if (!s.includes("/assets/")) console.log(s); }));
@@ -82,6 +84,8 @@ const scheduleCollection = () => {
   const t = setTimeout(async () => {
     try { const r = await syncAll("scheduler"); if (r.length) console.log("scheduled collection:", JSON.stringify(r.map((x: any) => ({ source: x.source, ok: x.ok, stats: x.stats, error: x.error })))); }
     catch (e) { console.error("scheduled collection failed", e); }
+    // what the collection brought of asks for a review (a tag put on, a tag taken off, a review opened since)
+    try { reconcileRequests("scheduler"); } catch (e) { console.error("reconciling review requests failed", e); }
     // a write that failed is tried again here, and what a collection changed (drift, a decision now built) reaches the backlog
     try { await writebackSweep({ actor: "scheduler" }); } catch (e) { console.error("scheduled write-back failed", e); }
     // what the source now says of the work items raised for conditions: read back as evidence, whether or not write-back is on

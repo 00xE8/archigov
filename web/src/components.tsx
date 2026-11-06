@@ -25,12 +25,12 @@ const STATUS: Record<string, Record<string, Meta>> = {
   risk: { high: { type: "red", icon: WarningFilled }, medium: { type: "gray", icon: WarningAlt }, low: { type: "gray", icon: Information } },
   work: { Active: { type: "blue", icon: InProgress }, Closed: { type: "gray", icon: CheckmarkOutline }, Done: { type: "gray", icon: CheckmarkOutline }, New: { type: "gray", icon: Pending }, Proposed: { type: "gray", icon: Pending }, Resolved: { type: "green", icon: CheckmarkFilled }, Removed: { type: "gray", icon: Undefined } },
   // a planned change's place in the decision lifecycle (server stage.ts): the hues are the review stages' own, magenta where a person has to act, red where what runs differs from what was approved
-  change_stage: { needs_decision: { type: "magenta", icon: WarningAltFilled }, decision_proposed: { type: "blue", icon: Pending }, in_review: { type: "blue", icon: InProgress }, changes_requested: { type: "magenta", icon: WarningAltFilled }, approved_with_conditions: { type: "teal", icon: CheckmarkOutline }, approved: { type: "green", icon: CheckmarkFilled }, rejected: { type: "red", icon: CloseFilled }, changed_after_approval: { type: "magenta", icon: WarningAltFilled }, drift: { type: "red", icon: WarningFilled }, built_as_approved: { type: "green", icon: CheckmarkFilled } },
+  change_stage: { needs_decision: { type: "magenta", icon: WarningAltFilled }, review_requested: { type: "cyan", icon: Pending }, decision_proposed: { type: "blue", icon: Pending }, in_review: { type: "blue", icon: InProgress }, changes_requested: { type: "magenta", icon: WarningAltFilled }, approved_with_conditions: { type: "teal", icon: CheckmarkOutline }, approved: { type: "green", icon: CheckmarkFilled }, rejected: { type: "red", icon: CloseFilled }, changed_after_approval: { type: "magenta", icon: WarningAltFilled }, drift: { type: "red", icon: WarningFilled }, built_as_approved: { type: "green", icon: CheckmarkFilled } },
   source: { ok: { type: "green", icon: CheckmarkFilled }, error: { type: "red", icon: ErrorFilled }, never: { type: "gray", icon: Pending } },
   evidence: { pass: { type: "green", icon: CheckmarkFilled }, fail: { type: "red", icon: ErrorFilled }, unknown: { type: "gray", icon: Unknown } },
   llm: { configured: { type: "green", icon: CheckmarkFilled }, missing: { type: "gray", icon: Information } },
   origin: { derived: { type: "cool-gray", icon: Cloud }, inferred: { type: "cyan", icon: Idea }, human: { type: "green", icon: User }, ai: { type: "purple", icon: MachineLearningModel }, rules: { type: "teal", icon: Rule }, template: { type: "gray", icon: Template } },
-  attention: { open: { type: "red", icon: ErrorFilled }, overdue: { type: "red", icon: WarningFilled }, expired: { type: "red", icon: WarningFilled }, decision: { type: "magenta", icon: WarningAltFilled }, changed: { type: "magenta", icon: WarningAltFilled }, changed_in_review: { type: "magenta", icon: WarningAltFilled }, region: { type: "red", icon: WarningFilled } },
+  attention: { open: { type: "red", icon: ErrorFilled }, overdue: { type: "red", icon: WarningFilled }, expired: { type: "red", icon: WarningFilled }, decision: { type: "magenta", icon: WarningAltFilled }, changed: { type: "magenta", icon: WarningAltFilled }, changed_in_review: { type: "magenta", icon: WarningAltFilled }, review_requested: { type: "cyan", icon: Pending }, region: { type: "red", icon: WarningFilled } },
   run: { done: { type: "green", icon: CheckmarkFilled }, error: { type: "red", icon: ErrorFilled }, running: { type: "blue", icon: InProgress } },
   configured: { configured: { type: "green", icon: CheckmarkFilled }, missing: { type: "gray", icon: Information }, fixtures: { type: "blue", icon: Information } },
   check: { ok: { type: "green", icon: CheckmarkFilled }, failed: { type: "red", icon: ErrorFilled }, unknown: { type: "gray", icon: Unknown } },
@@ -237,6 +237,7 @@ const EXPLAIN: Record<string, Record<string, string>> = {
   },
   change_stage: {
     needs_decision: "An open change of a kind that warrants an architecture decision, with no decision and no review covering it yet.",
+    review_requested: "The delivery team asked for a review of this change by tagging it at its source; no review has been opened for it yet.",
     decision_proposed: "A decision covering this change has been proposed and has not been decided.",
     in_review: "The review covering this change is with its board; no outcome is in effect yet.",
     changes_requested: "The board sent the review covering this change back to its submitter.",
@@ -250,6 +251,7 @@ const EXPLAIN: Record<string, Record<string, string>> = {
   attention: {
     decision: "An open epic with no linked architecture decision.",
     changed: "The backlog item changed materially after its review was approved.",
+    review_requested: "The delivery team asked for another review of this change by tagging it at its source. The outcome beside it still stands until a new review is opened.",
     changed_in_review: "The item's title or description changed after its review was submitted and before any approval: the board is looking at the earlier text until the change is acknowledged.",
     region: "Deployed outside the home regions set under Settings · General; advisory — findings come only from adopted rules.",
   },
