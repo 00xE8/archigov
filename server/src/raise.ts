@@ -4,7 +4,7 @@ import type { Principal } from "./auth/context.js";
 import { adoConfigured } from "./ado/client.js";
 import { adoSource, claimWorkItems, type SourceItem } from "./ado/sync.js";
 import { readWorkItem } from "./ado/write.js";
-import { raiseWorkItem, findRaised, raisedStates, checkCreateAccess, type RaiseRequest, type RaisedWorkItem } from "./ado/raise.js";
+import { raiseWorkItem, findRaised, raisedStates, checkCreateAccess, webAddressFollowing, type RaiseRequest, type RaisedWorkItem } from "./ado/raise.js";
 import { writebackSettings, WRITEBACK_TIMING } from "./writeback.js";
 import { addEvent } from "./boards/declare.js";
 import { boardById, memberRole } from "./boards/workflow.js";
@@ -177,15 +177,16 @@ export async function raiseCondition(cond: any, review: any, actor: string, opts
 }
 
 /** What the source now says of one raised work item, applied to its row: its state, and the moment it closed, reopened or was taken out. */
-function apply(row: any, now: { rev: number; state?: string | null; title?: string | null; type?: string | null; changed_at?: string | null; deleted?: boolean }, actor: string) {
+function apply(row: any, now: { rev: number; state?: string | null; title?: string | null; type?: string | null; changed_at?: string | null; rest_url?: string | null; deleted?: boolean }, actor: string) {
   if (now.deleted) return markGone(row, actor);
   if (row.rev != null && now.rev != null && now.rev < row.rev) return; // an older word than the one already on record
   const state = now.state ?? row.state, was = !!row.state && WORK_DONE.includes(row.state), is = !!state && WORK_DONE.includes(state);
   const changed = state !== row.state, back = !!row.gone;
   const at = now.changed_at || nowIso();
   // closed_at is the source's change date when the closure was first seen here: the day the team called it done, as near as the source says
-  db.prepare("UPDATE condition_work_items SET state=?, rev=?, title=COALESCE(?, title), type=COALESCE(?, type), state_changed_at=CASE WHEN ? THEN ? ELSE state_changed_at END, closed_at=?, seen_at=?, gone=0 WHERE condition_id=?")
-    .run(state, now.rev ?? row.rev, now.title ?? null, now.type ?? null, changed ? 1 : 0, at, is ? (was && row.closed_at ? row.closed_at : at) : null, nowIso(), row.condition_id);
+  // the address a person opens follows the source: an organisation renamed moves it
+  db.prepare("UPDATE condition_work_items SET state=?, rev=?, title=COALESCE(?, title), type=COALESCE(?, type), url=COALESCE(?, url), state_changed_at=CASE WHEN ? THEN ? ELSE state_changed_at END, closed_at=?, seen_at=?, gone=0 WHERE condition_id=?")
+    .run(state, now.rev ?? row.rev, now.title ?? null, now.type ?? null, webAddressFollowing(row.url, now.rest_url ?? null), changed ? 1 : 0, at, is ? (was && row.closed_at ? row.closed_at : at) : null, nowIso(), row.condition_id);
   const cond = conditionOf(row.condition_id);
   if (!cond) return;
   const tell = (kind: string, action: string) => {

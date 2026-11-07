@@ -4,6 +4,16 @@ All notable changes to archigov are documented here. The format follows [Keep a 
 
 ## [Unreleased]
 
+### Fixed
+
+- **Azure DevOps: the feed reads again what it wrote to and what it was asked about** ([docs/features/ado-review-requests.md](docs/features/ado-review-requests.md), [docs/features/ado-write-back.md](docs/features/ado-write-back.md)). Found on the first run against a live organisation (7 Nov 2026): a work item outside the backlog query (a story tagged `arch:review`) was in the feed through its tag alone, so once the team took the tag off no query returned it, the backfill never saw the removal, and the ask stood in the authors' queue with `arch:review-requested` still on the item — until a service hook would have delivered the change. Now every work item with an open ask, and every work item write-back has a record of, is read again by id at each backfill (`[System.Id] IN (…)`, asking for nothing the backlog query already returned), whatever that query returns and whether or not write-back is still on, so a withdrawn ask is withdrawn, and the copy here never goes on showing a tag the clean-up took off. An extra query the service refuses is counted on the run (`extra_queries_failed`) instead of vanishing.
+- **Azure DevOps: an organisation renamed.** The source's name and configuration follow the environment (an organisation renamed, or a query changed, is not a new source); a planned change's address is refreshed even when its revision did not move; and the address of a work item raised for a condition follows the organisation the service answers from on the next read-back (the old name answers 404 at once).
+- **Azure DevOps: a collection run by hand reads back the raised work items**, as the scheduled one already did.
+
+### Changed
+
+- **Azure DevOps verification.** Write-back, conditions as work items and review requests were verified against a live Azure DevOps organisation on 7 Nov 2026 (a Scrum project, under a PAT); each feature page says what was confirmed — among it that the stale-revision refusal is HTTP 412 `VS403351` (not `TF26071`), that the service sorts tags on save, and that comments are attributed to the PAT's owner — and what remains (the service hook's payloads, the Entra identity).
+
 ## [0.4.0] — 2026-11-06
 
 The decision lifecycle, shown where the work is planned. Every planned change now carries a lifecycle stage, and three optional capabilities carry it to Azure DevOps and back: the stage, links and outcomes on the work item; a condition of an approval raised as a work item on a person's click; and a review asked for by putting a tag on a work item. All three are off until a platform admin turns them on, and none has yet been verified against a live Azure DevOps organisation. Three migrations (m023 to m025), applied on start; the API only gains fields and routes.

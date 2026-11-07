@@ -52,7 +52,7 @@ export function buildPatch(item: Pick<AdoWorkItemFull, "rev" | "fields" | "relat
   return { ops: ops.length ? [{ op: "test", path: "/rev", value: item.rev } as JsonPatchOp, ...ops] : [], tags, added_tags: added, removed_tags: removed, added_links: links.map((l) => l.url), commented: !!w.comment };
 }
 
-/** A refusal that means "the item moved under you": nothing was saved, and it is worth one more try against the item as it now stands. */
+/** A refusal that means "the item moved under you": nothing was saved, and it is worth one more try against the item as it now stands. Live (7 Nov 2026) it is a 412 with `VS403351: Test Operation for path /rev failed…`; the 400 forms are kept for older servers. */
 const stale = (e: any) => [409, 412].includes(e?.status) || (e?.status === 400 && /TF26071|\/rev|test operation/i.test(String(e?.message)));
 /** A failure that is no answer at all: the network, or a server error. After a write, it does not say whether the change was saved. */
 export const noAnswer = (e: any) => !e?.refused && (e?.status === undefined || e.status >= 500);

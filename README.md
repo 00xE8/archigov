@@ -311,5 +311,5 @@ In-app multi-tenancy and rate limiting on `/hooks` and `/auth` are also not in t
 
 **Verification status:**
 - Resource Graph, Defender for Cloud and Azure Policy collection has been verified against a live tenant. That tenant was small, so paging and quota handling at volume are not yet proven.
-- Entra sign-in and Azure DevOps (the feed and the optional write-back) are verified on recorded fixtures only.
+- Azure DevOps (the feed, the optional write-back, a condition raised as a work item and a review asked for by tag) has been verified against a live organisation under a PAT (7 Nov 2026); the service hook and the Entra identity are verified on recorded fixtures only, as is Entra sign-in.
 - The DORA CSV column codes follow the ITS annex as reproduced in the EBA draft. Confirm them against the Official Journal text before external use.

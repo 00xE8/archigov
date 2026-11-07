@@ -1,7 +1,7 @@
 import { db, j, nowIso, audit, getSetting, setSetting, onAudit } from "./db.js";
 import { appBaseUrl } from "./auth/session.js";
 import { adoConfigured } from "./ado/client.js";
-import { adoSource } from "./ado/sync.js";
+import { adoSource, feedAlso, readAgainWiql } from "./ado/sync.js";
 import { writeToWorkItem, readWorkItem, showsWrite, checkWriteAccess, type WorkItemWrite } from "./ado/write.js";
 import type { AdoWorkItemFull } from "./ado/client.js";
 import { CHANGE_SELECT, CHANGE_STAGES, STAGE_LABEL, changeStage, decisionStandings, requestOpen, setRequestsHeard, type ChangeStage } from "./stage.js";
@@ -412,4 +412,20 @@ export function scheduleSweep(delayMs = 1500) {
 /** Hear every audit row (db.onAudit): whatever changed a stage wrote one. Write-back's own rows are not news to it. */
 export function startWriteback() {
   onAudit((row) => { if (!row.action.startsWith("writeback:")) scheduleSweep(); });
+  keepReadingWritten();
+}
+/**
+ * What archigov has written to, it keeps reading: a tag on the item claims to be current and the record of it is
+ * judged against the item, so an item the backlog query no longer returns (tagged into the feed, or dropped out of
+ * the query since) is read again by id at every backfill, whether write-back is on or has since been turned off —
+ * the copy here must not go on showing a tag the clean-up took off (seen live, 7 Nov 2026).
+ */
+export function keepReadingWritten() {
+  feedAlso((seen) => {
+    const src = adoSource(false);
+    if (!src) return [];
+    // the same scope as the sweep's: a Removed item is still read while a tag or an unanswered document is on record for it
+    const rows = db.prepare("SELECT w.external_id FROM work_item_writeback b JOIN work_items w ON w.id=b.work_item_id WHERE w.source_id=? AND (COALESCE(w.state,'') <> 'Removed' OR b.tag IS NOT NULL OR b.pending_json IS NOT NULL)").all(src.id) as { external_id: string }[];
+    return readAgainWiql(rows.map((r) => r.external_id), seen);
+  });
 }

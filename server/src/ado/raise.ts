@@ -113,9 +113,21 @@ export async function checkCreateAccess(type: string, parentExternalId: string):
  * not in the answer (whether it leaves it out or answers null in its place): that alone does not say it is gone, since
  * an identity that lost its access gets the same.
  */
-export async function raisedStates(ids: (number | string)[]): Promise<Map<string, { rev: number; state: string | null; title: string | null; type: string | null; changed_at: string | null }>> {
-  const out = new Map<string, { rev: number; state: string | null; title: string | null; type: string | null; changed_at: string | null }>();
+export async function raisedStates(ids: (number | string)[]): Promise<Map<string, { rev: number; state: string | null; title: string | null; type: string | null; changed_at: string | null; rest_url: string | null }>> {
+  const out = new Map<string, { rev: number; state: string | null; title: string | null; type: string | null; changed_at: string | null; rest_url: string | null }>();
   const items = await workItemsBatch(ids.map(Number), ["System.Id", "System.State", "System.Title", "System.WorkItemType", "System.ChangedDate"]);
-  for (const i of items) if (i && i.id != null) out.set(String(i.id), { rev: i.rev, state: i.fields?.["System.State"] ?? null, title: i.fields?.["System.Title"] ?? null, type: i.fields?.["System.WorkItemType"] ?? null, changed_at: i.fields?.["System.ChangedDate"] ?? null });
+  for (const i of items) if (i && i.id != null) out.set(String(i.id), { rev: i.rev, state: i.fields?.["System.State"] ?? null, title: i.fields?.["System.Title"] ?? null, type: i.fields?.["System.WorkItemType"] ?? null, changed_at: i.fields?.["System.ChangedDate"] ?? null, rest_url: i.url ?? null });
   return out;
+}
+
+/**
+ * The web address a person opens, moved to the organisation the service now answers from. Neither the batch nor the
+ * list endpoint returns `_links`, but their REST `url` names the organisation, and a renamed organisation moves every
+ * address with it (seen live, 7 Nov 2026: the old name answered 404 at once). Any other host, or no REST url, leaves
+ * the address as it was.
+ */
+export function webAddressFollowing(html: string | null, restUrl: string | null): string | null {
+  if (!html || !restUrl) return html;
+  const org = /^https:\/\/dev\.azure\.com\/([^/?#]+)\//i.exec(restUrl)?.[1];
+  return org ? html.replace(/^(https:\/\/dev\.azure\.com\/)[^/?#]+\//i, (_, head: string) => `${head}${org}/`) : html;
 }

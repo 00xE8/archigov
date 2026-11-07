@@ -37,10 +37,11 @@ if (process.env.SEED_DEMO !== "false" && !getSetting("demo.loaded")) {
 const legacyUsers = migrateLegacyRoles();
 if (legacyUsers) console.log(`users: migrated ${legacyUsers} legacy role setting(s)`);
 console.log("boards:", JSON.stringify(seedBoards("bootstrap")));
-// write-back hears every audit row from here on; it does nothing until a platform admin turns it on
+// write-back hears every audit row from here on; it does nothing until a platform admin turns it on. The order sets
+// the feed's extra queries: the request tag query first, so the by-id re-reads that follow ask for nothing it returned
+startRequests();
 startWriteback();
 startRaise();
-startRequests();
 
 const app = new Hono();
 app.use("*", logger((s) => { if (!s.includes("/assets/")) console.log(s); }));
