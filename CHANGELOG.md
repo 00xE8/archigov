@@ -4,6 +4,10 @@ All notable changes to archigov are documented here. The format follows [Keep a 
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-11-07
+
+The Azure DevOps features of 0.4.0, verified against a live organisation, and the one defect that check found fixed: the feed now reads again what it wrote to and what it was asked about, so an ask withdrawn at the source is withdrawn here without waiting for a service hook. No migration; the API only gains a run statistic.
+
 ### Fixed
 
 - **Azure DevOps: the feed reads again what it wrote to and what it was asked about** ([docs/features/ado-review-requests.md](docs/features/ado-review-requests.md), [docs/features/ado-write-back.md](docs/features/ado-write-back.md)). Found on the first run against a live organisation (7 Nov 2026): a work item outside the backlog query (a story tagged `arch:review`) was in the feed through its tag alone, so once the team took the tag off no query returned it, the backfill never saw the removal, and the ask stood in the authors' queue with `arch:review-requested` still on the item — until a service hook would have delivered the change. Now every work item with an open ask, and every work item write-back has a record of, is read again by id at each backfill (`[System.Id] IN (…)`, asking for nothing the backlog query already returned), whatever that query returns and whether or not write-back is still on, so a withdrawn ask is withdrawn, and the copy here never goes on showing a tag the clean-up took off. An extra query the service refuses is counted on the run (`extra_queries_failed`) instead of vanishing.
