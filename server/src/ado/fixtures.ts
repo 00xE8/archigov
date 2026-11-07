@@ -13,6 +13,14 @@ const url = (id: number | string) => `https://dev.azure.com/${ORG}/_apis/wit/wor
 
 /** What ADO returns for the backlog WIQL; and, for a query on a tag, the work items made here that carry it. */
 function wiql(query: string) {
+  const byId = /\[System\.Id\]\s+IN\s*\(([\d,\s]*)\)/i.exec(query)?.[1];
+  if (byId != null) {
+    // the named items that exist, whatever their type, tags or state; an id the project does not hold is passed over (as the service does, seen live 7 Nov 2026)
+    if (fixtureState.unreachable) throw new Error("fetch failed");
+    const ids = byId.split(",").map((x) => x.trim()).filter(Boolean);
+    const items = ids.map((id) => CREATED.get(id) ?? fixtureWorkItem(id)).filter((i): i is NonNullable<typeof i> => !!i && !fixtureState.gone.includes(String(i.id)));
+    return { queryType: "flat", queryResultType: "workItem", asOf: CHANGED, columns: [], workItems: items.map((i) => ({ id: i.id, url: i.url })) };
+  }
   const tag = /\[System\.Tags\]\s+CONTAINS\s+'((?:[^']|'')*)'/i.exec(query)?.[1]?.replace(/''/g, "'");
   if (tag) {
     if (fixtureState.unreachable) throw new Error("fetch failed");
@@ -202,7 +210,7 @@ function update(externalId: string, ops: { op: string; path: string; value?: any
   if (fixtureState.denyWrites) throw Object.assign(new Error("Azure DevOps 403: not authorised — check the PAT / Entra identity and its access level"), { status: 403 });
   const next: Written = { rev: item.rev, tags: String(item.fields["System.Tags"] ?? ""), relations: item.relations, history: [...(WRITTEN.get(externalId)?.history || [])] };
   for (const o of ops) {
-    if (o.op === "test" && o.path === "/rev") { if (Number(o.value) !== item.rev) throw Object.assign(new Error(`Azure DevOps 412: TF26071: this work item has been changed by someone else since you opened it (rev ${item.rev}, expected ${o.value})`), { status: 412 }); }
+    if (o.op === "test" && o.path === "/rev") { if (Number(o.value) !== item.rev) throw Object.assign(new Error(`Azure DevOps 412: VS403351: Test Operation for path /rev failed, value ${item.rev} was not equal to test value ${o.value}.`), { status: 412 }); }
     else if (o.op === "add" && o.path === "/fields/System.Tags") next.tags = mergeTags(next.tags ?? "", String(o.value ?? ""));
     else if (o.op === "replace" && o.path === "/fields/System.Tags") next.tags = String(o.value ?? "");
     else if (o.op === "add" && o.path === "/fields/System.History") next.history.push(String(o.value ?? ""));

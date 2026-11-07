@@ -255,7 +255,7 @@ test("a write that fails is recorded once, tried again later, and never blocks t
 test("a stale revision is retried against the item as it now stands", async () => {
   const before = await getWorkItem("1070");
   await patchWorkItem("1070", [{ op: "test", path: "/rev", value: before.rev }, { op: "add", path: "/fields/System.Tags", value: "decommission; arch:needs-decision; someone-elses" }]);
-  await assert.rejects(() => patchWorkItem("1070", [{ op: "test", path: "/rev", value: before.rev }, { op: "add", path: "/fields/System.History", value: "x" }]), /TF26071/);
+  await assert.rejects(() => patchWorkItem("1070", [{ op: "test", path: "/rev", value: before.rev }, { op: "add", path: "/fields/System.History", value: "x" }]), /412.*VS403351: Test Operation for path \/rev failed/);
   const r = await writeToWorkItem("1070", { addTags: ["arch:in-review"], removeTags: ["arch:needs-decision"] });
   assert.equal(r.changed, true);
   assert.deepEqual(tagsOf("1070"), ["decommission", "someone-elses", "arch:in-review"], "a tag someone added meanwhile is kept");

@@ -22,13 +22,14 @@ const call = async (method: string, p: string, user: string, body?: any) => {
   const r = await app.request(p, { method, headers: { "x-user": user, "content-type": "application/json" }, body: body !== undefined ? JSON.stringify(body) : undefined });
   return { status: r.status, body: await r.json().catch(() => null) as any };
 };
-const { WRITEBACK_TIMING, writebackSettings, writebackStatus, sweep } = await import("../src/writeback.js");
+const { WRITEBACK_TIMING, writebackSettings, writebackStatus, sweep, keepReadingWritten } = await import("../src/writeback.js");
 WRITEBACK_TIMING.settleAfterMs = 0;
 const { startRequests, reconcileRequests } = await import("../src/requests.js");
 const { ADO_FIXTURES } = await import("../src/ado/fixtures.js");
 const { splitTags } = await import("../src/ado/write.js");
 const { handleAdoHook } = await import("../src/ado/sync.js");
 startRequests();
+keepReadingWritten(); // after the request queries, as the server orders them; startWriteback also starts the sweeps, which these tests run by hand
 
 const admin = (body: Record<string, unknown>) => call("POST", "/sources/ado/writeback", "ops.admin", body);
 const sync = () => call("POST", "/sources/ado/sync", "ops.admin");
@@ -139,6 +140,45 @@ test("taking the tag off withdraws an ask nobody has answered; putting it back a
   await retag("1070", ["decommission"]);
 });
 
+test("an ask on a work item the backlog query never returns is withdrawn by the next backfill when the tag comes off — not only by a hook", async () => {
+  // 1101 is a story: the backlog query (epics and features) does not reach it; it is in the feed through its tag alone
+  assert.equal((await row("1101")).review_requested, true);
+  await sweep({ force: true });
+  assert.deepEqual(tagsOf("1101"), ["arch:review", "arch:review-requested"]);
+  await retag("1101", []); // the team takes the tag off: no query of the feed returns the story any more
+  const w = await row("1101");
+  assert.equal(w.review_requested, false, "the open ask is read again by id, so the tag's absence is seen (live, 7 Nov 2026, it was not: the ask stood until a hook)");
+  assert.equal(w.lifecycle_stage, null); assert.ok(requests("1101")[0].withdrawn_at);
+  await sweep({ force: true });
+  assert.deepEqual(tagsOf("1101"), [], "the stage tag came off with the ask");
+  // and a story nothing was ever written to (as when only Review Requests is on): the open ask alone makes it read again
+  ADO_FIXTURES.addItem({ external_id: "1102", type: "User Story", title: "Rate limit the public API", tags: ["arch:review"], description: "Partners hit the API too hard." });
+  assert.equal((await sync()).status, 200);
+  assert.equal((await row("1102")).review_requested, true);
+  assert.equal((db.prepare("SELECT count(*) n FROM work_item_writeback b JOIN work_items w ON w.id=b.work_item_id WHERE w.external_id='1102'").get() as any).n, 0, "nothing written to it, so no record of a write");
+  await retag("1102", []);
+  assert.equal((await row("1102")).review_requested, false, "withdrawn all the same"); assert.ok(requests("1102")[0].withdrawn_at);
+});
+
+test("what archigov has written to, it keeps reading: a story no query returns is read again at every backfill", async () => {
+  await retag("1101", ["team-portal"]); // the team's own tag, put on at the source
+  assert.deepEqual(JSON.parse(item("1101").tags_json), ["team-portal"], "archigov's copy follows the item it once wrote to, although no query returns it");
+});
+
+test("the re-read asks for nothing the backfill already holds, and a refused extra query shows on the run", async () => {
+  const { readAgainWiql } = await import("../src/ado/sync.js");
+  assert.deepEqual(readAgainWiql(["1051", "1101", "x", "1051"], new Set([1051])), ["SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project AND [System.Id] IN (1101)"], "ids the backlog query returned, and ids that are not numbers, are left out; one query, no duplicates");
+  assert.deepEqual(readAgainWiql(["1051"], new Set([1051])), [], "nothing to read again, no query");
+  assert.equal(readAgainWiql(Array.from({ length: 450 }, (_, i) => String(2000 + i))).length, 3, "cut to the batch size");
+  ADO_FIXTURES.state.unreachable = true; // the extra queries fail; the backlog's own query still answers
+  try {
+    const r = await sync();
+    assert.equal(r.status, 200); assert.ok(r.body.ok, JSON.stringify(r.body));
+    assert.ok(r.body.extra_queries_failed >= 1, `the run says what it could not ask: ${JSON.stringify(r.body)}`);
+  } finally { ADO_FIXTURES.state.unreachable = false; }
+  const r = await sync(); assert.equal(r.body.extra_queries_failed, undefined, "nothing to report when every query answers");
+});
+
 test("a change whose review is in flight is not asked about; one a board has already spoken on can be asked about again", async () => {
   // 1077 is in review: asking now is answered by that review, there and then
   await retag("1077", ["third-party", "data", "arch:review"]);
@@ -179,7 +219,7 @@ test("an ask answered by a review that is then withdrawn stands again, and the n
   const again = await row("1101");
   assert.equal(again.review_requested, true, "the ask was not met after all"); assert.equal(again.lifecycle_stage, "review_requested");
   assert.ok((await call("GET", "/me/work", "s.patel")).body.requested.some((x: any) => x.work_item.external_id === "1101"));
-  assert.equal(requests("1101").length, 2);
+  assert.equal(requests("1101").length, 3, "the first ask was withdrawn above; this round's ask, and the one standing again after the withdrawal");
   await sweep({ force: true });
   assert.equal(history("1101").length, told, "reopening an ask is not a comment");
   const second = await openReview("1101");
@@ -213,4 +253,7 @@ test("turned off, asks are no longer shown or listened for; what was said stays"
   await admin({ request: true });
   assert.equal((await row("1070")).review_requested, true, "still asked for when it is listened for again");
   await admin({ enabled: false });
+  // off, the record of what was written remains, and so does the reading: the copy here never goes on showing what the clean-up took off
+  await retag("1101", ["team-portal", "later"]);
+  assert.deepEqual(JSON.parse(item("1101").tags_json), ["team-portal", "later"], "a story no query returns is still read again with write-back off");
 });

@@ -3,7 +3,7 @@
 import { db, uid, nowIso, audit } from "../db.js";
 import { hashOf, listElements } from "../model.js";
 import { fixturesEnabled } from "../azure/client.js";
-import { adoConfig, adoConfigured, wiql, workItemsBatch, ADO_FIELDS } from "./client.js";
+import { adoConfig, adoConfigured, adoEnvConfigured, wiql, workItemsBatch, ADO_FIELDS, ADO_BATCH_MAX } from "./client.js";
 
 /**
  * Azure DevOps as a feed, never a gate. Work items are upserted by (source, external id); their content hash is
@@ -17,10 +17,15 @@ export function adoSource(create = true): any {
   const demo = fixturesEnabled() ? (db.prepare("SELECT * FROM sources WHERE kind='demo-ado'").get() as any) : null;
   if (demo) return demo;
   let src = db.prepare("SELECT * FROM sources WHERE kind='ado'").get() as any;
+  const { org, project, wiql: q } = adoConfig();
+  const name = `Azure DevOps (${org}/${project})`, config = JSON.stringify({ org, project, wiql: q });
   if (!src && create) {
-    const { org, project, wiql: q } = adoConfig();
-    src = { id: uid(), kind: "ado", name: `Azure DevOps (${org}/${project})` };
-    db.prepare("INSERT INTO sources(id,kind,name,config_json,status,created_at) VALUES (?,?,?,?,?,?)").run(src.id, "ado", src.name, JSON.stringify({ org, project, wiql: q }), "idle", nowIso());
+    src = { id: uid(), kind: "ado", name, config_json: config };
+    db.prepare("INSERT INTO sources(id,kind,name,config_json,status,created_at) VALUES (?,?,?,?,?,?)").run(src.id, "ado", name, config, "idle", nowIso());
+  } else if (src && adoEnvConfigured() && (src.name !== name || src.config_json !== config)) {
+    // the row names the source as configured now: an organisation renamed, or a query changed, is not a new source
+    db.prepare("UPDATE sources SET name=?, config_json=? WHERE id=?").run(name, config, src.id);
+    src = { ...src, name, config_json: config };
   }
   return src;
 }
@@ -74,10 +79,24 @@ const claimed = (w: SourceItem) => claimers.some((fn) => { try { return fn(w); }
 /**
  * Work items the feed takes in beside its configured query: something else in the product may want items the query
  * does not reach (those a team tagged to ask for a review, whatever their type). Each source of such queries is asked
- * at every backfill; a query the service will not run is passed over, and the backlog query itself is never affected.
+ * in turn at every backfill, told which ids the backfill already holds so it asks for nothing twice; a query the
+ * service will not run is passed over (counted on the run), and the backlog query itself is never affected.
  */
-const also: (() => string[])[] = [];
-export const feedAlso = (fn: () => string[]) => { also.push(fn); };
+const also: ((seen: ReadonlySet<number>) => string[])[] = [];
+export const feedAlso = (fn: (seen: ReadonlySet<number>) => string[]) => { also.push(fn); };
+/**
+ * Queries that read the named work items again, whatever the backlog query now says of them: an item the feed only
+ * reached through a tag, or a query it has since dropped out of, is otherwise never read again, so a tag taken off or a
+ * state changed there would go unseen until a service hook delivers it. Ids the backfill already holds are left out
+ * (in the common case the backlog query returned them, and the re-read costs nothing); ids are numeric at the service,
+ * so anything else is left out too; and the list is cut to the batch size so a query stays short.
+ */
+export const readAgainWiql = (externalIds: string[], seen: ReadonlySet<number> = new Set()) => {
+  const ids = [...new Set(externalIds.map(String).filter((x) => /^\d+$/.test(x) && !seen.has(Number(x))))];
+  const out: string[] = [];
+  for (let i = 0; i < ids.length; i += ADO_BATCH_MAX) out.push(`SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project AND [System.Id] IN (${ids.slice(i, i + ADO_BATCH_MAX).join(",")})`);
+  return out;
+};
 
 export type UpsertOutcome = { outcome: "created" | "updated" | "unchanged" | "skipped_old_rev"; material_change: boolean; id: string };
 
@@ -95,7 +114,10 @@ export function upsertWorkItem(sourceId: string, w: AdoWorkItem, actor: string, 
     audit(actor, "work_item_created", "work_items", id, { external_id: m.external_id, rev: m.rev, via });
     return { outcome: "created", material_change: false, id };
   }
-  if (m.rev != null && cur.rev != null && m.rev <= cur.rev) return { outcome: "skipped_old_rev", material_change: !!cur.material_change, id: cur.id };
+  if (m.rev != null && cur.rev != null && m.rev <= cur.rev) {
+    if (m.url && m.url !== cur.url) db.prepare("UPDATE work_items SET url=? WHERE id=?").run(m.url, cur.id); // the address moves without a revision (an organisation renamed)
+    return { outcome: "skipped_old_rev", material_change: !!cur.material_change, id: cur.id };
+  }
   const changed = cur.content_hash !== m.content_hash;
   const material = cur.approved_hash != null && cur.approved_hash !== m.content_hash;
   db.prepare(`UPDATE work_items SET type=?, title=?, state=?, area=?, description=?, tags_json=?, application_id=COALESCE(application_id, ?), content_hash=?, changed_at=?,
@@ -113,12 +135,16 @@ export async function syncAdo(actor: string) {
   db.prepare("INSERT INTO runs(id,kind,source_id,started_at) VALUES (?,?,?,?)").run(runId, "sync", src.id, nowIso());
   try {
     const { wiql: query } = adoConfig();
-    const ids = (await wiql(query)).workItems.map((w) => w.id);
-    for (const q of also.flatMap((fn) => { try { return fn(); } catch { return []; } })) {
-      try { for (const w of (await wiql(q)).workItems) if (!ids.includes(w.id)) ids.push(w.id); } catch { /* an extra query the service refuses must not stop the backlog's own */ }
+    const seen = new Set<number>((await wiql(query)).workItems.map((w) => w.id));
+    let extraFailed = 0;
+    for (const fn of also) {
+      for (const q of (() => { try { return fn(seen); } catch { return []; } })()) {
+        // an extra query the service refuses must not stop the backlog's own; but one that fails loses what it was asked for (a withdrawal, a tag put on), so the run says so
+        try { for (const w of (await wiql(q)).workItems) seen.add(w.id); } catch (e: any) { extraFailed++; console.warn(`Azure DevOps backfill: an extra query was not answered (${String(e?.message || e).slice(0, 160)})`); }
+      }
     }
-    const items = (await workItemsBatch(ids)).filter((w) => !claimed({ id: w.id, rev: w.rev, fields: w.fields }));
-    const stats = { fetched: items.length, created: 0, updated: 0, unchanged: 0, skipped_old_rev: 0, material_changes: 0 };
+    const items = (await workItemsBatch([...seen])).filter((w) => !claimed({ id: w.id, rev: w.rev, fields: w.fields }));
+    const stats = { fetched: items.length, created: 0, updated: 0, unchanged: 0, skipped_old_rev: 0, material_changes: 0, ...(extraFailed ? { extra_queries_failed: extraFailed } : {}) };
     db.transaction(() => { for (const w of items) { const r = upsertWorkItem(src.id, w, actor, "sync"); stats[r.outcome]++; if (r.material_change) stats.material_changes++; } })();
     db.prepare("UPDATE sources SET status='ok', last_sync_at=?, last_error=NULL WHERE id=?").run(nowIso(), src.id);
     db.prepare("UPDATE runs SET finished_at=?, status='done', stats_json=? WHERE id=?").run(nowIso(), JSON.stringify(stats), runId);

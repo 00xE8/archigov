@@ -28,7 +28,10 @@ integrations.post("/sources/ado/test", async (c) => c.json(await testAdo()));
 integrations.post("/sources/ado/sync", async (c) => {
   try {
     const r = await syncAdo(actorOf(c));
-    if (r.ok) reconcileRequests(actorOf(c)); // what the backfill brought of asks for a review
+    if (r.ok) {
+      reconcileRequests(actorOf(c)); // what the backfill brought of asks for a review
+      await refreshRaised(actorOf(c)).catch(() => null); // and what the source now says of the work items raised for conditions, as the scheduler does
+    }
     return c.json(r, r.ok ? 200 : 502);
   } catch (e: any) { return fail(c, e); }
 });

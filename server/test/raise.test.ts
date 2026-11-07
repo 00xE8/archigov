@@ -423,3 +423,28 @@ test("turned off again: nothing more can be raised, and what was raised goes on 
   await admin({ enabled: false });
   assert.equal((await refreshRaised("test")).checked >= 1, true, "reading back needs no switch");
 });
+
+test("the address a person opens follows the organisation the service answers from; other hosts are left alone", async () => {
+  const { webAddressFollowing } = await import("../src/ado/raise.js");
+  const html = "https://dev.azure.com/jacint/342d7bf6-10d7-4d5e-bf8e-113ab66a94d5/_workitems/edit/5";
+  assert.equal(webAddressFollowing(html, "https://dev.azure.com/archigovcustomer/_apis/wit/workItems/5"), "https://dev.azure.com/archigovcustomer/342d7bf6-10d7-4d5e-bf8e-113ab66a94d5/_workitems/edit/5", "renamed: every address moves with it");
+  assert.equal(webAddressFollowing(html, "https://dev.azure.com/jacint/_apis/wit/workItems/5"), html, "same organisation: unchanged");
+  assert.equal(webAddressFollowing(html, "https://ado.example.local/tfs/_apis/wit/workItems/5"), html, "another host says nothing about dev.azure.com addresses");
+  assert.equal(webAddressFollowing(html, null), html); assert.equal(webAddressFollowing(null, "https://dev.azure.com/x/_apis/wit/workItems/5"), null);
+});
+
+test("the read-back moves a stored address to the organisation the service answers from, and a collection run by hand reads back too", async () => {
+  const open = conds().find((c) => c.status === "open" && raisedOf(c.id)?.external_id && !raisedOf(c.id)!.gone)!;
+  const ext = raisedOf(open.id)!.external_id as string;
+  const was = raisedOf(open.id)!.url as string;
+  assert.match(was, new RegExp(`^https://dev\\.azure\\.com/${ADO_FIXTURES.org}/`));
+  // the organisation was renamed: the address on record still names the old one
+  db.prepare("UPDATE condition_work_items SET url=? WHERE condition_id=?").run(was.replace(`/${ADO_FIXTURES.org}/`, "/old-name/"), open.id);
+  assert.match(raisedOf(open.id)!.url as string, /old-name/);
+  await refreshRaised("test");
+  assert.equal(raisedOf(open.id)!.url, was, "the REST url of the read-back names the organisation, and the address follows it");
+  // a collection run by hand (POST /sources/ado/sync) reads back as the scheduler does: a reopened work item is seen
+  ADO_FIXTURES.setState(ext, "To Do");
+  const r = await call("POST", "/sources/ado/sync", "ops.admin"); assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal(raisedOf(open.id)!.closed, false, "reopened at the source, seen by the collection without a sweep or a hook");
+});

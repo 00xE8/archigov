@@ -1,6 +1,6 @@
 import { db, j, uid, nowIso, audit, onAudit } from "./db.js";
 import type { Principal } from "./auth/context.js";
-import { adoSource, feedAlso } from "./ado/sync.js";
+import { adoSource, feedAlso, readAgainWiql } from "./ado/sync.js";
 import { writebackSettings, requestTagOf } from "./writeback.js";
 import { DONE_STATES } from "./stage.js";
 
@@ -103,7 +103,9 @@ function reconcileSoon() {
 
 /**
  * "Any work item": the backlog query covers epics and features, and a team may tag a story. While asks are heard, the
- * feed also takes in the work items of the project that carry the request tag, whatever their type.
+ * feed also takes in the work items of the project that carry the request tag, whatever their type — and reads every
+ * item with an open ask again, by id: such an item may be in the feed through its tag alone, and the tag coming off (the
+ * withdrawal) is the one change that tag query can never show (seen live, 7 Nov 2026: the ask stayed open until a hook).
  *
  * And an ask is answered the moment a review is opened for its item, not at the next collection: whatever touches a
  * work item, or opens or closes a review, is followed by a reconciliation (its own rows and write-back's are not news).
@@ -116,5 +118,12 @@ export function startRequests() {
   feedAlso(() => {
     const { on, tag } = requestSettings();
     return on ? [`SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project AND [System.Tags] CONTAINS '${tag.replace(/'/g, "''")}' AND [System.State] <> 'Removed' ORDER BY [System.ChangedDate] DESC`] : [];
+  });
+  feedAlso((seen) => { // after the tag query: an open ask whose tag is still on was just returned, and is not asked for again
+    const { on } = requestSettings();
+    const src = adoSource(false);
+    if (!on || !src) return [];
+    const open = db.prepare("SELECT w.external_id FROM review_requests q JOIN work_items w ON w.id=q.work_item_id WHERE w.source_id=? AND q.answered_at IS NULL AND q.withdrawn_at IS NULL").all(src.id) as { external_id: string }[];
+    return readAgainWiql(open.map((r) => r.external_id), seen);
   });
 }
