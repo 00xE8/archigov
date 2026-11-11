@@ -2,7 +2,7 @@ import React from "react";
 import { Button, Tile, InlineNotification, Modal, TextInput, Dropdown, Tag, DismissibleTag, Tooltip, ToastNotification, SkeletonText, Toggle, Select, SelectItem } from "@carbon/react";
 import { Login, Logout, UserAvatar, User, Switcher, Group, Settings as SettingsIcon, Add } from "@carbon/icons-react";
 import { get, post, setAuthMode, currentUser, setCurrentUser, USER_TYPE_ITEMS, NO_SYSTEM_ROLE, BOARD_ROLES, BOARD_ROLE_LABELS, NEED_FOR, CAP_ALIAS, AUTHOR_CAPS, normaliseUserType, labelFor } from "./api";
-import { BrandMark } from "./brand";
+import { BrandLogo } from "./brand";
 import { LegalLine } from "./components/About";
 
 export type Caps = Record<string, boolean>;
@@ -94,7 +94,7 @@ export function SignIn({ loginUrl }: { loginUrl: string }) {
   return (
     <div className="ag-signin">
       <Tile className="ag-signin-card">
-        <h1 className="ag-brand"><BrandMark />archigov</h1>
+        <h1 className="ag-brand"><BrandLogo /></h1>
         <p className="ag-body">The architecture model is derived from your cloud estate and backlog, not drawn by hand. Standards, decisions and reviews are the human layer on top of it. Nothing here asserts compliance: it shows evidence and who stands behind it.</p>
         {err && <InlineNotification kind="error" lowContrast hideCloseButton title="Sign-in did not complete" subtitle={err} />}
         <div><Button size="lg" renderIcon={Login} onClick={() => { window.location.href = loginUrl; }}>Sign in with Microsoft Entra ID</Button></div>

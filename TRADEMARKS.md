@@ -1,7 +1,8 @@
 # Trademark policy
 
-The name **archigov** and the **plumb mark** (the stem and bob in [docs/assets/logo.svg](docs/assets/logo.svg)) are
-trademarks of Skygge Ltd, which maintains the project. They are not registered.
+The name **archigov** and the **record mark** (the outlined card with its title line and the block behind it, in [docs/assets/logo.svg](docs/assets/logo.svg)) are
+trademarks of Skygge Ltd, which maintains the project. They are not registered. The record mark replaced the plumb mark (a stem and a bob) in
+November 2026; the plumb mark remains Skygge Ltd's, and this policy covers it in the same way.
 
 archigov's code is open source: the core under the GNU AGPL-3.0, the packs, templates, connectors and importers under
 the Apache License 2.0. Neither licence grants any right to use the name or the mark: the Apache License says so in
@@ -25,12 +26,12 @@ Ask at hello@archigov.com.
 
 ## Not allowed
 
-- **Calling a modified version archigov,** or giving it the plumb mark. A fork, or a build with changes beyond
+- **Calling a modified version archigov,** or giving it the record mark. A fork, or a build with changes beyond
   configuration, needs its own name and logo. It must still keep the licence's legal notices: the copyright line, the
   licence and the offer of its source (AGPL-3.0 §5(d) and §13; set `SOURCE_URL` to your source).
 - **Suggesting endorsement or partnership** that does not exist, or that a hosted service is run by Skygge Ltd when it
   is not.
-- Names or marks confusingly similar to archigov or the plumb mark.
+- Names or marks confusingly similar to archigov or the record mark.
 
 This policy is not legal advice and does not change either licence. Skygge Ltd may update it, and the current version
 is the one in this file on `main`.

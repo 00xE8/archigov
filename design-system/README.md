@@ -9,6 +9,19 @@ Carbon is an open-source design system for products and digital experiences: a p
 - **No emoji, no exclamation marks** in UI copy. Status is carried by an icon plus a word.
 - Placeholder text only shows an example (“e.g. Billing API”); never put instructions or required information there — it fails contrast by design (see `text-placeholder`).
 
+## Logo and identity
+
+Brand identity v1.0 (November 2026) replaces the plumb mark. The guidelines PDF and every file live in the private repository's `site/brand/`; in this repository the logo is drawn by `BrandLogo` in `web/src/brand.tsx` and the favicon is `web/public/favicon.svg`.
+
+- **The logo** is the record mark and the name, set side by side. The mark is one record with everything it rests on behind it: an outlined card (the record), a title line (what it says), and a block behind (the standards, patterns and earlier decisions it rests on).
+- **The name** is always `archigov`, lowercase. It is outlined in the logo files (IBM Plex Sans SemiBold, tracking −0.045em): never retype it as the logo.
+- **Lockups**: horizontal (the default), stacked (square or narrow spaces), the mark alone (icons, avatars, where the name is nearby), the wordmark alone (where the mark would be too small to read).
+- **Colourways**: on dark (primary: Gray 10 ink, Blue 50 block, on Gray 100), on light (Gray 100 ink, the same blue), one colour white (on blue, on colour, over photographs), one colour black (single-colour print).
+- **Identity colours**: Ground `#161616` (Gray 100), Ink `#F4F4F4` (Gray 10), archigov blue `#4589FF` (Blue 50, the block), Outcome green `#42BE65` (a good outcome only, never in the logo), Muted `#C6C6C6`, Layer `#262626`, Hairline `#393939`. Blue on Ink is 3.0:1: graphics only, never text.
+- **Clear space** is a quarter of the mark's height on every side. **Minimum size** on screen is a 20px-high mark in the logo and 16px for the mark alone; below that use the favicon files.
+- **Never** stretch or squash it, change its colours, rotate or tilt it, add shadows, glows or outlines, put it where it cannot be read, or retype or capitalise the name.
+- The product UI keeps its Carbon themes and its one primary blue for actions (`button-primary`, Blue 60); the identity colours above govern the logo and brand material, not component tokens.
+
 ## Themes and colour
 
 Four themes, chosen per product or zone with `data-theme`: **White** (`white`, the default), **Gray 10** (`g10`), **Gray 90** (`g90`) and **Gray 100** (`g100`). Always build with the semantic tokens below; the palette steps (`blue-60`, `gray-80` …) are the raw values the themes are made from and are for data viz and tags only.
@@ -54,6 +67,15 @@ Motion uses the `@carbon/motion` values, loaded as CSS custom properties with `b
 - **Duration by size and distance**: buttons and toggles `fast-01`; fades of small elements `fast-02`; small expansions `moderate-01`; toasts and larger expansions `moderate-02`; large panels `slow-01`; background dimming `slow-02`.
 - **Surfaces** name common transitions: `disclosure` (accordion), `contextual` (tooltip, popover), `expand` (tile → side panel), `invoke` (button → modal or menu). They are experimental upstream.
 - Never animate for decoration, never loop, and turn motion off under `prefers-reduced-motion: reduce`.
+
+### The logo in motion
+
+The animated logo (brand identity v1.0, founder decision, 11 Nov 2026) is built from two ideas: things connect, and each movement flows into the next. Four points flow in on curved paths and link up into the record; a thread runs from the record under the name and lifts each letter; the thread draws back and becomes the title line. It always ends on the exact logo, held for at least a second. Three reveals ship with the identity (`motion/` in the private repository's `site/brand/`); "connected" is the primary one.
+
+- **Where it belongs**: the opening or closing of a film, short, talk or demo recording, and launch or announcement posts. Never in the product UI, never as a page background or a loading state.
+- **Play it once.** It never loops. Under `prefers-reduced-motion: reduce` show its end frame.
+- **Leave it whole**: no recolouring, cropping, retiming or text over it; pad with Ground (Gray 100) for other aspect ratios.
+- Do not animate the logo or the wordmark any other way.
 
 ## Components
 
@@ -108,6 +130,6 @@ Carbon icons: a single-colour, 2px-stroke-style set drawn on a 32px grid and shi
 
 ---
 
-**Added beyond the artifact export**: the "Chart anatomy, axes and legends" and "Patterns" sections were distilled from carbondesignsystem.com `building-blocks/core` (Oct 2026) directly into this file. If the upstream Carbon artifact is re-exported, carry these sections over (or add them to the artifact first), or the re-export will drop them.
+**Added beyond the artifact export**: the "Logo and identity" section and "The logo in motion" under Motion (brand identity v1.0, Nov 2026) were written into this file directly, and the "Chart anatomy, axes and legends" and "Patterns" sections were distilled from carbondesignsystem.com `building-blocks/core` (Oct 2026) directly into this file. If the upstream Carbon artifact is re-exported, carry these sections over (or add them to the artifact first), or the re-export will drop them.
 
 **Not synced** from `carbon-design-system/carbon@47ab671`: deprecated v10 type aliases (`body-short-*`, `body-long-*`, `productive-heading-*`, `expressive-heading-*`, `display-*`), fluid spacing (`fluid-spacing-01`…`04`, viewport units) and deprecated `layout-01`…`07` tokens; contextual layer tokens (`layer`, `field`, `border-subtle` without a number), which Carbon sets per `Layer`. Fonts come from `IBM/plex@763c36e` (IBM Plex Sans, Mono and Serif, SIL Open Font License 1.1), only the weights Carbon uses: Sans 300, 400, 400 italic and 600; Mono 400 and 600; Serif 300 and 400. Motion: durations and easings from `packages/motion/src/dtcg/motion.json` are CSS custom properties in `bundle.css`, because this system’s tokens have no motion family. Icons: 46 of the 2,640 32px SVGs. Motion icons: all 151 from `carbon-design-system/icons-motion@7e0a745`, built from the published `@carbon/icons-motion` 2.3.0 (identical set); its hard-coded black, white and status colours are remapped to tokens in `bundle.css`. The package declares React 16–17 as its peer; it is bundled here with React 18 and every icon renders. Components: built from the published `@carbon/react` 1.118.0 (the version on this commit) with its compiled `@carbon/styles` CSS; 24 of ~150 components have cards, but every listed export (e.g. `TableToolbar`, `ToastNotification`, `Stack`, `Layer`) is in the bundle. Charts: built from the published `@carbon/charts-react` 1.27.21 (the version on `carbon-design-system/carbon-charts@225ecc1`); all 25 chart types have cards (the experimental geo choropleth and the ProportionalMeter variant are not bundled separately). Chart colours are wired to tokens through the `--cds-charts-*` bridge in `bundle.css`; only the computed hover shades keep Carbon’s literal values. The choropleth preview uses the Natural Earth 1:110m world map from Carbon’s docs (`assets/Data/`, properties trimmed); Carbon labels it demo data. The grouped bar, stacked bar and stacked area previews reuse the line and area docs data, since the docs have no examples for them.
