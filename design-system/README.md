@@ -55,6 +55,15 @@ Motion uses the `@carbon/motion` values, loaded as CSS custom properties with `b
 - **Surfaces** name common transitions: `disclosure` (accordion), `contextual` (tooltip, popover), `expand` (tile → side panel), `invoke` (button → modal or menu). They are experimental upstream.
 - Never animate for decoration, never loop, and turn motion off under `prefers-reduced-motion: reduce`.
 
+### Brand reveal
+
+The brand reveal (founder decision, 11 Nov 2026) is the one sanctioned animation of the name: a 5.2 s silent film on Gray 100 in which scattered points are joined by lines, close into a square record card with a Blue offset behind it, and a line runs out of the card to write the lowercase wordmark, which then holds. The master and its end frame live with the identity files in the private repository (`site/brand/reveal/`).
+
+- **Where it belongs**: the opening or closing of a film, short, talk or demo recording, and launch or announcement posts. Never in the product UI, never as a page background or a loading state.
+- **Play it once.** It never loops. Under `prefers-reduced-motion: reduce` show its end frame.
+- **Leave it whole**: no recolouring, cropping, retiming or text over it; pad with Gray 100 for other aspect ratios.
+- Do not animate the logo or the wordmark any other way.
+
 ## Components
 
 The live components are the real `@carbon/react` 1.118.0 and `@carbon/charts-react` 1.27.21 code, bundled together as `window.Carbon` (React 18). Each card’s README gives when to use it, what you supply and its props. Compose screens from these rather than restyling raw elements; wrap a region in `<Carbon.Theme theme="g100">` to switch its theme, or set `data-theme` on the root.
@@ -108,6 +117,6 @@ Carbon icons: a single-colour, 2px-stroke-style set drawn on a 32px grid and shi
 
 ---
 
-**Added beyond the artifact export**: the "Chart anatomy, axes and legends" and "Patterns" sections were distilled from carbondesignsystem.com `building-blocks/core` (Oct 2026) directly into this file. If the upstream Carbon artifact is re-exported, carry these sections over (or add them to the artifact first), or the re-export will drop them.
+**Added beyond the artifact export**: the "Brand reveal" subsection under Motion (Nov 2026) was written into this file directly, and the "Chart anatomy, axes and legends" and "Patterns" sections were distilled from carbondesignsystem.com `building-blocks/core` (Oct 2026) directly into this file. If the upstream Carbon artifact is re-exported, carry these sections over (or add them to the artifact first), or the re-export will drop them.
 
 **Not synced** from `carbon-design-system/carbon@47ab671`: deprecated v10 type aliases (`body-short-*`, `body-long-*`, `productive-heading-*`, `expressive-heading-*`, `display-*`), fluid spacing (`fluid-spacing-01`…`04`, viewport units) and deprecated `layout-01`…`07` tokens; contextual layer tokens (`layer`, `field`, `border-subtle` without a number), which Carbon sets per `Layer`. Fonts come from `IBM/plex@763c36e` (IBM Plex Sans, Mono and Serif, SIL Open Font License 1.1), only the weights Carbon uses: Sans 300, 400, 400 italic and 600; Mono 400 and 600; Serif 300 and 400. Motion: durations and easings from `packages/motion/src/dtcg/motion.json` are CSS custom properties in `bundle.css`, because this system’s tokens have no motion family. Icons: 46 of the 2,640 32px SVGs. Motion icons: all 151 from `carbon-design-system/icons-motion@7e0a745`, built from the published `@carbon/icons-motion` 2.3.0 (identical set); its hard-coded black, white and status colours are remapped to tokens in `bundle.css`. The package declares React 16–17 as its peer; it is bundled here with React 18 and every icon renders. Components: built from the published `@carbon/react` 1.118.0 (the version on this commit) with its compiled `@carbon/styles` CSS; 24 of ~150 components have cards, but every listed export (e.g. `TableToolbar`, `ToastNotification`, `Stack`, `Layer`) is in the bundle. Charts: built from the published `@carbon/charts-react` 1.27.21 (the version on `carbon-design-system/carbon-charts@225ecc1`); all 25 chart types have cards (the experimental geo choropleth and the ProportionalMeter variant are not bundled separately). Chart colours are wired to tokens through the `--cds-charts-*` bridge in `bundle.css`; only the computed hover shades keep Carbon’s literal values. The choropleth preview uses the Natural Earth 1:110m world map from Carbon’s docs (`assets/Data/`, properties trimmed); Carbon labels it demo data. The grouped bar, stacked bar and stacked area previews reuse the line and area docs data, since the docs have no examples for them.
