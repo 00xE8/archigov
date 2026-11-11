@@ -211,11 +211,12 @@ body { font-family: var(--font-sans); color: var(--cds-text-primary); margin: 0;
 .ag-signin { min-height: 100vh; display: grid; place-items: center; padding: sp.$spacing-07; }
 .ag-signin-card { max-width: 34rem; display: grid; gap: sp.$spacing-05; }
 .ag-signin-card h1 { @include type.type-style("heading-05"); margin: 0; }
-// The lockup: the mark, then the lowercase wordmark one stem-width away. Labels elsewhere stay Title Case.
+// The logo is one drawing (brand.tsx): its mark is 20px high in the header, the smallest the guidelines allow on
+// screen, and 40px on the sign-in card. Labels elsewhere stay Title Case.
 .ag-brand { display: inline-flex; align-items: center; }
-.ag-brand > span { display: inline-flex; align-items: center; gap: sp.$spacing-03; }
-.ag-mark { width: 1.25rem; height: 1.25rem; flex: none; }
-h1.ag-brand { gap: sp.$spacing-03; } h1.ag-brand .ag-mark { width: 2.5rem; height: 2.5rem; }
+.ag-brand > span { display: inline-flex; align-items: center; }
+.ag-logo { display: block; height: 1.3125rem; width: auto; flex: none; }
+h1.ag-brand .ag-logo { height: 2.625rem; }
 // "Not allowed" toasts sit under the header, above content, below modals.
 .ag-toasts { position: fixed; top: 3.5rem; right: sp.$spacing-05; z-index: 8000; }
 .ag-gated { display: inline-block; }

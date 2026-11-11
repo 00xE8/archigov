@@ -299,7 +299,7 @@ What the AGPL means in practice:
 
 Copyright © 2026 Skygge Ltd and contributors. Skygge Ltd maintains the project and receives the CLA's grant. The app shows these notices, and offers the source of the running version, under **About archigov** in its help panel and on the sign-in page. Whoever hosts a modified build for others sets `SOURCE_URL` to their own source.
 
-**Trademarks.** The name archigov and the plumb mark are trademarks of Skygge Ltd, and neither licence grants a right to use them. Refer to the project freely, and share unmodified releases under its name; a modified version needs its own name and logo. See [TRADEMARKS.md](TRADEMARKS.md).
+**Trademarks.** The name archigov and the record mark are trademarks of Skygge Ltd, and neither licence grants a right to use them. Refer to the project freely, and share unmodified releases under its name; a modified version needs its own name and logo. See [TRADEMARKS.md](TRADEMARKS.md).
 
 ## Not in this release
 

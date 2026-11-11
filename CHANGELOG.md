@@ -4,6 +4,10 @@ All notable changes to archigov are documented here. The format follows [Keep a 
 
 ## [Unreleased]
 
+### Changed
+
+- **A new identity: the record mark.** The logo is now an outlined record card with its title line and a blue block behind it, set beside the lowercase name: one record, with everything it rests on behind it. It replaces the plumb mark in the header, on the sign-in page, as the favicon, in the README banner and in [TRADEMARKS.md](TRADEMARKS.md), which now names the record mark and keeps the plumb mark covered. The name in the logo is drawn, never typed, so it renders the same without the font. No API or schema change.
+
 ## [0.4.1] — 2026-11-07
 
 The Azure DevOps features of 0.4.0, verified against a live organisation, and the one defect that check found fixed: the feed now reads again what it wrote to and what it was asked about, so an ask withdrawn at the source is withdrawn here without waiting for a service hook. No migration; the API only gains a run statistic.
