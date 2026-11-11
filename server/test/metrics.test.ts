@@ -33,7 +33,10 @@ test("quantiles interpolate; an empty series is null, never zero", () => {
   assert.equal(quantile([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 0.9), 9.1);
 });
 
-test("the demo's metrics: realisation, coverage, registers, and a period that is always stated", async () => {
+test("the demo's metrics: realisation, coverage, registers, and a period that is always stated", async (t) => {
+  // The demo's lifecycle facts are read against the calendar: .NET 8 was "ending" until 10 Nov 2026 and is end of life
+  // after it. The assertions below describe the estate on a fixed day, so the clock is pinned to it.
+  t.mock.timers.enable({ apis: ["Date"], now: Date.parse("2026-11-01T12:00:00Z") });
   const r = await call("GET", "/metrics?days=1", "a.uditor");
   assert.equal(r.status, 200); assert.equal(r.body.period_days, 7, "the period is clamped and stated");
   const m = (await call("GET", "/metrics", "a.uditor")).body;

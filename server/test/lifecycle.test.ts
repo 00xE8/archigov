@@ -59,7 +59,10 @@ test("matching reads only what collection holds: image sku/offer, runtime stack,
   assert.equal(none.tracked, true); assert.equal(none.state, "unknown", "a tracked resource without a version fact is unknown, never supported");
 });
 
-test("the demo register: end of life, extended support, the unmatched web app, and one current assessment", async () => {
+test("the demo register: end of life, extended support, the unmatched web app, and one current assessment", async (t) => {
+  // The demo's lifecycle facts are read against the calendar: .NET 8 was "ending" until 10 Nov 2026 and is end of life
+  // after it. The assertions below describe the estate on a fixed day, so the clock is pinned to it.
+  t.mock.timers.enable({ apis: ["Date"], now: Date.parse("2026-11-01T12:00:00Z") });
   const r = await call("GET", "/lifecycle", "a.uditor");
   assert.equal(r.status, 200);
   assert.equal(r.body.snapshot.source, "endoflife.date"); assert.equal(r.body.snapshot.licence, "MIT");
@@ -110,7 +113,10 @@ test("the yearly legacy assessment: an author records it; a new legacy component
   await call("POST", `/resources/${res("stpharmacyfiles")}/lifecycle/reset`, "s.patel");
 });
 
-test("rules: lifecycle states per resource, lifecycle.* in where, assessmentCurrent per application; malformed ones are refused", () => {
+test("rules: lifecycle states per resource, lifecycle.* in where, assessmentCurrent per application; malformed ones are refused", (t) => {
+  // The demo's lifecycle facts are read against the calendar: .NET 8 was "ending" until 10 Nov 2026 and is end of life
+  // after it. The assertions below describe the estate on a fixed day, so the clock is pinned to it.
+  t.mock.timers.enable({ apis: ["Date"], now: Date.parse("2026-11-01T12:00:00Z") });
   const eol = createArtefact({ kind: "standard", title: "Nothing past end of life", category: "Resilience", statement: "s", status: "adopt", severity: "high",
     rule: { scope: "resource", assert: { op: "lifecycle", states: ["end_of_life"] } }, control_refs: [] } as any, "j.duduka", { lifecycle: "adopted" } as any);
   const ending = createArtefact({ kind: "standard", title: "Web apps plan ahead", category: "Resilience", statement: "s", status: "adopt", severity: "low",
