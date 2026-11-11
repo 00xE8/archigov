@@ -4,6 +4,10 @@ All notable changes to archigov are documented here. The format follows [Keep a 
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-11-11
+
+A new identity: the record mark replaces the plumb mark in the product, its favicon and the README. No migration and no API change.
+
 ### Changed
 
 - **A new identity: the record mark.** The logo is now an outlined record card with its title line and a blue block behind it, set beside the lowercase name: one record, with everything it rests on behind it. It replaces the plumb mark in the header, on the sign-in page, as the favicon, in the README banner and in [TRADEMARKS.md](TRADEMARKS.md), which now names the record mark and keeps the plumb mark covered. The name in the logo is drawn, never typed, so it renders the same without the font. No API or schema change.
