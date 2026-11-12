@@ -50,6 +50,10 @@ Open http://localhost:8080. On first start a demo estate loads: applications col
 
 ## How it works
 
+[<img src="docs/assets/fast-lane-flow.webp" alt="The path a design takes in archigov: proposed by a person, checked at once against your standards, its argument tested by AI, then sorted by risk. A low-risk design that follows a pattern clears in the fast lane with no meeting; anything else goes to the right board, where people decide. Both end on one record, watched against the real Azure estate, and people return only if it drifts." width="100%">](https://archigov.com/docs/concepts/boards-and-reviews#fast-lane)
+
+*A simple design goes straight through; one that needs judgement goes to the right people. [How the fast lane works](https://archigov.com/docs/concepts/boards-and-reviews#fast-lane).*
+
 Every architecture decision is argued, linked and kept true:
 
 | Stage | What happens |
